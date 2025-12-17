@@ -29,145 +29,142 @@ function setLocalData<T>(key: string, data: T): void {
   localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(data));
 }
 
-// Initialize demo data
-function initDemoData() {
-  if (!getLocalData('initialized', false)) {
-    // Categories
-    setLocalData('categories', [
-      { id: 1, name: 'Kebab', icon: 'utensils', color: '#f97316' },
-      { id: 2, name: 'Piadine', icon: 'sandwich', color: '#eab308' },
-      { id: 3, name: 'Bibite', icon: 'coffee', color: '#3b82f6' },
-      { id: 4, name: 'Contorni', icon: 'salad', color: '#22c55e' },
-      { id: 5, name: 'Dolci', icon: 'cake', color: '#ec4899' },
-    ]);
-
-    // Menu items
-    setLocalData('menu_items', [
-      { id: 1, name: 'Kebab Classico', category_id: 1, price: 6.50, description: 'Carne di vitello, insalata, pomodori, cipolla, salsa yogurt', available: true },
-      { id: 2, name: 'Kebab Durum', category_id: 1, price: 7.00, description: 'Kebab avvolto in piadina sottile', available: true },
-      { id: 3, name: 'Kebab Box', category_id: 1, price: 8.00, description: 'Kebab con patatine in box', available: true },
-      { id: 4, name: 'Kebab Falafel', category_id: 1, price: 7.50, description: 'Versione vegetariana con falafel', available: true },
-      { id: 5, name: 'Piadina Classica', category_id: 2, price: 5.50, description: 'Prosciutto, formaggio, insalata', available: true },
-      { id: 6, name: 'Piadina Kebab', category_id: 2, price: 7.00, description: 'Carne kebab in piadina', available: true },
-      { id: 7, name: 'Coca Cola', category_id: 3, price: 2.50, description: '33cl', available: true },
-      { id: 8, name: 'Fanta', category_id: 3, price: 2.50, description: '33cl', available: true },
-      { id: 9, name: 'Acqua', category_id: 3, price: 1.50, description: '50cl', available: true },
-      { id: 10, name: 'Birra', category_id: 3, price: 3.50, description: '33cl', available: true },
-      { id: 11, name: 'Patatine Fritte', category_id: 4, price: 3.00, description: 'Porzione abbondante', available: true },
-      { id: 12, name: 'Insalata Mista', category_id: 4, price: 4.00, description: 'Insalata fresca di stagione', available: true },
-      { id: 13, name: 'Baklava', category_id: 5, price: 3.50, description: 'Dolce turco con miele e noci', available: true },
-    ]);
-
-    // Tables
-    setLocalData('tables', [
-      { id: 1, name: 'Tavolo 1', capacity: 4 },
-      { id: 2, name: 'Tavolo 2', capacity: 4 },
-      { id: 3, name: 'Tavolo 3', capacity: 2 },
-      { id: 4, name: 'Tavolo 4', capacity: 6 },
-      { id: 5, name: 'Tavolo 5', capacity: 4 },
-      { id: 6, name: 'Tavolo 6', capacity: 8 },
-    ]);
-
-    // Ingredients
-    setLocalData('ingredients', [
-      { id: 1, name: 'Carne Kebab', unit: 'kg', cost: 12.00 },
-      { id: 2, name: 'Pane Pita', unit: 'pz', cost: 0.30 },
-      { id: 3, name: 'Piadina', unit: 'pz', cost: 0.40 },
-      { id: 4, name: 'Insalata', unit: 'kg', cost: 3.00 },
-      { id: 5, name: 'Pomodori', unit: 'kg', cost: 2.50 },
-      { id: 6, name: 'Cipolla', unit: 'kg', cost: 1.50 },
-      { id: 7, name: 'Salsa Yogurt', unit: 'lt', cost: 5.00 },
-      { id: 8, name: 'Salsa Piccante', unit: 'lt', cost: 6.00 },
-      { id: 9, name: 'Patatine Surgelate', unit: 'kg', cost: 2.00 },
-      { id: 10, name: 'Coca Cola 33cl', unit: 'pz', cost: 0.80 },
-    ]);
-
-    // Inventory
-    setLocalData('inventory', [
-      { id: 1, ingredient_id: 1, quantity: 15, threshold: 5 },
-      { id: 2, ingredient_id: 2, quantity: 100, threshold: 30 },
-      { id: 3, ingredient_id: 3, quantity: 80, threshold: 25 },
-      { id: 4, ingredient_id: 4, quantity: 8, threshold: 3 },
-      { id: 5, ingredient_id: 5, quantity: 10, threshold: 3 },
-      { id: 6, ingredient_id: 6, quantity: 5, threshold: 2 },
-      { id: 7, ingredient_id: 7, quantity: 4, threshold: 2 },
-      { id: 8, ingredient_id: 8, quantity: 3, threshold: 2 },
-      { id: 9, ingredient_id: 9, quantity: 20, threshold: 5 },
-      { id: 10, ingredient_id: 10, quantity: 48, threshold: 20 },
-    ]);
-
-    // Employees
-    setLocalData('employees', [
-      { id: 1, name: 'Marco Rossi', role: 'Cuoco', hourly_rate: 12.00, active: true },
-      { id: 2, name: 'Luca Bianchi', role: 'Cameriere', hourly_rate: 10.00, active: true },
-      { id: 3, name: 'Sara Verdi', role: 'Cassiere', hourly_rate: 10.00, active: true },
-    ]);
-
-    // Settings
-    setLocalData('settings', {
-      shop_name: 'Kebab San Marino',
-      currency: '€',
-      iva_rate: 17,
-      default_threshold: 10,
-      language: 'it',
-      address: 'Via Example 123, San Marino',
-      phone: '+378 0549 123456',
-    });
-
-    // Orders (empty initially)
-    setLocalData('orders', []);
-    setLocalData('order_items', []);
-    setLocalData('work_shifts', []);
-    setLocalData('reservations', []);
-    setLocalData('expenses', []);
-    setLocalData('supplies', []);
-    setLocalData('supply_items', []);
-
-    // Ricette (collegamento menu-ingredienti) con dati demo
-    setLocalData('menu_item_ingredients', [
-      // Kebab Classico (id: 1)
-      { id: 1, menu_item_id: 1, ingredient_id: 1, quantity: 0.15 }, // 150g Carne
-      { id: 2, menu_item_id: 1, ingredient_id: 2, quantity: 1 },    // 1 Pane Pita
-      { id: 3, menu_item_id: 1, ingredient_id: 4, quantity: 0.05 }, // 50g Insalata
-      { id: 4, menu_item_id: 1, ingredient_id: 5, quantity: 0.03 }, // 30g Pomodori
-      { id: 5, menu_item_id: 1, ingredient_id: 6, quantity: 0.02 }, // 20g Cipolla
-      { id: 6, menu_item_id: 1, ingredient_id: 7, quantity: 0.03 }, // 30ml Salsa Yogurt
-      // Kebab Durum (id: 2)
-      { id: 7, menu_item_id: 2, ingredient_id: 1, quantity: 0.18 },  // 180g Carne
-      { id: 8, menu_item_id: 2, ingredient_id: 3, quantity: 1 },     // 1 Piadina
-      { id: 9, menu_item_id: 2, ingredient_id: 4, quantity: 0.05 },
-      { id: 10, menu_item_id: 2, ingredient_id: 5, quantity: 0.03 },
-      { id: 11, menu_item_id: 2, ingredient_id: 7, quantity: 0.03 },
-      // Kebab Box (id: 3)
-      { id: 12, menu_item_id: 3, ingredient_id: 1, quantity: 0.20 }, // 200g Carne
-      { id: 13, menu_item_id: 3, ingredient_id: 9, quantity: 0.15 }, // 150g Patatine
-      { id: 14, menu_item_id: 3, ingredient_id: 4, quantity: 0.04 },
-      { id: 15, menu_item_id: 3, ingredient_id: 7, quantity: 0.04 },
-      // Piadina Kebab (id: 6)
-      { id: 16, menu_item_id: 6, ingredient_id: 1, quantity: 0.12 },
-      { id: 17, menu_item_id: 6, ingredient_id: 3, quantity: 1 },
-      { id: 18, menu_item_id: 6, ingredient_id: 4, quantity: 0.04 },
-      { id: 19, menu_item_id: 6, ingredient_id: 7, quantity: 0.02 },
-      // Coca Cola (id: 7)
-      { id: 20, menu_item_id: 7, ingredient_id: 10, quantity: 1 },
-      // Patatine Fritte (id: 11)
-      { id: 21, menu_item_id: 11, ingredient_id: 9, quantity: 0.20 },
-    ]);
-
-    // Storico consumi (inizialmente vuoto)
-    setLocalData('ingredient_consumptions', []);
-
-    // Aggiorna ingredienti con dati EOQ di default
-    const ingredients = getLocalData<Ingredient[]>('ingredients', []);
-    setLocalData('ingredients', ingredients.map(ing => ({
-      ...ing,
-      lead_time_days: 2, // 2 giorni per ricevere merce
-      order_cost: 15,    // 15€ costo fisso per ordine
-      holding_cost_percent: 20, // 20% costo stoccaggio annuo
-    })));
-
-    setLocalData('initialized', true);
+// Helper function to initialize data only if not exists
+function initIfNotExists<T>(key: string, defaultValue: T): void {
+  if (!localStorage.getItem(STORAGE_PREFIX + key)) {
+    setLocalData(key, defaultValue);
   }
+}
+
+// Initialize demo data - only creates data that doesn't exist yet
+function initDemoData() {
+  // Categories
+  initIfNotExists('categories', [
+    { id: 1, name: 'Kebab', icon: 'utensils', color: '#f97316' },
+    { id: 2, name: 'Piadine', icon: 'sandwich', color: '#eab308' },
+    { id: 3, name: 'Bibite', icon: 'coffee', color: '#3b82f6' },
+    { id: 4, name: 'Contorni', icon: 'salad', color: '#22c55e' },
+    { id: 5, name: 'Dolci', icon: 'cake', color: '#ec4899' },
+  ]);
+
+  // Menu items
+  initIfNotExists('menu_items', [
+    { id: 1, name: 'Kebab Classico', category_id: 1, price: 6.50, description: 'Carne di vitello, insalata, pomodori, cipolla, salsa yogurt', available: true },
+    { id: 2, name: 'Kebab Durum', category_id: 1, price: 7.00, description: 'Kebab avvolto in piadina sottile', available: true },
+    { id: 3, name: 'Kebab Box', category_id: 1, price: 8.00, description: 'Kebab con patatine in box', available: true },
+    { id: 4, name: 'Kebab Falafel', category_id: 1, price: 7.50, description: 'Versione vegetariana con falafel', available: true },
+    { id: 5, name: 'Piadina Classica', category_id: 2, price: 5.50, description: 'Prosciutto, formaggio, insalata', available: true },
+    { id: 6, name: 'Piadina Kebab', category_id: 2, price: 7.00, description: 'Carne kebab in piadina', available: true },
+    { id: 7, name: 'Coca Cola', category_id: 3, price: 2.50, description: '33cl', available: true },
+    { id: 8, name: 'Fanta', category_id: 3, price: 2.50, description: '33cl', available: true },
+    { id: 9, name: 'Acqua', category_id: 3, price: 1.50, description: '50cl', available: true },
+    { id: 10, name: 'Birra', category_id: 3, price: 3.50, description: '33cl', available: true },
+    { id: 11, name: 'Patatine Fritte', category_id: 4, price: 3.00, description: 'Porzione abbondante', available: true },
+    { id: 12, name: 'Insalata Mista', category_id: 4, price: 4.00, description: 'Insalata fresca di stagione', available: true },
+    { id: 13, name: 'Baklava', category_id: 5, price: 3.50, description: 'Dolce turco con miele e noci', available: true },
+  ]);
+
+  // Tables
+  initIfNotExists('tables', [
+    { id: 1, name: 'Tavolo 1', capacity: 4 },
+    { id: 2, name: 'Tavolo 2', capacity: 4 },
+    { id: 3, name: 'Tavolo 3', capacity: 2 },
+    { id: 4, name: 'Tavolo 4', capacity: 6 },
+    { id: 5, name: 'Tavolo 5', capacity: 4 },
+    { id: 6, name: 'Tavolo 6', capacity: 8 },
+  ]);
+
+  // Ingredients
+  initIfNotExists('ingredients', [
+    { id: 1, name: 'Carne Kebab', unit: 'kg', cost: 12.00, lead_time_days: 2, order_cost: 15, holding_cost_percent: 20 },
+    { id: 2, name: 'Pane Pita', unit: 'pz', cost: 0.30, lead_time_days: 2, order_cost: 15, holding_cost_percent: 20 },
+    { id: 3, name: 'Piadina', unit: 'pz', cost: 0.40, lead_time_days: 2, order_cost: 15, holding_cost_percent: 20 },
+    { id: 4, name: 'Insalata', unit: 'kg', cost: 3.00, lead_time_days: 2, order_cost: 15, holding_cost_percent: 20 },
+    { id: 5, name: 'Pomodori', unit: 'kg', cost: 2.50, lead_time_days: 2, order_cost: 15, holding_cost_percent: 20 },
+    { id: 6, name: 'Cipolla', unit: 'kg', cost: 1.50, lead_time_days: 2, order_cost: 15, holding_cost_percent: 20 },
+    { id: 7, name: 'Salsa Yogurt', unit: 'lt', cost: 5.00, lead_time_days: 2, order_cost: 15, holding_cost_percent: 20 },
+    { id: 8, name: 'Salsa Piccante', unit: 'lt', cost: 6.00, lead_time_days: 2, order_cost: 15, holding_cost_percent: 20 },
+    { id: 9, name: 'Patatine Surgelate', unit: 'kg', cost: 2.00, lead_time_days: 2, order_cost: 15, holding_cost_percent: 20 },
+    { id: 10, name: 'Coca Cola 33cl', unit: 'pz', cost: 0.80, lead_time_days: 2, order_cost: 15, holding_cost_percent: 20 },
+  ]);
+
+  // Inventory
+  initIfNotExists('inventory', [
+    { id: 1, ingredient_id: 1, quantity: 15, threshold: 5 },
+    { id: 2, ingredient_id: 2, quantity: 100, threshold: 30 },
+    { id: 3, ingredient_id: 3, quantity: 80, threshold: 25 },
+    { id: 4, ingredient_id: 4, quantity: 8, threshold: 3 },
+    { id: 5, ingredient_id: 5, quantity: 10, threshold: 3 },
+    { id: 6, ingredient_id: 6, quantity: 5, threshold: 2 },
+    { id: 7, ingredient_id: 7, quantity: 4, threshold: 2 },
+    { id: 8, ingredient_id: 8, quantity: 3, threshold: 2 },
+    { id: 9, ingredient_id: 9, quantity: 20, threshold: 5 },
+    { id: 10, ingredient_id: 10, quantity: 48, threshold: 20 },
+  ]);
+
+  // Employees
+  initIfNotExists('employees', [
+    { id: 1, name: 'Marco Rossi', role: 'Cuoco', hourly_rate: 12.00, active: true },
+    { id: 2, name: 'Luca Bianchi', role: 'Cameriere', hourly_rate: 10.00, active: true },
+    { id: 3, name: 'Sara Verdi', role: 'Cassiere', hourly_rate: 10.00, active: true },
+  ]);
+
+  // Settings - IMPORTANTE: non sovrascrive se già esistenti!
+  initIfNotExists('settings', {
+    shop_name: 'Il Mio Ristorante',
+    currency: '€',
+    iva_rate: 17,
+    default_threshold: 10,
+    language: 'it',
+    address: 'Via Example 123, San Marino',
+    phone: '+378 0549 123456',
+  });
+
+  // Orders (empty initially)
+  initIfNotExists('orders', []);
+  initIfNotExists('order_items', []);
+  initIfNotExists('work_shifts', []);
+  initIfNotExists('reservations', []);
+  initIfNotExists('expenses', []);
+  initIfNotExists('supplies', []);
+  initIfNotExists('supply_items', []);
+
+  // Ricette (collegamento menu-ingredienti) con dati demo
+  initIfNotExists('menu_item_ingredients', [
+    // Kebab Classico (id: 1)
+    { id: 1, menu_item_id: 1, ingredient_id: 1, quantity: 0.15 },
+    { id: 2, menu_item_id: 1, ingredient_id: 2, quantity: 1 },
+    { id: 3, menu_item_id: 1, ingredient_id: 4, quantity: 0.05 },
+    { id: 4, menu_item_id: 1, ingredient_id: 5, quantity: 0.03 },
+    { id: 5, menu_item_id: 1, ingredient_id: 6, quantity: 0.02 },
+    { id: 6, menu_item_id: 1, ingredient_id: 7, quantity: 0.03 },
+    // Kebab Durum (id: 2)
+    { id: 7, menu_item_id: 2, ingredient_id: 1, quantity: 0.18 },
+    { id: 8, menu_item_id: 2, ingredient_id: 3, quantity: 1 },
+    { id: 9, menu_item_id: 2, ingredient_id: 4, quantity: 0.05 },
+    { id: 10, menu_item_id: 2, ingredient_id: 5, quantity: 0.03 },
+    { id: 11, menu_item_id: 2, ingredient_id: 7, quantity: 0.03 },
+    // Kebab Box (id: 3)
+    { id: 12, menu_item_id: 3, ingredient_id: 1, quantity: 0.20 },
+    { id: 13, menu_item_id: 3, ingredient_id: 9, quantity: 0.15 },
+    { id: 14, menu_item_id: 3, ingredient_id: 4, quantity: 0.04 },
+    { id: 15, menu_item_id: 3, ingredient_id: 7, quantity: 0.04 },
+    // Piadina Kebab (id: 6)
+    { id: 16, menu_item_id: 6, ingredient_id: 1, quantity: 0.12 },
+    { id: 17, menu_item_id: 6, ingredient_id: 3, quantity: 1 },
+    { id: 18, menu_item_id: 6, ingredient_id: 4, quantity: 0.04 },
+    { id: 19, menu_item_id: 6, ingredient_id: 7, quantity: 0.02 },
+    // Coca Cola (id: 7)
+    { id: 20, menu_item_id: 7, ingredient_id: 10, quantity: 1 },
+    // Patatine Fritte (id: 11)
+    { id: 21, menu_item_id: 11, ingredient_id: 9, quantity: 0.20 },
+  ]);
+
+  // Storico consumi (inizialmente vuoto)
+  initIfNotExists('ingredient_consumptions', []);
+
+  // Flag initialized non è più necessario perché usiamo initIfNotExists
+  setLocalData('initialized', true);
 }
 
 // Initialize on load
