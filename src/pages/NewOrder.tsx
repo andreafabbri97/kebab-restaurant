@@ -11,11 +11,8 @@ import {
   Users,
   Clock,
   Bike,
-  X,
   Check,
   MessageSquare,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 import {
   getCategories,

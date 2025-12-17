@@ -5,7 +5,6 @@ import {
   ChefHat,
   Package,
   Search,
-  Save,
 } from 'lucide-react';
 import {
   getMenuItems,
