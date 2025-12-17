@@ -15,6 +15,8 @@ import type {
   MenuItemIngredient,
   IngredientConsumption,
   EOQResult,
+  Supply,
+  SupplyItem,
 } from '../types';
 
 // Local storage fallback for demo mode
@@ -1064,4 +1066,209 @@ export async function calculateEOQ(): Promise<EOQResult[]> {
 
   // Ordina per urgenza (giorni fino al riordino)
   return results.sort((a, b) => a.days_until_reorder - b.days_until_reorder);
+}
+
+// ============== FORNITURE (SUPPLIES) ==============
+export async function getSupplies(startDate?: string, endDate?: string): Promise<Supply[]> {
+  if (isSupabaseConfigured && supabase) {
+    let query = supabase.from('supplies').select('*').order('date', { ascending: false });
+    if (startDate) query = query.gte('date', startDate);
+    if (endDate) query = query.lte('date', endDate);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+  let supplies = getLocalData<Supply[]>('supplies', []);
+  if (startDate) supplies = supplies.filter(s => s.date >= startDate);
+  if (endDate) supplies = supplies.filter(s => s.date <= endDate);
+  return supplies.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
+
+export async function getSupplyById(id: number): Promise<Supply | null> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('supplies').select('*').eq('id', id).single();
+    if (error) return null;
+    return data;
+  }
+  const supplies = getLocalData<Supply[]>('supplies', []);
+  return supplies.find(s => s.id === id) || null;
+}
+
+export async function getSupplyItems(supplyId: number): Promise<SupplyItem[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('supply_items')
+      .select('*, ingredients(name, unit)')
+      .eq('supply_id', supplyId);
+    if (error) throw error;
+    return (data || []).map(item => ({
+      ...item,
+      ingredient_name: item.ingredients?.name,
+      unit: item.ingredients?.unit,
+      total_cost: item.quantity * item.unit_cost,
+    }));
+  }
+  const supplyItems = getLocalData<SupplyItem[]>('supply_items', []);
+  const ingredients = getLocalData<Ingredient[]>('ingredients', []);
+  return supplyItems
+    .filter(si => si.supply_id === supplyId)
+    .map(item => ({
+      ...item,
+      ingredient_name: ingredients.find(i => i.id === item.ingredient_id)?.name,
+      unit: ingredients.find(i => i.id === item.ingredient_id)?.unit,
+      total_cost: item.quantity * item.unit_cost,
+    }));
+}
+
+export async function createSupply(
+  supply: Omit<Supply, 'id' | 'created_at' | 'total_cost'>,
+  items: Omit<SupplyItem, 'id' | 'supply_id'>[]
+): Promise<Supply> {
+  // Calcola il costo totale
+  const totalCost = items.reduce((sum, item) => sum + (item.quantity * item.unit_cost), 0);
+
+  if (isSupabaseConfigured && supabase) {
+    // Crea la fornitura
+    const { data: supplyData, error: supplyError } = await supabase
+      .from('supplies')
+      .insert({ ...supply, total_cost: totalCost })
+      .select()
+      .single();
+    if (supplyError) throw supplyError;
+
+    // Crea gli item della fornitura
+    const supplyItems = items.map(item => ({
+      ...item,
+      supply_id: supplyData.id,
+    }));
+    const { error: itemsError } = await supabase.from('supply_items').insert(supplyItems);
+    if (itemsError) throw itemsError;
+
+    // Aggiorna l'inventario
+    for (const item of items) {
+      const { data: invData } = await supabase
+        .from('inventory')
+        .select('quantity')
+        .eq('ingredient_id', item.ingredient_id)
+        .single();
+
+      if (invData) {
+        await supabase
+          .from('inventory')
+          .update({ quantity: invData.quantity + item.quantity })
+          .eq('ingredient_id', item.ingredient_id);
+      }
+
+      // Aggiorna anche il costo dell'ingrediente (costo medio)
+      await supabase
+        .from('ingredients')
+        .update({ cost: item.unit_cost })
+        .eq('id', item.ingredient_id);
+    }
+
+    return supplyData;
+  }
+
+  // Modalità locale
+  const supplies = getLocalData<Supply[]>('supplies', []);
+  const supplyItemsList = getLocalData<SupplyItem[]>('supply_items', []);
+  const inventory = getLocalData<InventoryItem[]>('inventory', []);
+  const ingredients = getLocalData<Ingredient[]>('ingredients', []);
+
+  const newSupply: Supply = {
+    ...supply,
+    id: Date.now(),
+    total_cost: totalCost,
+    created_at: new Date().toISOString(),
+  };
+
+  // Aggiungi la fornitura
+  supplies.push(newSupply);
+  setLocalData('supplies', supplies);
+
+  // Aggiungi gli item della fornitura
+  const newItems = items.map((item, index) => ({
+    ...item,
+    id: Date.now() + index + 1,
+    supply_id: newSupply.id,
+  }));
+  setLocalData('supply_items', [...supplyItemsList, ...newItems]);
+
+  // Aggiorna l'inventario e i costi ingredienti
+  for (const item of items) {
+    // Aggiorna quantità inventario
+    const invIndex = inventory.findIndex(i => i.ingredient_id === item.ingredient_id);
+    if (invIndex !== -1) {
+      inventory[invIndex].quantity += item.quantity;
+    }
+
+    // Aggiorna costo ingrediente
+    const ingIndex = ingredients.findIndex(i => i.id === item.ingredient_id);
+    if (ingIndex !== -1) {
+      ingredients[ingIndex].cost = item.unit_cost;
+    }
+  }
+  setLocalData('inventory', inventory);
+  setLocalData('ingredients', ingredients);
+
+  return newSupply;
+}
+
+export async function deleteSupply(id: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    // Prima elimina gli items
+    await supabase.from('supply_items').delete().eq('supply_id', id);
+    // Poi elimina la fornitura
+    const { error } = await supabase.from('supplies').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+
+  const supplies = getLocalData<Supply[]>('supplies', []);
+  const supplyItems = getLocalData<SupplyItem[]>('supply_items', []);
+
+  setLocalData('supplies', supplies.filter(s => s.id !== id));
+  setLocalData('supply_items', supplyItems.filter(si => si.supply_id !== id));
+}
+
+// Statistiche forniture
+export async function getSupplyStats(startDate?: string, endDate?: string): Promise<{
+  totalSpent: number;
+  suppliesCount: number;
+  avgSupplyCost: number;
+  topIngredients: { ingredient_name: string; quantity: number; total_cost: number }[];
+}> {
+  const supplies = await getSupplies(startDate, endDate);
+  const totalSpent = supplies.reduce((sum, s) => sum + s.total_cost, 0);
+  const suppliesCount = supplies.length;
+  const avgSupplyCost = suppliesCount > 0 ? totalSpent / suppliesCount : 0;
+
+  // Calcola top ingredienti acquistati
+  const ingredientStats: Record<number, { ingredient_name: string; quantity: number; total_cost: number }> = {};
+
+  for (const supply of supplies) {
+    const items = await getSupplyItems(supply.id);
+    for (const item of items) {
+      if (!ingredientStats[item.ingredient_id]) {
+        ingredientStats[item.ingredient_id] = {
+          ingredient_name: item.ingredient_name || 'Sconosciuto',
+          quantity: 0,
+          total_cost: 0,
+        };
+      }
+      ingredientStats[item.ingredient_id].quantity += item.quantity;
+      ingredientStats[item.ingredient_id].total_cost += item.quantity * item.unit_cost;
+    }
+  }
+
+  const topIngredients = Object.values(ingredientStats)
+    .sort((a, b) => b.total_cost - a.total_cost)
+    .slice(0, 5);
+
+  return {
+    totalSpent: Math.round(totalSpent * 100) / 100,
+    suppliesCount,
+    avgSupplyCost: Math.round(avgSupplyCost * 100) / 100,
+    topIngredients,
+  };
 }

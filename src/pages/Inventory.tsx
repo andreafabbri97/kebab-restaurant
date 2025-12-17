@@ -10,6 +10,10 @@ import {
   ShoppingCart,
   Clock,
   ArrowRight,
+  Truck,
+  Trash2,
+  Eye,
+  X,
 } from 'lucide-react';
 import {
   getInventory,
@@ -17,23 +21,50 @@ import {
   updateInventoryQuantity,
   getLowStockItems,
   calculateEOQ,
+  getIngredients,
+  getSupplies,
+  getSupplyItems,
+  createSupply,
+  deleteSupply,
+  getSupplyStats,
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
-import type { InventoryItem, EOQResult } from '../types';
+import type { InventoryItem, EOQResult, Ingredient, Supply, SupplyItem } from '../types';
+
+// Interfaccia per item temporanei nella creazione fornitura
+interface TempSupplyItem {
+  ingredient_id: number;
+  ingredient_name: string;
+  unit: string;
+  quantity: number;
+  unit_cost: number;
+}
 
 export function Inventory() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
   const [eoqData, setEoqData] = useState<EOQResult[]>([]);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [supplies, setSupplies] = useState<Supply[]>([]);
+  const [supplyStats, setSupplyStats] = useState<{
+    totalSpent: number;
+    suppliesCount: number;
+    avgSupplyCost: number;
+    topIngredients: { ingredient_name: string; quantity: number; total_cost: number }[];
+  } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'inventory' | 'eoq'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'eoq' | 'supplies'>('inventory');
   const [filter, setFilter] = useState<'all' | 'low'>('all');
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showSupplyModal, setShowSupplyModal] = useState(false);
+  const [showSupplyDetailModal, setShowSupplyDetailModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [selectedSupply, setSelectedSupply] = useState<Supply | null>(null);
+  const [selectedSupplyItems, setSelectedSupplyItems] = useState<SupplyItem[]>([]);
 
   // Form states
   const [ingredientForm, setIngredientForm] = useState({
@@ -44,20 +75,39 @@ export function Inventory() {
   const [updateQuantity, setUpdateQuantity] = useState('');
   const [updateMode, setUpdateMode] = useState<'add' | 'set'>('add');
 
+  // Supply form states
+  const [supplyForm, setSupplyForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    supplier_name: '',
+    notes: '',
+  });
+  const [supplyItems, setSupplyItems] = useState<TempSupplyItem[]>([]);
+  const [newSupplyItem, setNewSupplyItem] = useState({
+    ingredient_id: 0,
+    quantity: '',
+    unit_cost: '',
+  });
+
   useEffect(() => {
     loadData();
   }, []);
 
   async function loadData() {
     try {
-      const [inv, low, eoq] = await Promise.all([
+      const [inv, low, eoq, ing, sup, stats] = await Promise.all([
         getInventory(),
         getLowStockItems(),
         calculateEOQ(),
+        getIngredients(),
+        getSupplies(),
+        getSupplyStats(),
       ]);
       setInventory(inv);
       setLowStock(low);
       setEoqData(eoq);
+      setIngredients(ing);
+      setSupplies(sup);
+      setSupplyStats(stats);
     } catch (error) {
       console.error('Error loading data:', error);
       showToast('Errore nel caricamento dati', 'error');
@@ -124,6 +174,105 @@ export function Inventory() {
     }
   }
 
+  // Supply functions
+  function handleAddSupplyItem() {
+    if (!newSupplyItem.ingredient_id || !newSupplyItem.quantity || !newSupplyItem.unit_cost) {
+      showToast('Compila tutti i campi', 'warning');
+      return;
+    }
+
+    const ingredient = ingredients.find(i => i.id === newSupplyItem.ingredient_id);
+    if (!ingredient) return;
+
+    // Verifica se l'ingrediente è già nella lista
+    if (supplyItems.some(item => item.ingredient_id === newSupplyItem.ingredient_id)) {
+      showToast('Ingrediente già aggiunto', 'warning');
+      return;
+    }
+
+    setSupplyItems([
+      ...supplyItems,
+      {
+        ingredient_id: newSupplyItem.ingredient_id,
+        ingredient_name: ingredient.name,
+        unit: ingredient.unit,
+        quantity: parseFloat(newSupplyItem.quantity),
+        unit_cost: parseFloat(newSupplyItem.unit_cost),
+      },
+    ]);
+
+    setNewSupplyItem({ ingredient_id: 0, quantity: '', unit_cost: '' });
+  }
+
+  function handleRemoveSupplyItem(ingredientId: number) {
+    setSupplyItems(supplyItems.filter(item => item.ingredient_id !== ingredientId));
+  }
+
+  async function handleCreateSupply() {
+    if (supplyItems.length === 0) {
+      showToast('Aggiungi almeno un ingrediente', 'warning');
+      return;
+    }
+
+    try {
+      await createSupply(
+        {
+          date: supplyForm.date,
+          supplier_name: supplyForm.supplier_name || undefined,
+          notes: supplyForm.notes || undefined,
+        },
+        supplyItems.map(item => ({
+          ingredient_id: item.ingredient_id,
+          quantity: item.quantity,
+          unit_cost: item.unit_cost,
+        }))
+      );
+
+      showToast('Fornitura registrata con successo', 'success');
+      setShowSupplyModal(false);
+      setSupplyForm({
+        date: new Date().toISOString().split('T')[0],
+        supplier_name: '',
+        notes: '',
+      });
+      setSupplyItems([]);
+      loadData();
+    } catch (error) {
+      console.error('Error creating supply:', error);
+      showToast('Errore nella creazione fornitura', 'error');
+    }
+  }
+
+  async function handleViewSupply(supply: Supply) {
+    try {
+      const items = await getSupplyItems(supply.id);
+      setSelectedSupply(supply);
+      setSelectedSupplyItems(items);
+      setShowSupplyDetailModal(true);
+    } catch (error) {
+      console.error('Error loading supply items:', error);
+      showToast('Errore nel caricamento dettagli', 'error');
+    }
+  }
+
+  async function handleDeleteSupply(id: number) {
+    if (!confirm('Sei sicuro di voler eliminare questa fornitura? Le quantità non verranno restituite all\'inventario.')) {
+      return;
+    }
+
+    try {
+      await deleteSupply(id);
+      showToast('Fornitura eliminata', 'success');
+      loadData();
+    } catch (error) {
+      console.error('Error deleting supply:', error);
+      showToast('Errore nell\'eliminazione', 'error');
+    }
+  }
+
+  // Calcola totale fornitura corrente
+  const currentSupplyTotal = supplyItems.reduce((sum, item) => sum + (item.quantity * item.unit_cost), 0);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -144,18 +293,22 @@ export function Inventory() {
           <button onClick={loadData} className="btn-secondary btn-sm">
             <RefreshCw className="w-4 h-4" />
           </button>
-          <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
+          <button onClick={() => setShowSupplyModal(true)} className="btn-primary btn-sm">
+            <Truck className="w-4 h-4" />
+            <span className="hidden sm:inline">Nuova Fornitura</span>
+          </button>
+          <button onClick={() => setShowAddModal(true)} className="btn-secondary btn-sm">
             <Plus className="w-4 h-4" />
-            Nuovo
+            <span className="hidden sm:inline">Ingrediente</span>
           </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-dark-700 pb-2">
+      <div className="flex gap-2 border-b border-dark-700 pb-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab('inventory')}
-          className={`px-4 py-2 rounded-t-lg font-medium transition-all ${
+          className={`px-4 py-2 rounded-t-lg font-medium transition-all whitespace-nowrap ${
             activeTab === 'inventory'
               ? 'bg-dark-800 text-primary-400 border-b-2 border-primary-500'
               : 'text-dark-400 hover:text-white'
@@ -165,8 +318,24 @@ export function Inventory() {
           Scorte
         </button>
         <button
+          onClick={() => setActiveTab('supplies')}
+          className={`px-4 py-2 rounded-t-lg font-medium transition-all whitespace-nowrap ${
+            activeTab === 'supplies'
+              ? 'bg-dark-800 text-primary-400 border-b-2 border-primary-500'
+              : 'text-dark-400 hover:text-white'
+          }`}
+        >
+          <Truck className="w-4 h-4 inline mr-2" />
+          Forniture
+          {supplies.length > 0 && (
+            <span className="ml-2 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+              {supplies.length}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => setActiveTab('eoq')}
-          className={`px-4 py-2 rounded-t-lg font-medium transition-all ${
+          className={`px-4 py-2 rounded-t-lg font-medium transition-all whitespace-nowrap ${
             activeTab === 'eoq'
               ? 'bg-dark-800 text-primary-400 border-b-2 border-primary-500'
               : 'text-dark-400 hover:text-white'
@@ -315,6 +484,163 @@ export function Inventory() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'supplies' && (
+        <>
+          {/* Supplies Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="stat-card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="stat-label">Totale Forniture</p>
+                  <p className="stat-value">{supplyStats?.suppliesCount || 0}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <Truck className="w-6 h-6 text-blue-400" />
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="stat-label">Speso Totale</p>
+                  <p className="stat-value">{supplyStats?.totalSpent.toFixed(2) || '0.00'} €</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                  <ShoppingCart className="w-6 h-6 text-amber-400" />
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="stat-label">Media Fornitura</p>
+                  <p className="stat-value">{supplyStats?.avgSupplyCost.toFixed(2) || '0.00'} €</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                  <Calculator className="w-6 h-6 text-emerald-400" />
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="stat-label">Ingredienti</p>
+                  <p className="stat-value">{ingredients.length}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                  <Package className="w-6 h-6 text-purple-400" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Top Ingredients Purchased */}
+          {supplyStats && supplyStats.topIngredients.length > 0 && (
+            <div className="card">
+              <div className="card-header">
+                <h2 className="font-semibold text-white">Top Ingredienti Acquistati</h2>
+              </div>
+              <div className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                  {supplyStats.topIngredients.map((ing, index) => (
+                    <div key={index} className="bg-dark-900 rounded-lg p-3">
+                      <p className="font-medium text-white text-sm truncate">{ing.ingredient_name}</p>
+                      <p className="text-primary-400 font-semibold">{ing.total_cost.toFixed(2)} €</p>
+                      <p className="text-dark-400 text-xs">Qty: {ing.quantity.toFixed(2)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Supplies List */}
+          <div className="card">
+            <div className="card-header flex items-center justify-between">
+              <h2 className="font-semibold text-white">Storico Forniture</h2>
+              <button onClick={() => setShowSupplyModal(true)} className="btn-primary btn-sm">
+                <Plus className="w-4 h-4" />
+                Nuova Fornitura
+              </button>
+            </div>
+            {supplies.length === 0 ? (
+              <div className="p-8 text-center">
+                <Truck className="w-12 h-12 text-dark-500 mx-auto mb-3" />
+                <p className="text-dark-400">Nessuna fornitura registrata</p>
+                <p className="text-dark-500 text-sm mt-1">
+                  Clicca su "Nuova Fornitura" per registrare la prima
+                </p>
+              </div>
+            ) : (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>Fornitore</th>
+                      <th>Totale</th>
+                      <th>Note</th>
+                      <th>Azioni</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supplies.map((supply) => (
+                      <tr key={supply.id}>
+                        <td>
+                          <p className="font-medium text-white">
+                            {new Date(supply.date).toLocaleDateString('it-IT', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </td>
+                        <td>
+                          <p className="text-dark-300">
+                            {supply.supplier_name || '-'}
+                          </p>
+                        </td>
+                        <td>
+                          <p className="font-semibold text-primary-400">
+                            {supply.total_cost.toFixed(2)} €
+                          </p>
+                        </td>
+                        <td>
+                          <p className="text-dark-400 text-sm truncate max-w-[200px]">
+                            {supply.notes || '-'}
+                          </p>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleViewSupply(supply)}
+                              className="btn-secondary btn-sm"
+                              title="Visualizza dettagli"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSupply(supply.id)}
+                              className="btn-danger btn-sm"
+                              title="Elimina"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -589,6 +915,275 @@ export function Inventory() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* New Supply Modal */}
+      <Modal
+        isOpen={showSupplyModal}
+        onClose={() => {
+          setShowSupplyModal(false);
+          setSupplyItems([]);
+          setSupplyForm({ date: new Date().toISOString().split('T')[0], supplier_name: '', notes: '' });
+        }}
+        title="Nuova Fornitura"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {/* Supply Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Data Fornitura *</label>
+              <input
+                type="date"
+                value={supplyForm.date}
+                onChange={(e) => setSupplyForm({ ...supplyForm, date: e.target.value })}
+                className="input"
+              />
+            </div>
+            <div>
+              <label className="label">Fornitore</label>
+              <input
+                type="text"
+                value={supplyForm.supplier_name}
+                onChange={(e) => setSupplyForm({ ...supplyForm, supplier_name: e.target.value })}
+                className="input"
+                placeholder="Es. Fornitore S.r.l."
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Note</label>
+            <input
+              type="text"
+              value={supplyForm.notes}
+              onChange={(e) => setSupplyForm({ ...supplyForm, notes: e.target.value })}
+              className="input"
+              placeholder="Note opzionali sulla fornitura"
+            />
+          </div>
+
+          {/* Add Item Form */}
+          <div className="border-t border-dark-700 pt-4">
+            <h3 className="font-semibold text-white mb-3">Aggiungi Ingrediente</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="md:col-span-2">
+                <label className="label">Ingrediente</label>
+                <select
+                  value={newSupplyItem.ingredient_id}
+                  onChange={(e) => {
+                    const ing = ingredients.find(i => i.id === Number(e.target.value));
+                    setNewSupplyItem({
+                      ...newSupplyItem,
+                      ingredient_id: Number(e.target.value),
+                      unit_cost: ing?.cost?.toString() || '',
+                    });
+                  }}
+                  className="select"
+                >
+                  <option value={0}>Seleziona ingrediente...</option>
+                  {ingredients
+                    .filter(ing => !supplyItems.some(si => si.ingredient_id === ing.id))
+                    .map((ing) => (
+                      <option key={ing.id} value={ing.id}>
+                        {ing.name} ({ing.unit})
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">Quantità</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newSupplyItem.quantity}
+                  onChange={(e) => setNewSupplyItem({ ...newSupplyItem, quantity: e.target.value })}
+                  className="input"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="label">Costo Unit. (€)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newSupplyItem.unit_cost}
+                    onChange={(e) => setNewSupplyItem({ ...newSupplyItem, unit_cost: e.target.value })}
+                    className="input flex-1"
+                    placeholder="0.00"
+                  />
+                  <button
+                    onClick={handleAddSupplyItem}
+                    className="btn-primary px-3"
+                    title="Aggiungi"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Items List */}
+          {supplyItems.length > 0 && (
+            <div className="border-t border-dark-700 pt-4">
+              <h3 className="font-semibold text-white mb-3">Ingredienti nella Fornitura</h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {supplyItems.map((item) => (
+                  <div
+                    key={item.ingredient_id}
+                    className="flex items-center justify-between bg-dark-900 rounded-lg px-4 py-3"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-white">{item.ingredient_name}</p>
+                      <p className="text-sm text-dark-400">
+                        {item.quantity} {item.unit} x {item.unit_cost.toFixed(2)} €
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <p className="font-semibold text-primary-400">
+                        {(item.quantity * item.unit_cost).toFixed(2)} €
+                      </p>
+                      <button
+                        onClick={() => handleRemoveSupplyItem(item.ingredient_id)}
+                        className="text-red-400 hover:text-red-300 p-1"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Total */}
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-dark-700">
+                <p className="font-semibold text-white">Totale Fornitura</p>
+                <p className="text-2xl font-bold text-primary-400">
+                  {currentSupplyTotal.toFixed(2)} €
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center gap-3 pt-4 border-t border-dark-700">
+            <button
+              onClick={handleCreateSupply}
+              disabled={supplyItems.length === 0}
+              className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Truck className="w-4 h-4" />
+              Registra Fornitura
+            </button>
+            <button
+              onClick={() => {
+                setShowSupplyModal(false);
+                setSupplyItems([]);
+                setSupplyForm({ date: new Date().toISOString().split('T')[0], supplier_name: '', notes: '' });
+              }}
+              className="btn-secondary"
+            >
+              Annulla
+            </button>
+          </div>
+
+          {/* Info Box */}
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3">
+            <p className="text-sm text-blue-400">
+              <strong>Nota:</strong> Quando registri una fornitura, le quantità vengono automaticamente
+              aggiunte all'inventario e i costi degli ingredienti vengono aggiornati.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Supply Detail Modal */}
+      <Modal
+        isOpen={showSupplyDetailModal}
+        onClose={() => {
+          setShowSupplyDetailModal(false);
+          setSelectedSupply(null);
+          setSelectedSupplyItems([]);
+        }}
+        title="Dettaglio Fornitura"
+        size="md"
+      >
+        {selectedSupply && (
+          <div className="space-y-4">
+            {/* Supply Info */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-dark-900 rounded-lg p-3">
+                <p className="text-xs text-dark-400 uppercase">Data</p>
+                <p className="font-semibold text-white">
+                  {new Date(selectedSupply.date).toLocaleDateString('it-IT', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </p>
+              </div>
+              <div className="bg-dark-900 rounded-lg p-3">
+                <p className="text-xs text-dark-400 uppercase">Fornitore</p>
+                <p className="font-semibold text-white">
+                  {selectedSupply.supplier_name || 'Non specificato'}
+                </p>
+              </div>
+            </div>
+
+            {selectedSupply.notes && (
+              <div className="bg-dark-900 rounded-lg p-3">
+                <p className="text-xs text-dark-400 uppercase">Note</p>
+                <p className="text-white">{selectedSupply.notes}</p>
+              </div>
+            )}
+
+            {/* Items */}
+            <div>
+              <h3 className="font-semibold text-white mb-3">Articoli</h3>
+              <div className="space-y-2">
+                {selectedSupplyItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between bg-dark-900 rounded-lg px-4 py-3"
+                  >
+                    <div>
+                      <p className="font-medium text-white">{item.ingredient_name}</p>
+                      <p className="text-sm text-dark-400">
+                        {item.quantity} {item.unit} x {item.unit_cost.toFixed(2)} €/{item.unit}
+                      </p>
+                    </div>
+                    <p className="font-semibold text-primary-400">
+                      {(item.total_cost || item.quantity * item.unit_cost).toFixed(2)} €
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Total */}
+            <div className="flex items-center justify-between pt-4 border-t border-dark-700">
+              <p className="font-semibold text-white text-lg">Totale</p>
+              <p className="text-2xl font-bold text-primary-400">
+                {selectedSupply.total_cost.toFixed(2)} €
+              </p>
+            </div>
+
+            {/* Close Button */}
+            <div className="pt-4 border-t border-dark-700">
+              <button
+                onClick={() => {
+                  setShowSupplyDetailModal(false);
+                  setSelectedSupply(null);
+                  setSelectedSupplyItems([]);
+                }}
+                className="btn-secondary w-full"
+              >
+                Chiudi
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

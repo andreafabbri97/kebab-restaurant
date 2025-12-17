@@ -113,8 +113,10 @@ export interface InventoryItem {
 export interface Supply {
   id: number;
   date: string;
+  supplier_name?: string;
   total_cost: number;
-  description?: string;
+  notes?: string;
+  created_at?: string;
 }
 
 export interface SupplyItem {
@@ -124,6 +126,8 @@ export interface SupplyItem {
   ingredient_name?: string;
   quantity: number;
   unit_cost: number;
+  total_cost?: number;
+  unit?: string;
 }
 
 export interface Order {
