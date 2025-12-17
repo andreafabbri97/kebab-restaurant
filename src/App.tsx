@@ -22,6 +22,8 @@ const Reports = lazy(() => import('./pages/Reports').then(m => ({ default: m.Rep
 const Smac = lazy(() => import('./pages/Smac').then(m => ({ default: m.Smac })));
 const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Users = lazy(() => import('./pages/Users').then(m => ({ default: m.Users })));
+const CashRegister = lazy(() => import('./pages/CashRegister').then(m => ({ default: m.CashRegister })));
+const DishCosts = lazy(() => import('./pages/DishCosts').then(m => ({ default: m.DishCosts })));
 
 // Loading component per Suspense
 function PageLoader() {
@@ -189,6 +191,30 @@ function App() {
                 <PrivateRoute permission="users">
                   <Suspense fallback={<PageLoader />}>
                     <Users />
+                  </Suspense>
+                </PrivateRoute>
+              }
+            />
+
+            {/* Chiusura Cassa - admin e superadmin */}
+            <Route
+              path="cash-register"
+              element={
+                <PrivateRoute permission="cash-register">
+                  <Suspense fallback={<PageLoader />}>
+                    <CashRegister />
+                  </Suspense>
+                </PrivateRoute>
+              }
+            />
+
+            {/* Costo Piatti - admin e superadmin */}
+            <Route
+              path="dish-costs"
+              element={
+                <PrivateRoute permission="dish-costs">
+                  <Suspense fallback={<PageLoader />}>
+                    <DishCosts />
                   </Suspense>
                 </PrivateRoute>
               }

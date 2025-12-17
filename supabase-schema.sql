@@ -186,6 +186,27 @@ CREATE TABLE IF NOT EXISTS users (
   last_login TIMESTAMP WITH TIME ZONE
 );
 
+-- ============== CASH CLOSURES (Chiusura Cassa) ==============
+CREATE TABLE IF NOT EXISTS cash_closures (
+  id SERIAL PRIMARY KEY,
+  date DATE NOT NULL,
+  opening_cash DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  closing_cash DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  expected_cash DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  difference DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  total_orders INTEGER NOT NULL DEFAULT 0,
+  total_revenue DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  cash_revenue DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  card_revenue DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  online_revenue DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  smac_total DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  non_smac_total DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  notes TEXT,
+  closed_by VARCHAR(100),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(date)
+);
+
 -- ============================================
 -- INSERIMENTO DATI DI DEFAULT
 -- ============================================

@@ -22,6 +22,8 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeft,
+  Calculator,
+  Receipt,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
@@ -35,10 +37,12 @@ const navigation = [
   { name: 'Nuovo Ordine', href: '/orders/new', icon: ShoppingCart, permission: 'orders.new' },
   { name: 'Ordini', href: '/orders', icon: ChefHat, permission: 'orders' },
   { name: 'Menu', href: '/menu', icon: UtensilsCrossed, permission: 'menu' },
+  { name: 'Costo Piatti', href: '/dish-costs', icon: Calculator, permission: 'dish-costs' },
   { name: 'Tavoli', href: '/tables', icon: CalendarDays, permission: 'tables' },
   { name: 'Inventario', href: '/inventory', icon: Package, permission: 'inventory' },
   { name: 'Ricette', href: '/recipes', icon: BookOpen, permission: 'recipes' },
   { name: 'Personale', href: '/staff', icon: Users, permission: 'staff' },
+  { name: 'Chiusura Cassa', href: '/cash-register', icon: Receipt, permission: 'cash-register' },
   { name: 'Report', href: '/reports', icon: BarChart3, permission: 'reports' },
   { name: 'SMAC', href: '/smac', icon: CreditCard, permission: 'smac' },
   { name: 'Impostazioni', href: '/settings', icon: Settings, permission: 'settings' },

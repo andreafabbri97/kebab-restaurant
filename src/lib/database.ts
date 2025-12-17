@@ -17,6 +17,10 @@ import type {
   EOQResult,
   Supply,
   SupplyItem,
+  CashClosure,
+  Receipt,
+  DishCost,
+  DishIngredientCost,
 } from '../types';
 
 // Local storage fallback for demo mode
@@ -1293,5 +1297,238 @@ export async function getSupplyStats(startDate?: string, endDate?: string): Prom
     suppliesCount,
     avgSupplyCost: Math.round(avgSupplyCost * 100) / 100,
     topIngredients,
+  };
+}
+
+// ============== CHIUSURA CASSA ==============
+export async function getDailyCashSummary(date: string): Promise<{
+  total_orders: number;
+  total_revenue: number;
+  cash_revenue: number;
+  card_revenue: number;
+  online_revenue: number;
+  smac_total: number;
+  non_smac_total: number;
+  orders_by_type: { dine_in: number; takeaway: number; delivery: number };
+  orders_by_status: Record<string, number>;
+}> {
+  const orders = await getOrders(date);
+  const completedOrders = orders.filter(o => o.status !== 'cancelled');
+
+  const cash_revenue = completedOrders
+    .filter(o => o.payment_method === 'cash')
+    .reduce((sum, o) => sum + o.total, 0);
+
+  const card_revenue = completedOrders
+    .filter(o => o.payment_method === 'card')
+    .reduce((sum, o) => sum + o.total, 0);
+
+  const online_revenue = completedOrders
+    .filter(o => o.payment_method === 'online')
+    .reduce((sum, o) => sum + o.total, 0);
+
+  const smac_total = completedOrders
+    .filter(o => o.smac_passed)
+    .reduce((sum, o) => sum + o.total, 0);
+
+  const non_smac_total = completedOrders
+    .filter(o => !o.smac_passed)
+    .reduce((sum, o) => sum + o.total, 0);
+
+  const orders_by_type = {
+    dine_in: completedOrders.filter(o => o.order_type === 'dine_in').length,
+    takeaway: completedOrders.filter(o => o.order_type === 'takeaway').length,
+    delivery: completedOrders.filter(o => o.order_type === 'delivery').length,
+  };
+
+  const orders_by_status: Record<string, number> = {};
+  for (const order of orders) {
+    orders_by_status[order.status] = (orders_by_status[order.status] || 0) + 1;
+  }
+
+  return {
+    total_orders: completedOrders.length,
+    total_revenue: Math.round((cash_revenue + card_revenue + online_revenue) * 100) / 100,
+    cash_revenue: Math.round(cash_revenue * 100) / 100,
+    card_revenue: Math.round(card_revenue * 100) / 100,
+    online_revenue: Math.round(online_revenue * 100) / 100,
+    smac_total: Math.round(smac_total * 100) / 100,
+    non_smac_total: Math.round(non_smac_total * 100) / 100,
+    orders_by_type,
+    orders_by_status,
+  };
+}
+
+export async function getCashClosures(): Promise<CashClosure[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('cash_closures')
+      .select('*')
+      .order('date', { ascending: false });
+    if (error) {
+      console.warn('Error fetching cash closures:', error);
+      return [];
+    }
+    return data || [];
+  }
+  return getLocalData<CashClosure[]>('cash_closures', []).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+}
+
+export async function saveCashClosure(closure: Omit<CashClosure, 'id' | 'created_at'>): Promise<CashClosure> {
+  const newClosure: CashClosure = {
+    ...closure,
+    id: Date.now(),
+    created_at: new Date().toISOString(),
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('cash_closures')
+      .insert(newClosure)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  const closures = getLocalData<CashClosure[]>('cash_closures', []);
+  closures.push(newClosure);
+  setLocalData('cash_closures', closures);
+  return newClosure;
+}
+
+export async function generateReceipt(orderId: number): Promise<Receipt | null> {
+  const orders = await getOrders();
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return null;
+
+  const orderItems = await getOrderItems(orderId);
+  const settings = await getSettings();
+
+  const subtotal = order.total / (1 + settings.iva_rate / 100);
+  const iva_amount = order.total - subtotal;
+
+  const receipt: Receipt = {
+    id: Date.now(),
+    order_id: orderId,
+    receipt_number: `R-${order.date.replace(/-/g, '')}-${orderId}`,
+    date: order.date,
+    time: new Date(order.created_at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+    items: orderItems.map(item => ({
+      name: item.menu_item_name || 'Prodotto',
+      quantity: item.quantity,
+      unit_price: item.price,
+      total: item.quantity * item.price,
+    })),
+    subtotal: Math.round(subtotal * 100) / 100,
+    iva_rate: settings.iva_rate,
+    iva_amount: Math.round(iva_amount * 100) / 100,
+    total: order.total,
+    payment_method: order.payment_method,
+    smac_passed: order.smac_passed,
+    shop_info: {
+      name: settings.shop_name,
+      address: settings.address,
+      phone: settings.phone,
+    },
+  };
+
+  return receipt;
+}
+
+// ============== COSTO PIATTO DINAMICO ==============
+export async function calculateDishCost(menuItemId: number): Promise<DishCost | null> {
+  const menuItems = await getMenuItems();
+  const menuItem = menuItems.find(m => m.id === menuItemId);
+  if (!menuItem) return null;
+
+  const recipe = await getMenuItemIngredients(menuItemId);
+  const ingredients = await getIngredients();
+
+  let totalIngredientCost = 0;
+  const ingredientCosts: DishIngredientCost[] = [];
+
+  for (const recipeItem of recipe) {
+    const ingredient = ingredients.find(i => i.id === recipeItem.ingredient_id);
+    if (ingredient) {
+      const itemCost = recipeItem.quantity * ingredient.cost;
+      totalIngredientCost += itemCost;
+
+      ingredientCosts.push({
+        ingredient_id: ingredient.id,
+        ingredient_name: ingredient.name,
+        quantity: recipeItem.quantity,
+        unit: ingredient.unit,
+        unit_cost: ingredient.cost,
+        total_cost: Math.round(itemCost * 100) / 100,
+      });
+    }
+  }
+
+  const profitMargin = menuItem.price - totalIngredientCost;
+  const profitMarginPercent = menuItem.price > 0
+    ? (profitMargin / menuItem.price) * 100
+    : 0;
+
+  return {
+    menu_item_id: menuItem.id,
+    menu_item_name: menuItem.name,
+    selling_price: menuItem.price,
+    ingredient_cost: Math.round(totalIngredientCost * 100) / 100,
+    profit_margin: Math.round(profitMargin * 100) / 100,
+    profit_margin_percent: Math.round(profitMarginPercent * 10) / 10,
+    ingredients: ingredientCosts,
+  };
+}
+
+export async function calculateAllDishCosts(): Promise<DishCost[]> {
+  const menuItems = await getMenuItems();
+  const costs: DishCost[] = [];
+
+  for (const menuItem of menuItems) {
+    const cost = await calculateDishCost(menuItem.id);
+    if (cost) {
+      costs.push(cost);
+    }
+  }
+
+  return costs.sort((a, b) => b.profit_margin_percent - a.profit_margin_percent);
+}
+
+export async function getDishCostSummary(): Promise<{
+  totalDishes: number;
+  avgProfitMargin: number;
+  highMarginDishes: DishCost[];
+  lowMarginDishes: DishCost[];
+  dishesWithoutRecipe: MenuItem[];
+}> {
+  const menuItems = await getMenuItems();
+  const allCosts = await calculateAllDishCosts();
+
+  const dishesWithRecipe = allCosts.filter(c => c.ingredients.length > 0);
+  const dishesWithoutRecipe = menuItems.filter(
+    m => !allCosts.find(c => c.menu_item_id === m.id && c.ingredients.length > 0)
+  );
+
+  const avgProfitMargin = dishesWithRecipe.length > 0
+    ? dishesWithRecipe.reduce((sum, d) => sum + d.profit_margin_percent, 0) / dishesWithRecipe.length
+    : 0;
+
+  const highMarginDishes = dishesWithRecipe
+    .filter(d => d.profit_margin_percent >= 60)
+    .slice(0, 5);
+
+  const lowMarginDishes = dishesWithRecipe
+    .filter(d => d.profit_margin_percent < 40)
+    .slice(0, 5);
+
+  return {
+    totalDishes: menuItems.length,
+    avgProfitMargin: Math.round(avgProfitMargin * 10) / 10,
+    highMarginDishes,
+    lowMarginDishes,
+    dishesWithoutRecipe,
   };
 }

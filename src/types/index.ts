@@ -17,11 +17,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   superadmin: [
     'dashboard', 'orders', 'orders.new', 'menu', 'tables',
     'inventory', 'recipes', 'staff', 'reports', 'smac',
-    'settings', 'users'
+    'settings', 'users', 'cash-register', 'dish-costs'
   ],
   admin: [
     'dashboard', 'orders', 'orders.new', 'menu', 'tables',
-    'inventory', 'recipes', 'staff'
+    'inventory', 'recipes', 'staff', 'cash-register', 'dish-costs'
   ],
   staff: [
     'orders.new', 'orders', 'tables'
@@ -246,4 +246,71 @@ export interface FinancialSummary {
   profit: number;
   period_start: string;
   period_end: string;
+}
+
+// ============== CHIUSURA CASSA ==============
+export interface CashClosure {
+  id: number;
+  date: string;
+  opening_cash: number;
+  closing_cash: number;
+  expected_cash: number;
+  difference: number;
+  total_orders: number;
+  total_revenue: number;
+  cash_revenue: number;
+  card_revenue: number;
+  online_revenue: number;
+  smac_total: number;
+  non_smac_total: number;
+  notes?: string;
+  closed_by?: string;
+  created_at: string;
+}
+
+export interface Receipt {
+  id: number;
+  order_id: number;
+  receipt_number: string;
+  date: string;
+  time: string;
+  items: ReceiptItem[];
+  subtotal: number;
+  iva_rate: number;
+  iva_amount: number;
+  total: number;
+  payment_method: string;
+  smac_passed: boolean;
+  shop_info: {
+    name: string;
+    address?: string;
+    phone?: string;
+  };
+}
+
+export interface ReceiptItem {
+  name: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+}
+
+// ============== COSTO PIATTO ==============
+export interface DishCost {
+  menu_item_id: number;
+  menu_item_name: string;
+  selling_price: number;
+  ingredient_cost: number;
+  profit_margin: number;
+  profit_margin_percent: number;
+  ingredients: DishIngredientCost[];
+}
+
+export interface DishIngredientCost {
+  ingredient_id: number;
+  ingredient_name: string;
+  quantity: number;
+  unit: string;
+  unit_cost: number;
+  total_cost: number;
 }
