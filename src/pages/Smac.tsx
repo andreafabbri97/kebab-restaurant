@@ -9,18 +9,28 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { getOrders } from '../lib/database';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { showToast } from '../components/ui/Toast';
 import type { Order } from '../types';
 
 // Extend the database to support SMAC update
 async function updateOrderSmac(orderId: number, smacPassed: boolean): Promise<void> {
-  // For local storage mode
-  const STORAGE_PREFIX = 'kebab_';
-  const orders = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'orders') || '[]');
-  const index = orders.findIndex((o: Order) => o.id === orderId);
-  if (index !== -1) {
-    orders[index].smac_passed = smacPassed;
-    localStorage.setItem(STORAGE_PREFIX + 'orders', JSON.stringify(orders));
+  if (isSupabaseConfigured && supabase) {
+    // Aggiorna su Supabase
+    const { error } = await supabase
+      .from('orders')
+      .update({ smac_passed: smacPassed })
+      .eq('id', orderId);
+    if (error) throw error;
+  } else {
+    // For local storage mode
+    const STORAGE_PREFIX = 'kebab_';
+    const orders = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'orders') || '[]');
+    const index = orders.findIndex((o: Order) => o.id === orderId);
+    if (index !== -1) {
+      orders[index].smac_passed = smacPassed;
+      localStorage.setItem(STORAGE_PREFIX + 'orders', JSON.stringify(orders));
+    }
   }
 }
 

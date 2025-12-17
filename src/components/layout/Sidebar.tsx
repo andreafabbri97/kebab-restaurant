@@ -223,55 +223,55 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           ))}
         </nav>
 
-        {/* Bottom Section */}
-        <div className={`p-4 ${sidebarCollapsed ? 'lg:p-2' : ''} border-t border-dark-700 space-y-2`}>
+        {/* Bottom Section - Compatto */}
+        <div className={`p-2 ${sidebarCollapsed ? 'lg:p-1.5' : ''} border-t border-dark-700 space-y-1`}>
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
             title={theme === 'dark' ? 'Passa al tema chiaro' : 'Passa al tema scuro'}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-dark-400 hover:text-white hover:bg-dark-800 transition-colors ${
-              sidebarCollapsed ? 'lg:justify-center lg:px-3' : ''
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-dark-400 hover:text-white hover:bg-dark-800 transition-colors ${
+              sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''
             }`}
           >
             {theme === 'dark' ? (
-              <Sun className="w-5 h-5 flex-shrink-0" />
+              <Sun className="w-4 h-4 flex-shrink-0" />
             ) : (
-              <Moon className="w-5 h-5 flex-shrink-0" />
+              <Moon className="w-4 h-4 flex-shrink-0" />
             )}
-            <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{theme === 'dark' ? 'Tema Chiaro' : 'Tema Scuro'}</span>
+            <span className={`text-sm ${sidebarCollapsed ? 'lg:hidden' : ''}`}>{theme === 'dark' ? 'Tema Chiaro' : 'Tema Scuro'}</span>
           </button>
 
           {/* Collapse Toggle - solo desktop */}
           <button
             onClick={toggleSidebar}
             title={sidebarCollapsed ? 'Espandi sidebar' : 'Riduci sidebar'}
-            className={`hidden lg:flex w-full items-center gap-3 px-4 py-3 rounded-xl text-dark-400 hover:text-white hover:bg-dark-800 transition-colors ${
-              sidebarCollapsed ? 'justify-center px-3' : ''
+            className={`hidden lg:flex w-full items-center gap-3 px-3 py-2 rounded-lg text-dark-400 hover:text-white hover:bg-dark-800 transition-colors ${
+              sidebarCollapsed ? 'justify-center px-2' : ''
             }`}
           >
             {sidebarCollapsed ? (
-              <PanelLeft className="w-5 h-5 flex-shrink-0" />
+              <PanelLeft className="w-4 h-4 flex-shrink-0" />
             ) : (
-              <PanelLeftClose className="w-5 h-5 flex-shrink-0" />
+              <PanelLeftClose className="w-4 h-4 flex-shrink-0" />
             )}
-            {!sidebarCollapsed && <span>Riduci Menu</span>}
+            {!sidebarCollapsed && <span className="text-sm">Riduci Menu</span>}
           </button>
 
           {/* Logout Button */}
           <button
             onClick={handleLogout}
             title={sidebarCollapsed ? 'Esci' : undefined}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-dark-400 hover:text-white hover:bg-dark-800 transition-colors ${
-              sidebarCollapsed ? 'lg:justify-center lg:px-3' : ''
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-dark-400 hover:text-white hover:bg-dark-800 transition-colors ${
+              sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''
             }`}
           >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Esci</span>
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+            <span className={`text-sm ${sidebarCollapsed ? 'lg:hidden' : ''}`}>Esci</span>
           </button>
 
           {!sidebarCollapsed && (
-            <div className="text-xs text-dark-500 text-center mt-3 hidden lg:block">
-              <p>Versione 2.0</p>
+            <div className="text-[10px] text-dark-500 text-center pt-1 hidden lg:block">
+              v2.0
             </div>
           )}
         </div>
