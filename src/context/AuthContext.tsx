@@ -1,0 +1,118 @@
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import type { User } from '../types';
+import { ROLE_PERMISSIONS } from '../types';
+
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => void;
+  hasPermission: (permission: string) => boolean;
+  isSuperAdmin: () => boolean;
+  isAdmin: () => boolean;
+  isStaff: () => boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const STORAGE_KEY = 'kebab_auth_user';
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Carica utente da localStorage all'avvio
+  useEffect(() => {
+    const storedUser = localStorage.getItem(STORAGE_KEY);
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        setUser(parsed);
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+    setIsLoading(false);
+  }, []);
+
+  // Inizializza utente superadmin di default se non esiste
+  useEffect(() => {
+    const users = JSON.parse(localStorage.getItem('kebab_users') || '[]');
+    if (users.length === 0) {
+      const defaultSuperAdmin: User = {
+        id: 1,
+        username: 'admin',
+        password: 'admin123', // In produzione: hash
+        name: 'Andrea Fabbri',
+        role: 'superadmin',
+        active: true,
+        created_at: new Date().toISOString(),
+      };
+      localStorage.setItem('kebab_users', JSON.stringify([defaultSuperAdmin]));
+    }
+  }, []);
+
+  const login = async (username: string, password: string): Promise<boolean> => {
+    const users: User[] = JSON.parse(localStorage.getItem('kebab_users') || '[]');
+    const foundUser = users.find(
+      (u) => u.username.toLowerCase() === username.toLowerCase() && u.password === password
+    );
+
+    if (foundUser && foundUser.active) {
+      // Aggiorna last_login
+      const updatedUser = { ...foundUser, last_login: new Date().toISOString() };
+      const updatedUsers = users.map((u) => (u.id === foundUser.id ? updatedUser : u));
+      localStorage.setItem('kebab_users', JSON.stringify(updatedUsers));
+
+      // Salva utente loggato (senza password)
+      const safeUser = { ...updatedUser };
+      setUser(safeUser);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(safeUser));
+      return true;
+    }
+
+    return false;
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
+  const hasPermission = (permission: string): boolean => {
+    if (!user) return false;
+    const permissions = ROLE_PERMISSIONS[user.role];
+    return permissions.includes(permission);
+  };
+
+  const isSuperAdmin = (): boolean => user?.role === 'superadmin';
+  const isAdmin = (): boolean => user?.role === 'admin' || user?.role === 'superadmin';
+  const isStaff = (): boolean => !!user;
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        logout,
+        hasPermission,
+        isSuperAdmin,
+        isAdmin,
+        isStaff,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

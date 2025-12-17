@@ -1,4 +1,41 @@
-// Database Types
+// ============== AUTH TYPES ==============
+export type UserRole = 'superadmin' | 'admin' | 'staff';
+
+export interface User {
+  id: number;
+  username: string;
+  password: string; // In produzione: hash
+  name: string;
+  role: UserRole;
+  active: boolean;
+  created_at: string;
+  last_login?: string;
+}
+
+// Permessi per ruolo
+export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+  superadmin: [
+    'dashboard', 'orders', 'orders.new', 'menu', 'tables',
+    'inventory', 'recipes', 'staff', 'reports', 'smac',
+    'settings', 'users'
+  ],
+  admin: [
+    'dashboard', 'orders', 'orders.new', 'menu', 'tables',
+    'inventory', 'recipes', 'staff'
+  ],
+  staff: [
+    'orders.new', 'orders', 'tables'
+  ],
+};
+
+// Labels per i ruoli
+export const ROLE_LABELS: Record<UserRole, string> = {
+  superadmin: 'Super Admin',
+  admin: 'Admin',
+  staff: 'Staff',
+};
+
+// ============== DATABASE TYPES ==============
 export interface Category {
   id: number;
   name: string;

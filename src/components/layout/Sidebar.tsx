@@ -11,23 +11,47 @@ import {
   ChefHat,
   CreditCard,
   BookOpen,
+  LogOut,
+  UserCog,
+  Shield,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { ROLE_LABELS } from '../../types';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Nuovo Ordine', href: '/orders/new', icon: ShoppingCart },
-  { name: 'Ordini', href: '/orders', icon: ChefHat },
-  { name: 'Menu', href: '/menu', icon: UtensilsCrossed },
-  { name: 'Tavoli', href: '/tables', icon: CalendarDays },
-  { name: 'Inventario', href: '/inventory', icon: Package },
-  { name: 'Ricette', href: '/recipes', icon: BookOpen },
-  { name: 'Personale', href: '/staff', icon: Users },
-  { name: 'Report', href: '/reports', icon: BarChart3 },
-  { name: 'SMAC', href: '/smac', icon: CreditCard },
-  { name: 'Impostazioni', href: '/settings', icon: Settings },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, permission: 'dashboard' },
+  { name: 'Nuovo Ordine', href: '/orders/new', icon: ShoppingCart, permission: 'orders.new' },
+  { name: 'Ordini', href: '/orders', icon: ChefHat, permission: 'orders' },
+  { name: 'Menu', href: '/menu', icon: UtensilsCrossed, permission: 'menu' },
+  { name: 'Tavoli', href: '/tables', icon: CalendarDays, permission: 'tables' },
+  { name: 'Inventario', href: '/inventory', icon: Package, permission: 'inventory' },
+  { name: 'Ricette', href: '/recipes', icon: BookOpen, permission: 'recipes' },
+  { name: 'Personale', href: '/staff', icon: Users, permission: 'staff' },
+  { name: 'Report', href: '/reports', icon: BarChart3, permission: 'reports' },
+  { name: 'SMAC', href: '/smac', icon: CreditCard, permission: 'smac' },
+  { name: 'Impostazioni', href: '/settings', icon: Settings, permission: 'settings' },
+  { name: 'Utenti', href: '/users', icon: UserCog, permission: 'users' },
 ];
 
 export function Sidebar() {
+  const { user, logout, hasPermission } = useAuth();
+
+  // Filtra navigazione in base ai permessi
+  const filteredNavigation = navigation.filter((item) => hasPermission(item.permission));
+
+  function getRoleBadgeClass() {
+    switch (user?.role) {
+      case 'superadmin':
+        return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'admin':
+        return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+      case 'staff':
+        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      default:
+        return 'bg-dark-700 text-dark-400';
+    }
+  }
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-dark-900 border-r border-dark-700 flex flex-col z-40">
       {/* Logo */}
@@ -43,9 +67,29 @@ export function Sidebar() {
         </div>
       </div>
 
+      {/* User Info */}
+      {user && (
+        <div className="p-4 border-b border-dark-700">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-dark-700 flex items-center justify-center">
+              <span className="text-lg font-semibold text-primary-400">
+                {user.name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-white text-sm truncate">{user.name}</p>
+              <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border ${getRoleBadgeClass()}`}>
+                <Shield className="w-3 h-3" />
+                {ROLE_LABELS[user.role]}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {navigation.map((item) => (
+        {filteredNavigation.map((item) => (
           <NavLink
             key={item.name}
             to={item.href}
@@ -59,11 +103,17 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer */}
+      {/* Logout Button */}
       <div className="p-4 border-t border-dark-700">
-        <div className="text-xs text-dark-500 text-center">
+        <button
+          onClick={logout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-dark-400 hover:text-white hover:bg-dark-800 transition-colors"
+        >
+          <LogOut className="w-5 h-5" />
+          <span>Esci</span>
+        </button>
+        <div className="text-xs text-dark-500 text-center mt-3">
           <p>Versione 2.0</p>
-          <p className="mt-1">Made with React</p>
         </div>
       </div>
     </aside>
