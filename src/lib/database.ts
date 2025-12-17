@@ -1,0 +1,1066 @@
+import { supabase, isSupabaseConfigured } from './supabase';
+import type {
+  Category,
+  MenuItem,
+  Ingredient,
+  InventoryItem,
+  Order,
+  OrderItem,
+  Employee,
+  WorkShift,
+  Table,
+  Reservation,
+  Expense,
+  Settings,
+  MenuItemIngredient,
+  IngredientConsumption,
+  EOQResult,
+} from '../types';
+
+// Local storage fallback for demo mode
+const STORAGE_PREFIX = 'kebab_';
+
+function getLocalData<T>(key: string, defaultValue: T): T {
+  const data = localStorage.getItem(STORAGE_PREFIX + key);
+  return data ? JSON.parse(data) : defaultValue;
+}
+
+function setLocalData<T>(key: string, data: T): void {
+  localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(data));
+}
+
+// Initialize demo data
+function initDemoData() {
+  if (!getLocalData('initialized', false)) {
+    // Categories
+    setLocalData('categories', [
+      { id: 1, name: 'Kebab', icon: 'utensils', color: '#f97316' },
+      { id: 2, name: 'Piadine', icon: 'sandwich', color: '#eab308' },
+      { id: 3, name: 'Bibite', icon: 'coffee', color: '#3b82f6' },
+      { id: 4, name: 'Contorni', icon: 'salad', color: '#22c55e' },
+      { id: 5, name: 'Dolci', icon: 'cake', color: '#ec4899' },
+    ]);
+
+    // Menu items
+    setLocalData('menu_items', [
+      { id: 1, name: 'Kebab Classico', category_id: 1, price: 6.50, description: 'Carne di vitello, insalata, pomodori, cipolla, salsa yogurt', available: true },
+      { id: 2, name: 'Kebab Durum', category_id: 1, price: 7.00, description: 'Kebab avvolto in piadina sottile', available: true },
+      { id: 3, name: 'Kebab Box', category_id: 1, price: 8.00, description: 'Kebab con patatine in box', available: true },
+      { id: 4, name: 'Kebab Falafel', category_id: 1, price: 7.50, description: 'Versione vegetariana con falafel', available: true },
+      { id: 5, name: 'Piadina Classica', category_id: 2, price: 5.50, description: 'Prosciutto, formaggio, insalata', available: true },
+      { id: 6, name: 'Piadina Kebab', category_id: 2, price: 7.00, description: 'Carne kebab in piadina', available: true },
+      { id: 7, name: 'Coca Cola', category_id: 3, price: 2.50, description: '33cl', available: true },
+      { id: 8, name: 'Fanta', category_id: 3, price: 2.50, description: '33cl', available: true },
+      { id: 9, name: 'Acqua', category_id: 3, price: 1.50, description: '50cl', available: true },
+      { id: 10, name: 'Birra', category_id: 3, price: 3.50, description: '33cl', available: true },
+      { id: 11, name: 'Patatine Fritte', category_id: 4, price: 3.00, description: 'Porzione abbondante', available: true },
+      { id: 12, name: 'Insalata Mista', category_id: 4, price: 4.00, description: 'Insalata fresca di stagione', available: true },
+      { id: 13, name: 'Baklava', category_id: 5, price: 3.50, description: 'Dolce turco con miele e noci', available: true },
+    ]);
+
+    // Tables
+    setLocalData('tables', [
+      { id: 1, name: 'Tavolo 1', capacity: 4 },
+      { id: 2, name: 'Tavolo 2', capacity: 4 },
+      { id: 3, name: 'Tavolo 3', capacity: 2 },
+      { id: 4, name: 'Tavolo 4', capacity: 6 },
+      { id: 5, name: 'Tavolo 5', capacity: 4 },
+      { id: 6, name: 'Tavolo 6', capacity: 8 },
+    ]);
+
+    // Ingredients
+    setLocalData('ingredients', [
+      { id: 1, name: 'Carne Kebab', unit: 'kg', cost: 12.00 },
+      { id: 2, name: 'Pane Pita', unit: 'pz', cost: 0.30 },
+      { id: 3, name: 'Piadina', unit: 'pz', cost: 0.40 },
+      { id: 4, name: 'Insalata', unit: 'kg', cost: 3.00 },
+      { id: 5, name: 'Pomodori', unit: 'kg', cost: 2.50 },
+      { id: 6, name: 'Cipolla', unit: 'kg', cost: 1.50 },
+      { id: 7, name: 'Salsa Yogurt', unit: 'lt', cost: 5.00 },
+      { id: 8, name: 'Salsa Piccante', unit: 'lt', cost: 6.00 },
+      { id: 9, name: 'Patatine Surgelate', unit: 'kg', cost: 2.00 },
+      { id: 10, name: 'Coca Cola 33cl', unit: 'pz', cost: 0.80 },
+    ]);
+
+    // Inventory
+    setLocalData('inventory', [
+      { id: 1, ingredient_id: 1, quantity: 15, threshold: 5 },
+      { id: 2, ingredient_id: 2, quantity: 100, threshold: 30 },
+      { id: 3, ingredient_id: 3, quantity: 80, threshold: 25 },
+      { id: 4, ingredient_id: 4, quantity: 8, threshold: 3 },
+      { id: 5, ingredient_id: 5, quantity: 10, threshold: 3 },
+      { id: 6, ingredient_id: 6, quantity: 5, threshold: 2 },
+      { id: 7, ingredient_id: 7, quantity: 4, threshold: 2 },
+      { id: 8, ingredient_id: 8, quantity: 3, threshold: 2 },
+      { id: 9, ingredient_id: 9, quantity: 20, threshold: 5 },
+      { id: 10, ingredient_id: 10, quantity: 48, threshold: 20 },
+    ]);
+
+    // Employees
+    setLocalData('employees', [
+      { id: 1, name: 'Marco Rossi', role: 'Cuoco', hourly_rate: 12.00, active: true },
+      { id: 2, name: 'Luca Bianchi', role: 'Cameriere', hourly_rate: 10.00, active: true },
+      { id: 3, name: 'Sara Verdi', role: 'Cassiere', hourly_rate: 10.00, active: true },
+    ]);
+
+    // Settings
+    setLocalData('settings', {
+      shop_name: 'Kebab San Marino',
+      currency: '€',
+      iva_rate: 17,
+      default_threshold: 10,
+      language: 'it',
+      address: 'Via Example 123, San Marino',
+      phone: '+378 0549 123456',
+    });
+
+    // Orders (empty initially)
+    setLocalData('orders', []);
+    setLocalData('order_items', []);
+    setLocalData('work_shifts', []);
+    setLocalData('reservations', []);
+    setLocalData('expenses', []);
+    setLocalData('supplies', []);
+    setLocalData('supply_items', []);
+
+    // Ricette (collegamento menu-ingredienti) con dati demo
+    setLocalData('menu_item_ingredients', [
+      // Kebab Classico (id: 1)
+      { id: 1, menu_item_id: 1, ingredient_id: 1, quantity: 0.15 }, // 150g Carne
+      { id: 2, menu_item_id: 1, ingredient_id: 2, quantity: 1 },    // 1 Pane Pita
+      { id: 3, menu_item_id: 1, ingredient_id: 4, quantity: 0.05 }, // 50g Insalata
+      { id: 4, menu_item_id: 1, ingredient_id: 5, quantity: 0.03 }, // 30g Pomodori
+      { id: 5, menu_item_id: 1, ingredient_id: 6, quantity: 0.02 }, // 20g Cipolla
+      { id: 6, menu_item_id: 1, ingredient_id: 7, quantity: 0.03 }, // 30ml Salsa Yogurt
+      // Kebab Durum (id: 2)
+      { id: 7, menu_item_id: 2, ingredient_id: 1, quantity: 0.18 },  // 180g Carne
+      { id: 8, menu_item_id: 2, ingredient_id: 3, quantity: 1 },     // 1 Piadina
+      { id: 9, menu_item_id: 2, ingredient_id: 4, quantity: 0.05 },
+      { id: 10, menu_item_id: 2, ingredient_id: 5, quantity: 0.03 },
+      { id: 11, menu_item_id: 2, ingredient_id: 7, quantity: 0.03 },
+      // Kebab Box (id: 3)
+      { id: 12, menu_item_id: 3, ingredient_id: 1, quantity: 0.20 }, // 200g Carne
+      { id: 13, menu_item_id: 3, ingredient_id: 9, quantity: 0.15 }, // 150g Patatine
+      { id: 14, menu_item_id: 3, ingredient_id: 4, quantity: 0.04 },
+      { id: 15, menu_item_id: 3, ingredient_id: 7, quantity: 0.04 },
+      // Piadina Kebab (id: 6)
+      { id: 16, menu_item_id: 6, ingredient_id: 1, quantity: 0.12 },
+      { id: 17, menu_item_id: 6, ingredient_id: 3, quantity: 1 },
+      { id: 18, menu_item_id: 6, ingredient_id: 4, quantity: 0.04 },
+      { id: 19, menu_item_id: 6, ingredient_id: 7, quantity: 0.02 },
+      // Coca Cola (id: 7)
+      { id: 20, menu_item_id: 7, ingredient_id: 10, quantity: 1 },
+      // Patatine Fritte (id: 11)
+      { id: 21, menu_item_id: 11, ingredient_id: 9, quantity: 0.20 },
+    ]);
+
+    // Storico consumi (inizialmente vuoto)
+    setLocalData('ingredient_consumptions', []);
+
+    // Aggiorna ingredienti con dati EOQ di default
+    const ingredients = getLocalData<Ingredient[]>('ingredients', []);
+    setLocalData('ingredients', ingredients.map(ing => ({
+      ...ing,
+      lead_time_days: 2, // 2 giorni per ricevere merce
+      order_cost: 15,    // 15€ costo fisso per ordine
+      holding_cost_percent: 20, // 20% costo stoccaggio annuo
+    })));
+
+    setLocalData('initialized', true);
+  }
+}
+
+// Initialize on load
+initDemoData();
+
+// ============== CATEGORIES ==============
+export async function getCategories(): Promise<Category[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('categories').select('*').order('name');
+    if (error) throw error;
+    return data || [];
+  }
+  return getLocalData('categories', []);
+}
+
+export async function createCategory(category: Omit<Category, 'id'>): Promise<Category> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('categories').insert(category).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const categories = getLocalData<Category[]>('categories', []);
+  const newCategory = { ...category, id: Date.now() };
+  setLocalData('categories', [...categories, newCategory]);
+  return newCategory;
+}
+
+export async function updateCategory(id: number, category: Partial<Category>): Promise<Category> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('categories').update(category).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const categories = getLocalData<Category[]>('categories', []);
+  const index = categories.findIndex(c => c.id === id);
+  if (index !== -1) {
+    categories[index] = { ...categories[index], ...category };
+    setLocalData('categories', categories);
+  }
+  return categories[index];
+}
+
+export async function deleteCategory(id: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const categories = getLocalData<Category[]>('categories', []);
+  setLocalData('categories', categories.filter(c => c.id !== id));
+}
+
+// ============== MENU ITEMS ==============
+export async function getMenuItems(): Promise<MenuItem[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('menu_items')
+      .select('*, categories(name)')
+      .order('category_id')
+      .order('name');
+    if (error) throw error;
+    return (data || []).map(item => ({
+      ...item,
+      category_name: item.categories?.name,
+    }));
+  }
+  const items = getLocalData<MenuItem[]>('menu_items', []);
+  const categories = getLocalData<Category[]>('categories', []);
+  return items.map(item => ({
+    ...item,
+    category_name: categories.find(c => c.id === item.category_id)?.name,
+  }));
+}
+
+export async function getMenuItemsByCategory(categoryId: number): Promise<MenuItem[]> {
+  const items = await getMenuItems();
+  return items.filter(item => item.category_id === categoryId);
+}
+
+export async function createMenuItem(item: Omit<MenuItem, 'id'>): Promise<MenuItem> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('menu_items').insert(item).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const items = getLocalData<MenuItem[]>('menu_items', []);
+  const newItem = { ...item, id: Date.now() };
+  setLocalData('menu_items', [...items, newItem]);
+  return newItem;
+}
+
+export async function updateMenuItem(id: number, item: Partial<MenuItem>): Promise<MenuItem> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('menu_items').update(item).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const items = getLocalData<MenuItem[]>('menu_items', []);
+  const index = items.findIndex(i => i.id === id);
+  if (index !== -1) {
+    items[index] = { ...items[index], ...item };
+    setLocalData('menu_items', items);
+  }
+  return items[index];
+}
+
+export async function deleteMenuItem(id: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('menu_items').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const items = getLocalData<MenuItem[]>('menu_items', []);
+  setLocalData('menu_items', items.filter(i => i.id !== id));
+}
+
+// ============== ORDERS ==============
+export async function getOrders(date?: string): Promise<Order[]> {
+  if (isSupabaseConfigured && supabase) {
+    let query = supabase.from('orders').select('*, tables(name)').order('created_at', { ascending: false });
+    if (date) {
+      query = query.eq('date', date);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []).map(order => ({
+      ...order,
+      table_name: order.tables?.name,
+    }));
+  }
+  let orders = getLocalData<Order[]>('orders', []);
+  if (date) {
+    orders = orders.filter(o => o.date === date);
+  }
+  const tables = getLocalData<Table[]>('tables', []);
+  return orders.map(order => ({
+    ...order,
+    table_name: tables.find(t => t.id === order.table_id)?.name,
+  })).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+}
+
+export async function getOrdersByStatus(status: Order['status']): Promise<Order[]> {
+  const orders = await getOrders();
+  return orders.filter(o => o.status === status);
+}
+
+export async function getTodayOrders(): Promise<Order[]> {
+  const today = new Date().toISOString().split('T')[0];
+  return getOrders(today);
+}
+
+export async function createOrder(order: Omit<Order, 'id' | 'created_at'>, items: Omit<OrderItem, 'id' | 'order_id'>[]): Promise<Order> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: orderData, error: orderError } = await supabase.from('orders').insert(order).select().single();
+    if (orderError) throw orderError;
+
+    const orderItems = items.map(item => ({ ...item, order_id: orderData.id }));
+    const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
+    if (itemsError) throw itemsError;
+
+    // Scala automaticamente l'inventario
+    await consumeIngredientsForOrderInternal(items, orderData.id);
+
+    return orderData;
+  }
+
+  const orders = getLocalData<Order[]>('orders', []);
+  const orderItems = getLocalData<OrderItem[]>('order_items', []);
+
+  const newOrder: Order = {
+    ...order,
+    id: Date.now(),
+    created_at: new Date().toISOString(),
+  };
+
+  const newItems = items.map((item, index) => ({
+    ...item,
+    id: Date.now() + index + 1,
+    order_id: newOrder.id,
+  }));
+
+  setLocalData('orders', [...orders, newOrder]);
+  setLocalData('order_items', [...orderItems, ...newItems]);
+
+  // Scala automaticamente l'inventario
+  await consumeIngredientsForOrderInternal(items, newOrder.id);
+
+  return newOrder;
+}
+
+// Funzione interna per evitare import circolare
+async function consumeIngredientsForOrderInternal(
+  orderItems: { menu_item_id: number; quantity: number }[],
+  orderId: number
+): Promise<void> {
+  const recipes = getLocalData<MenuItemIngredient[]>('menu_item_ingredients', []);
+  const inventory = getLocalData<InventoryItem[]>('inventory', []);
+  const ingredients = getLocalData<Ingredient[]>('ingredients', []);
+
+  // Calcola consumo totale per ogni ingrediente
+  const consumptionMap: Record<number, number> = {};
+
+  for (const orderItem of orderItems) {
+    const itemRecipe = recipes.filter(r => r.menu_item_id === orderItem.menu_item_id);
+    for (const recipeItem of itemRecipe) {
+      const totalConsumption = recipeItem.quantity * orderItem.quantity;
+      consumptionMap[recipeItem.ingredient_id] =
+        (consumptionMap[recipeItem.ingredient_id] || 0) + totalConsumption;
+    }
+  }
+
+  // Scala inventario e registra consumi
+  const consumptions = getLocalData<IngredientConsumption[]>('ingredient_consumptions', []);
+  const today = new Date().toISOString().split('T')[0];
+
+  for (const [ingredientId, consumed] of Object.entries(consumptionMap)) {
+    const invIndex = inventory.findIndex(i => i.ingredient_id === Number(ingredientId));
+    if (invIndex !== -1) {
+      // Scala quantità
+      inventory[invIndex].quantity = Math.max(0, inventory[invIndex].quantity - consumed);
+
+      // Registra consumo
+      consumptions.push({
+        id: Date.now() + Math.random(),
+        ingredient_id: Number(ingredientId),
+        ingredient_name: ingredients.find(i => i.id === Number(ingredientId))?.name,
+        date: today,
+        quantity_used: consumed,
+        order_id: orderId,
+      });
+    }
+  }
+
+  setLocalData('inventory', inventory);
+  setLocalData('ingredient_consumptions', consumptions);
+}
+
+export async function updateOrderStatus(id: number, status: Order['status']): Promise<Order> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('orders').update({ status }).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const orders = getLocalData<Order[]>('orders', []);
+  const index = orders.findIndex(o => o.id === id);
+  if (index !== -1) {
+    orders[index] = { ...orders[index], status };
+    setLocalData('orders', orders);
+  }
+  return orders[index];
+}
+
+export async function deleteOrder(id: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    await supabase.from('order_items').delete().eq('order_id', id);
+    const { error } = await supabase.from('orders').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const orders = getLocalData<Order[]>('orders', []);
+  const orderItems = getLocalData<OrderItem[]>('order_items', []);
+  setLocalData('orders', orders.filter(o => o.id !== id));
+  setLocalData('order_items', orderItems.filter(i => i.order_id !== id));
+}
+
+export async function getOrderItems(orderId: number): Promise<OrderItem[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('*, menu_items(name)')
+      .eq('order_id', orderId);
+    if (error) throw error;
+    return (data || []).map(item => ({
+      ...item,
+      menu_item_name: item.menu_items?.name,
+    }));
+  }
+  const orderItems = getLocalData<OrderItem[]>('order_items', []);
+  const menuItems = getLocalData<MenuItem[]>('menu_items', []);
+  return orderItems
+    .filter(i => i.order_id === orderId)
+    .map(item => ({
+      ...item,
+      menu_item_name: menuItems.find(m => m.id === item.menu_item_id)?.name,
+    }));
+}
+
+// ============== TABLES ==============
+export async function getTables(): Promise<Table[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('tables').select('*').order('name');
+    if (error) throw error;
+    return data || [];
+  }
+  return getLocalData('tables', []);
+}
+
+export async function createTable(table: Omit<Table, 'id'>): Promise<Table> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('tables').insert(table).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const tables = getLocalData<Table[]>('tables', []);
+  const newTable = { ...table, id: Date.now() };
+  setLocalData('tables', [...tables, newTable]);
+  return newTable;
+}
+
+export async function updateTable(id: number, table: Partial<Table>): Promise<Table> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('tables').update(table).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const tables = getLocalData<Table[]>('tables', []);
+  const index = tables.findIndex(t => t.id === id);
+  if (index !== -1) {
+    tables[index] = { ...tables[index], ...table };
+    setLocalData('tables', tables);
+  }
+  return tables[index];
+}
+
+export async function deleteTable(id: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('tables').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const tables = getLocalData<Table[]>('tables', []);
+  setLocalData('tables', tables.filter(t => t.id !== id));
+}
+
+// ============== INVENTORY & INGREDIENTS ==============
+export async function getIngredients(): Promise<Ingredient[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('ingredients').select('*').order('name');
+    if (error) throw error;
+    return data || [];
+  }
+  return getLocalData('ingredients', []);
+}
+
+export async function getInventory(): Promise<InventoryItem[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('*, ingredients(name, unit)')
+      .order('id');
+    if (error) throw error;
+    return (data || []).map(item => ({
+      ...item,
+      ingredient_name: item.ingredients?.name,
+      unit: item.ingredients?.unit,
+    }));
+  }
+  const inventory = getLocalData<InventoryItem[]>('inventory', []);
+  const ingredients = getLocalData<Ingredient[]>('ingredients', []);
+  return inventory.map(item => ({
+    ...item,
+    ingredient_name: ingredients.find(i => i.id === item.ingredient_id)?.name,
+    unit: ingredients.find(i => i.id === item.ingredient_id)?.unit,
+  }));
+}
+
+export async function getLowStockItems(): Promise<InventoryItem[]> {
+  const inventory = await getInventory();
+  return inventory.filter(item => item.quantity <= item.threshold);
+}
+
+export async function createIngredient(ingredient: Omit<Ingredient, 'id'>): Promise<Ingredient> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('ingredients').insert(ingredient).select().single();
+    if (error) throw error;
+
+    // Also create inventory entry
+    await supabase.from('inventory').insert({ ingredient_id: data.id, quantity: 0, threshold: 10 });
+
+    return data;
+  }
+  const ingredients = getLocalData<Ingredient[]>('ingredients', []);
+  const inventory = getLocalData<InventoryItem[]>('inventory', []);
+  const newIngredient = { ...ingredient, id: Date.now() };
+  setLocalData('ingredients', [...ingredients, newIngredient]);
+  setLocalData('inventory', [...inventory, { id: Date.now() + 1, ingredient_id: newIngredient.id, quantity: 0, threshold: 10 }]);
+  return newIngredient;
+}
+
+export async function updateInventoryQuantity(ingredientId: number, quantity: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from('inventory')
+      .update({ quantity, updated_at: new Date().toISOString() })
+      .eq('ingredient_id', ingredientId);
+    if (error) throw error;
+    return;
+  }
+  const inventory = getLocalData<InventoryItem[]>('inventory', []);
+  const index = inventory.findIndex(i => i.ingredient_id === ingredientId);
+  if (index !== -1) {
+    inventory[index] = { ...inventory[index], quantity };
+    setLocalData('inventory', inventory);
+  }
+}
+
+// ============== EMPLOYEES ==============
+export async function getEmployees(): Promise<Employee[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('employees').select('*').order('name');
+    if (error) throw error;
+    return data || [];
+  }
+  return getLocalData('employees', []);
+}
+
+export async function createEmployee(employee: Omit<Employee, 'id'>): Promise<Employee> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('employees').insert(employee).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const employees = getLocalData<Employee[]>('employees', []);
+  const newEmployee = { ...employee, id: Date.now() };
+  setLocalData('employees', [...employees, newEmployee]);
+  return newEmployee;
+}
+
+export async function updateEmployee(id: number, employee: Partial<Employee>): Promise<Employee> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('employees').update(employee).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const employees = getLocalData<Employee[]>('employees', []);
+  const index = employees.findIndex(e => e.id === id);
+  if (index !== -1) {
+    employees[index] = { ...employees[index], ...employee };
+    setLocalData('employees', employees);
+  }
+  return employees[index];
+}
+
+export async function deleteEmployee(id: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('employees').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const employees = getLocalData<Employee[]>('employees', []);
+  setLocalData('employees', employees.filter(e => e.id !== id));
+}
+
+// ============== WORK SHIFTS ==============
+export async function getWorkShifts(startDate?: string, endDate?: string): Promise<WorkShift[]> {
+  if (isSupabaseConfigured && supabase) {
+    let query = supabase.from('work_shifts').select('*, employees(name)').order('date', { ascending: false });
+    if (startDate) query = query.gte('date', startDate);
+    if (endDate) query = query.lte('date', endDate);
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []).map(shift => ({
+      ...shift,
+      employee_name: shift.employees?.name,
+    }));
+  }
+  let shifts = getLocalData<WorkShift[]>('work_shifts', []);
+  if (startDate) shifts = shifts.filter(s => s.date >= startDate);
+  if (endDate) shifts = shifts.filter(s => s.date <= endDate);
+  const employees = getLocalData<Employee[]>('employees', []);
+  return shifts.map(shift => ({
+    ...shift,
+    employee_name: employees.find(e => e.id === shift.employee_id)?.name,
+  }));
+}
+
+export async function createWorkShift(shift: Omit<WorkShift, 'id'>): Promise<WorkShift> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('work_shifts').insert(shift).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const shifts = getLocalData<WorkShift[]>('work_shifts', []);
+  const newShift = { ...shift, id: Date.now() };
+  setLocalData('work_shifts', [...shifts, newShift]);
+  return newShift;
+}
+
+// ============== RESERVATIONS ==============
+export async function getReservations(date?: string): Promise<Reservation[]> {
+  if (isSupabaseConfigured && supabase) {
+    let query = supabase.from('reservations').select('*, tables(name)').order('date').order('time');
+    if (date) query = query.eq('date', date);
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []).map(res => ({
+      ...res,
+      table_name: res.tables?.name,
+    }));
+  }
+  let reservations = getLocalData<Reservation[]>('reservations', []);
+  if (date) reservations = reservations.filter(r => r.date === date);
+  const tables = getLocalData<Table[]>('tables', []);
+  return reservations.map(res => ({
+    ...res,
+    table_name: tables.find(t => t.id === res.table_id)?.name,
+  }));
+}
+
+export async function createReservation(reservation: Omit<Reservation, 'id'>): Promise<Reservation> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('reservations').insert(reservation).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const reservations = getLocalData<Reservation[]>('reservations', []);
+  const newReservation = { ...reservation, id: Date.now() };
+  setLocalData('reservations', [...reservations, newReservation]);
+  return newReservation;
+}
+
+export async function deleteReservation(id: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('reservations').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const reservations = getLocalData<Reservation[]>('reservations', []);
+  setLocalData('reservations', reservations.filter(r => r.id !== id));
+}
+
+// ============== EXPENSES ==============
+export async function getExpenses(startDate?: string, endDate?: string): Promise<Expense[]> {
+  if (isSupabaseConfigured && supabase) {
+    let query = supabase.from('expenses').select('*').order('date', { ascending: false });
+    if (startDate) query = query.gte('date', startDate);
+    if (endDate) query = query.lte('date', endDate);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+  let expenses = getLocalData<Expense[]>('expenses', []);
+  if (startDate) expenses = expenses.filter(e => e.date >= startDate);
+  if (endDate) expenses = expenses.filter(e => e.date <= endDate);
+  return expenses;
+}
+
+export async function createExpense(expense: Omit<Expense, 'id'>): Promise<Expense> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('expenses').insert(expense).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const expenses = getLocalData<Expense[]>('expenses', []);
+  const newExpense = { ...expense, id: Date.now() };
+  setLocalData('expenses', [...expenses, newExpense]);
+  return newExpense;
+}
+
+// ============== SETTINGS ==============
+export async function getSettings(): Promise<Settings> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('settings').select('*');
+    if (error) throw error;
+    const settings: Record<string, string> = {};
+    (data || []).forEach(row => {
+      settings[row.key] = row.value;
+    });
+    return {
+      shop_name: settings.shop_name || 'Kebab San Marino',
+      currency: settings.currency || '€',
+      iva_rate: parseFloat(settings.iva_rate || '17'),
+      default_threshold: parseFloat(settings.default_threshold || '10'),
+      language: settings.language || 'it',
+      address: settings.address,
+      phone: settings.phone,
+      email: settings.email,
+    };
+  }
+  return getLocalData('settings', {
+    shop_name: 'Kebab San Marino',
+    currency: '€',
+    iva_rate: 17,
+    default_threshold: 10,
+    language: 'it',
+  });
+}
+
+export async function updateSettings(settings: Partial<Settings>): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const updates = Object.entries(settings).map(([key, value]) => ({
+      key,
+      value: String(value),
+    }));
+    for (const update of updates) {
+      await supabase.from('settings').upsert(update);
+    }
+    return;
+  }
+  const currentSettings = getLocalData<Settings>('settings', {} as Settings);
+  setLocalData('settings', { ...currentSettings, ...settings });
+}
+
+// ============== STATISTICS ==============
+export async function getDailyStats(date: string): Promise<{ orders: number; revenue: number; avgOrder: number }> {
+  const orders = await getOrders(date);
+  const completedOrders = orders.filter(o => o.status !== 'cancelled');
+  const revenue = completedOrders.reduce((sum, o) => sum + o.total, 0);
+  return {
+    orders: completedOrders.length,
+    revenue,
+    avgOrder: completedOrders.length > 0 ? revenue / completedOrders.length : 0,
+  };
+}
+
+export async function getWeeklyStats(): Promise<{ date: string; orders: number; revenue: number }[]> {
+  const stats: { date: string; orders: number; revenue: number }[] = [];
+  const today = new Date();
+
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    const dayStats = await getDailyStats(dateStr);
+    stats.push({
+      date: dateStr,
+      orders: dayStats.orders,
+      revenue: dayStats.revenue,
+    });
+  }
+
+  return stats;
+}
+
+export async function getTopProducts(limit: number = 5): Promise<{ name: string; quantity: number; revenue: number }[]> {
+  const orders = await getOrders();
+  const productStats: Record<number, { name: string; quantity: number; revenue: number }> = {};
+
+  for (const order of orders) {
+    if (order.status === 'cancelled') continue;
+    const items = await getOrderItems(order.id);
+    for (const item of items) {
+      if (!productStats[item.menu_item_id]) {
+        productStats[item.menu_item_id] = {
+          name: item.menu_item_name || 'Unknown',
+          quantity: 0,
+          revenue: 0,
+        };
+      }
+      productStats[item.menu_item_id].quantity += item.quantity;
+      productStats[item.menu_item_id].revenue += item.quantity * item.price;
+    }
+  }
+
+  return Object.values(productStats)
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, limit);
+}
+
+// ============== RICETTE (Menu-Ingredienti) ==============
+export async function getMenuItemIngredients(menuItemId?: number): Promise<MenuItemIngredient[]> {
+  if (isSupabaseConfigured && supabase) {
+    let query = supabase.from('menu_item_ingredients').select('*, menu_items(name), ingredients(name, unit)');
+    if (menuItemId) query = query.eq('menu_item_id', menuItemId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []).map(item => ({
+      ...item,
+      menu_item_name: item.menu_items?.name,
+      ingredient_name: item.ingredients?.name,
+      unit: item.ingredients?.unit,
+    }));
+  }
+  let items = getLocalData<MenuItemIngredient[]>('menu_item_ingredients', []);
+  if (menuItemId) items = items.filter(i => i.menu_item_id === menuItemId);
+  const menuItems = getLocalData<MenuItem[]>('menu_items', []);
+  const ingredients = getLocalData<Ingredient[]>('ingredients', []);
+  return items.map(item => ({
+    ...item,
+    menu_item_name: menuItems.find(m => m.id === item.menu_item_id)?.name,
+    ingredient_name: ingredients.find(i => i.id === item.ingredient_id)?.name,
+    unit: ingredients.find(i => i.id === item.ingredient_id)?.unit,
+  }));
+}
+
+export async function addMenuItemIngredient(data: Omit<MenuItemIngredient, 'id'>): Promise<MenuItemIngredient> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: result, error } = await supabase.from('menu_item_ingredients').insert(data).select().single();
+    if (error) throw error;
+    return result;
+  }
+  const items = getLocalData<MenuItemIngredient[]>('menu_item_ingredients', []);
+  const newItem = { ...data, id: Date.now() };
+  setLocalData('menu_item_ingredients', [...items, newItem]);
+  return newItem;
+}
+
+export async function updateMenuItemIngredient(id: number, data: Partial<MenuItemIngredient>): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('menu_item_ingredients').update(data).eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const items = getLocalData<MenuItemIngredient[]>('menu_item_ingredients', []);
+  const index = items.findIndex(i => i.id === id);
+  if (index !== -1) {
+    items[index] = { ...items[index], ...data };
+    setLocalData('menu_item_ingredients', items);
+  }
+}
+
+export async function deleteMenuItemIngredient(id: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('menu_item_ingredients').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+  const items = getLocalData<MenuItemIngredient[]>('menu_item_ingredients', []);
+  setLocalData('menu_item_ingredients', items.filter(i => i.id !== id));
+}
+
+// ============== CONSUMI INGREDIENTI ==============
+export async function recordIngredientConsumption(
+  ingredientId: number,
+  quantityUsed: number,
+  orderId?: number
+): Promise<void> {
+  const consumption: Omit<IngredientConsumption, 'id'> = {
+    ingredient_id: ingredientId,
+    date: new Date().toISOString().split('T')[0],
+    quantity_used: quantityUsed,
+    order_id: orderId,
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('ingredient_consumptions').insert(consumption);
+    if (error) throw error;
+    return;
+  }
+  const consumptions = getLocalData<IngredientConsumption[]>('ingredient_consumptions', []);
+  setLocalData('ingredient_consumptions', [...consumptions, { ...consumption, id: Date.now() }]);
+}
+
+export async function getIngredientConsumptions(
+  ingredientId?: number,
+  startDate?: string,
+  endDate?: string
+): Promise<IngredientConsumption[]> {
+  if (isSupabaseConfigured && supabase) {
+    let query = supabase.from('ingredient_consumptions').select('*, ingredients(name)');
+    if (ingredientId) query = query.eq('ingredient_id', ingredientId);
+    if (startDate) query = query.gte('date', startDate);
+    if (endDate) query = query.lte('date', endDate);
+    const { data, error } = await query.order('date', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(c => ({
+      ...c,
+      ingredient_name: c.ingredients?.name,
+    }));
+  }
+  let consumptions = getLocalData<IngredientConsumption[]>('ingredient_consumptions', []);
+  if (ingredientId) consumptions = consumptions.filter(c => c.ingredient_id === ingredientId);
+  if (startDate) consumptions = consumptions.filter(c => c.date >= startDate);
+  if (endDate) consumptions = consumptions.filter(c => c.date <= endDate);
+  const ingredients = getLocalData<Ingredient[]>('ingredients', []);
+  return consumptions.map(c => ({
+    ...c,
+    ingredient_name: ingredients.find(i => i.id === c.ingredient_id)?.name,
+  }));
+}
+
+// ============== SCALARE INVENTARIO AUTOMATICO ==============
+export async function consumeIngredientsForOrder(
+  orderItems: { menu_item_id: number; quantity: number }[],
+  orderId: number
+): Promise<void> {
+  const recipes = await getMenuItemIngredients();
+  const inventory = await getInventory();
+
+  // Calcola consumo totale per ogni ingrediente
+  const consumptionMap: Record<number, number> = {};
+
+  for (const orderItem of orderItems) {
+    const itemRecipe = recipes.filter(r => r.menu_item_id === orderItem.menu_item_id);
+    for (const recipeItem of itemRecipe) {
+      const totalConsumption = recipeItem.quantity * orderItem.quantity;
+      consumptionMap[recipeItem.ingredient_id] =
+        (consumptionMap[recipeItem.ingredient_id] || 0) + totalConsumption;
+    }
+  }
+
+  // Scala inventario e registra consumi
+  for (const [ingredientId, consumed] of Object.entries(consumptionMap)) {
+    const invItem = inventory.find(i => i.ingredient_id === Number(ingredientId));
+    if (invItem) {
+      const newQuantity = Math.max(0, invItem.quantity - consumed);
+      await updateInventoryQuantity(Number(ingredientId), newQuantity);
+      await recordIngredientConsumption(Number(ingredientId), consumed, orderId);
+    }
+  }
+}
+
+// ============== CALCOLO EOQ ==============
+export async function calculateEOQ(): Promise<EOQResult[]> {
+  const ingredients = await getIngredients();
+  const inventory = await getInventory();
+  const consumptions = await getIngredientConsumptions();
+
+  // Calcola consumo medio giornaliero degli ultimi 30 giorni
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+
+  const results: EOQResult[] = [];
+
+  for (const ingredient of ingredients) {
+    const invItem = inventory.find(i => i.ingredient_id === ingredient.id);
+    if (!invItem) continue;
+
+    // Consumi degli ultimi 30 giorni per questo ingrediente
+    const recentConsumptions = consumptions.filter(
+      c => c.ingredient_id === ingredient.id && c.date >= startDate
+    );
+
+    // Consumo totale e medio giornaliero
+    const totalConsumed = recentConsumptions.reduce((sum, c) => sum + c.quantity_used, 0);
+    const daysWithData = Math.max(1, new Set(recentConsumptions.map(c => c.date)).size);
+    const avgDailyConsumption = totalConsumed / Math.max(daysWithData, 1);
+
+    // Se non c'è consumo, salta
+    if (avgDailyConsumption === 0) {
+      results.push({
+        ingredient_id: ingredient.id,
+        ingredient_name: ingredient.name,
+        current_stock: invItem.quantity,
+        avg_daily_consumption: 0,
+        eoq: 0,
+        reorder_point: invItem.threshold,
+        safety_stock: invItem.threshold,
+        days_until_reorder: invItem.quantity > 0 ? Infinity : 0,
+        annual_demand: 0,
+        order_frequency: 0,
+        total_annual_cost: 0,
+      });
+      continue;
+    }
+
+    // Parametri EOQ
+    const annualDemand = avgDailyConsumption * 365;
+    const orderCost = ingredient.order_cost || 15; // Costo fisso per ordine
+    const holdingCostPercent = (ingredient.holding_cost_percent || 20) / 100;
+    const unitCost = ingredient.cost;
+    const holdingCost = unitCost * holdingCostPercent;
+    const leadTimeDays = ingredient.lead_time_days || 2;
+
+    // Formula EOQ: sqrt(2 * D * S / H)
+    // D = domanda annuale, S = costo per ordine, H = costo mantenimento per unità
+    const eoq = holdingCost > 0
+      ? Math.sqrt((2 * annualDemand * orderCost) / holdingCost)
+      : annualDemand / 12; // Fallback: ordine mensile
+
+    // Scorta di sicurezza (50% del consumo durante lead time)
+    const safetyStock = avgDailyConsumption * leadTimeDays * 0.5;
+
+    // Punto di riordino = consumo durante lead time + scorta sicurezza
+    const reorderPoint = (avgDailyConsumption * leadTimeDays) + safetyStock;
+
+    // Giorni fino al punto di riordino
+    const daysUntilReorder = avgDailyConsumption > 0
+      ? Math.max(0, (invItem.quantity - reorderPoint) / avgDailyConsumption)
+      : Infinity;
+
+    // Frequenza ordini annua
+    const orderFrequency = eoq > 0 ? annualDemand / eoq : 0;
+
+    // Costo totale annuo = costo ordini + costo mantenimento
+    const totalAnnualCost = (orderFrequency * orderCost) + ((eoq / 2) * holdingCost);
+
+    results.push({
+      ingredient_id: ingredient.id,
+      ingredient_name: ingredient.name,
+      current_stock: invItem.quantity,
+      avg_daily_consumption: Math.round(avgDailyConsumption * 1000) / 1000,
+      eoq: Math.round(eoq * 10) / 10,
+      reorder_point: Math.round(reorderPoint * 10) / 10,
+      safety_stock: Math.round(safetyStock * 10) / 10,
+      days_until_reorder: Math.round(daysUntilReorder),
+      annual_demand: Math.round(annualDemand),
+      order_frequency: Math.round(orderFrequency * 10) / 10,
+      total_annual_cost: Math.round(totalAnnualCost * 100) / 100,
+    });
+  }
+
+  // Ordina per urgenza (giorni fino al riordino)
+  return results.sort((a, b) => a.days_until_reorder - b.days_until_reorder);
+}

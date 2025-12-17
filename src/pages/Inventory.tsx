@@ -1,0 +1,595 @@
+import { useEffect, useState } from 'react';
+import {
+  Plus,
+  Package,
+  AlertTriangle,
+  TrendingDown,
+  Edit2,
+  RefreshCw,
+  Calculator,
+  ShoppingCart,
+  Clock,
+  ArrowRight,
+} from 'lucide-react';
+import {
+  getInventory,
+  createIngredient,
+  updateInventoryQuantity,
+  getLowStockItems,
+  calculateEOQ,
+} from '../lib/database';
+import { showToast } from '../components/ui/Toast';
+import { Modal } from '../components/ui/Modal';
+import type { InventoryItem, EOQResult } from '../types';
+
+export function Inventory() {
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
+  const [eoqData, setEoqData] = useState<EOQResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'inventory' | 'eoq'>('inventory');
+  const [filter, setFilter] = useState<'all' | 'low'>('all');
+
+  // Modal states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+
+  // Form states
+  const [ingredientForm, setIngredientForm] = useState({
+    name: '',
+    unit: 'kg',
+    cost: '',
+  });
+  const [updateQuantity, setUpdateQuantity] = useState('');
+  const [updateMode, setUpdateMode] = useState<'add' | 'set'>('add');
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  async function loadData() {
+    try {
+      const [inv, low, eoq] = await Promise.all([
+        getInventory(),
+        getLowStockItems(),
+        calculateEOQ(),
+      ]);
+      setInventory(inv);
+      setLowStock(low);
+      setEoqData(eoq);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      showToast('Errore nel caricamento dati', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Ingredienti da riordinare (giorni fino al riordino < 7)
+  const urgentReorders = eoqData.filter(e => e.days_until_reorder < 7 && e.avg_daily_consumption > 0);
+
+  const filteredInventory =
+    filter === 'low' ? lowStock : inventory;
+
+  function openUpdateModal(item: InventoryItem) {
+    setSelectedItem(item);
+    setUpdateQuantity('');
+    setUpdateMode('add');
+    setShowUpdateModal(true);
+  }
+
+  async function handleAddIngredient() {
+    if (!ingredientForm.name.trim()) {
+      showToast('Inserisci un nome', 'warning');
+      return;
+    }
+
+    try {
+      await createIngredient({
+        name: ingredientForm.name.trim(),
+        unit: ingredientForm.unit,
+        cost: parseFloat(ingredientForm.cost) || 0,
+      });
+
+      showToast('Ingrediente aggiunto', 'success');
+      setShowAddModal(false);
+      setIngredientForm({ name: '', unit: 'kg', cost: '' });
+      loadData();
+    } catch (error) {
+      console.error('Error adding ingredient:', error);
+      showToast('Errore nell\'aggiunta', 'error');
+    }
+  }
+
+  async function handleUpdateQuantity() {
+    if (!selectedItem || !updateQuantity) {
+      showToast('Inserisci una quantità', 'warning');
+      return;
+    }
+
+    try {
+      const qty = parseFloat(updateQuantity);
+      const newQty = updateMode === 'add'
+        ? selectedItem.quantity + qty
+        : qty;
+
+      await updateInventoryQuantity(selectedItem.ingredient_id, newQty);
+      showToast('Quantità aggiornata', 'success');
+      setShowUpdateModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      showToast('Errore nell\'aggiornamento', 'error');
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Inventario</h1>
+          <p className="text-dark-400 text-sm">Gestisci scorte e ottimizza riordini</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={loadData} className="btn-secondary btn-sm">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
+            <Plus className="w-4 h-4" />
+            Nuovo
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-dark-700 pb-2">
+        <button
+          onClick={() => setActiveTab('inventory')}
+          className={`px-4 py-2 rounded-t-lg font-medium transition-all ${
+            activeTab === 'inventory'
+              ? 'bg-dark-800 text-primary-400 border-b-2 border-primary-500'
+              : 'text-dark-400 hover:text-white'
+          }`}
+        >
+          <Package className="w-4 h-4 inline mr-2" />
+          Scorte
+        </button>
+        <button
+          onClick={() => setActiveTab('eoq')}
+          className={`px-4 py-2 rounded-t-lg font-medium transition-all ${
+            activeTab === 'eoq'
+              ? 'bg-dark-800 text-primary-400 border-b-2 border-primary-500'
+              : 'text-dark-400 hover:text-white'
+          }`}
+        >
+          <Calculator className="w-4 h-4 inline mr-2" />
+          EOQ & Riordini
+          {urgentReorders.length > 0 && (
+            <span className="ml-2 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+              {urgentReorders.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'inventory' && (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="stat-card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="stat-label">Totale Ingredienti</p>
+                  <p className="stat-value">{inventory.length}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <Package className="w-6 h-6 text-blue-400" />
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="stat-label">Scorte Basse</p>
+                  <p className="stat-value">{lowStock.length}</p>
+                </div>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${lowStock.length > 0 ? 'bg-red-500/20' : 'bg-emerald-500/20'}`}>
+                  <AlertTriangle className={`w-6 h-6 ${lowStock.length > 0 ? 'text-red-400' : 'text-emerald-400'}`} />
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="stat-label">Da Riordinare (7gg)</p>
+                  <p className="stat-value">{urgentReorders.length}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                  <TrendingDown className="w-6 h-6 text-amber-400" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Low Stock Alert */}
+          {lowStock.length > 0 && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
+                <div>
+                  <p className="font-semibold text-red-400">Attenzione: Scorte Basse</p>
+                  <p className="text-sm text-dark-300">
+                    {lowStock.map(i => i.ingredient_name).join(', ')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Filters */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                filter === 'all'
+                  ? 'bg-primary-500 text-dark-900'
+                  : 'bg-dark-800 text-dark-300 hover:bg-dark-700'
+              }`}
+            >
+              Tutti ({inventory.length})
+            </button>
+            <button
+              onClick={() => setFilter('low')}
+              className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                filter === 'low'
+                  ? 'bg-red-500 text-white'
+                  : 'bg-dark-800 text-dark-300 hover:bg-dark-700'
+              }`}
+            >
+              Scorte Basse ({lowStock.length})
+            </button>
+          </div>
+
+          {/* Inventory Table */}
+          <div className="card">
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ingrediente</th>
+                    <th>Quantità</th>
+                    <th>Unità</th>
+                    <th>Soglia</th>
+                    <th>Stato</th>
+                    <th>Azioni</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredInventory.map((item) => {
+                    const isLow = item.quantity <= item.threshold;
+                    return (
+                      <tr key={item.id}>
+                        <td>
+                          <p className="font-medium text-white">{item.ingredient_name}</p>
+                        </td>
+                        <td>
+                          <p className={`font-semibold ${isLow ? 'text-red-400' : 'text-white'}`}>
+                            {item.quantity.toFixed(2)}
+                          </p>
+                        </td>
+                        <td>
+                          <p className="text-dark-300">{item.unit}</p>
+                        </td>
+                        <td>
+                          <p className="text-dark-400">{item.threshold}</p>
+                        </td>
+                        <td>
+                          <span className={isLow ? 'badge-danger' : 'badge-success'}>
+                            {isLow ? 'Basso' : 'OK'}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            onClick={() => openUpdateModal(item)}
+                            className="btn-secondary btn-sm"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                            Aggiorna
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'eoq' && (
+        <>
+          {/* EOQ Info Box */}
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+            <h3 className="font-semibold text-blue-400 mb-2">Cos'è l'EOQ?</h3>
+            <p className="text-sm text-dark-300">
+              L'<strong>Economic Order Quantity</strong> (EOQ) è la quantità ottimale da ordinare
+              che minimizza i costi totali (costo ordine + costo stoccaggio). Il sistema analizza
+              i consumi storici per calcolare automaticamente quando e quanto riordinare.
+            </p>
+          </div>
+
+          {/* Urgent Reorders */}
+          {urgentReorders.length > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <ShoppingCart className="w-5 h-5 text-amber-400" />
+                <h3 className="font-semibold text-amber-400">Da riordinare nei prossimi 7 giorni</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {urgentReorders.map((item) => (
+                  <div key={item.ingredient_id} className="bg-dark-800 rounded-lg p-3">
+                    <p className="font-medium text-white">{item.ingredient_name}</p>
+                    <div className="flex items-center gap-2 mt-1 text-sm">
+                      <Clock className="w-3 h-3 text-amber-400" />
+                      <span className="text-amber-400">
+                        {item.days_until_reorder === 0 ? 'Oggi!' : `${item.days_until_reorder} giorni`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-2 text-xs text-dark-400">
+                      <span>Ordina: {item.eoq.toFixed(1)}</span>
+                      <ArrowRight className="w-3 h-3" />
+                      <span className="text-emerald-400">Risparmio ottimale</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* EOQ Table */}
+          <div className="card">
+            <div className="card-header">
+              <h2 className="font-semibold text-white">Analisi EOQ Ingredienti</h2>
+            </div>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ingrediente</th>
+                    <th>Stock Attuale</th>
+                    <th>Consumo/Giorno</th>
+                    <th>EOQ</th>
+                    <th>Punto Riordino</th>
+                    <th>Giorni al Riordino</th>
+                    <th>Ordini/Anno</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {eoqData.map((item) => {
+                    const isUrgent = item.days_until_reorder < 7 && item.avg_daily_consumption > 0;
+                    const noData = item.avg_daily_consumption === 0;
+
+                    return (
+                      <tr key={item.ingredient_id} className={isUrgent ? 'bg-amber-500/10' : ''}>
+                        <td>
+                          <p className="font-medium text-white">{item.ingredient_name}</p>
+                        </td>
+                        <td>
+                          <p className={`font-semibold ${item.current_stock <= item.reorder_point ? 'text-red-400' : 'text-white'}`}>
+                            {item.current_stock.toFixed(2)}
+                          </p>
+                        </td>
+                        <td>
+                          {noData ? (
+                            <span className="text-dark-500 text-sm">Nessun dato</span>
+                          ) : (
+                            <p className="text-dark-300">{item.avg_daily_consumption.toFixed(3)}</p>
+                          )}
+                        </td>
+                        <td>
+                          {noData ? (
+                            <span className="text-dark-500">-</span>
+                          ) : (
+                            <p className="text-primary-400 font-semibold">{item.eoq.toFixed(1)}</p>
+                          )}
+                        </td>
+                        <td>
+                          {noData ? (
+                            <span className="text-dark-500">-</span>
+                          ) : (
+                            <p className="text-dark-300">{item.reorder_point.toFixed(1)}</p>
+                          )}
+                        </td>
+                        <td>
+                          {noData ? (
+                            <span className="text-dark-500">-</span>
+                          ) : item.days_until_reorder === Infinity ? (
+                            <span className="badge-success">OK</span>
+                          ) : (
+                            <span className={`font-semibold ${item.days_until_reorder < 3 ? 'text-red-400' : item.days_until_reorder < 7 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                              {item.days_until_reorder} gg
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {noData ? (
+                            <span className="text-dark-500">-</span>
+                          ) : (
+                            <p className="text-dark-400">{item.order_frequency.toFixed(1)}</p>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* EOQ Legend */}
+          <div className="bg-dark-800 rounded-xl p-4">
+            <h3 className="font-semibold text-white mb-3">Legenda</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-dark-400"><strong className="text-white">EOQ</strong>: Quantità ottimale da ordinare</p>
+                <p className="text-dark-400"><strong className="text-white">Punto Riordino</strong>: Stock al quale effettuare l'ordine</p>
+              </div>
+              <div>
+                <p className="text-dark-400"><strong className="text-white">Scorta Sicurezza</strong>: Buffer per evitare stockout</p>
+                <p className="text-dark-400"><strong className="text-white">Ordini/Anno</strong>: Frequenza ordini stimata</p>
+              </div>
+            </div>
+            <p className="text-xs text-dark-500 mt-3">
+              * I calcoli si basano sui consumi degli ultimi 30 giorni. Più ordini elabori, più precisi saranno i dati.
+            </p>
+          </div>
+        </>
+      )}
+
+      {/* Add Ingredient Modal */}
+      <Modal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title="Aggiungi Ingrediente"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="label">Nome Ingrediente *</label>
+            <input
+              type="text"
+              value={ingredientForm.name}
+              onChange={(e) => setIngredientForm({ ...ingredientForm, name: e.target.value })}
+              className="input"
+              placeholder="Es. Carne Kebab"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Unità di Misura</label>
+              <select
+                value={ingredientForm.unit}
+                onChange={(e) => setIngredientForm({ ...ingredientForm, unit: e.target.value })}
+                className="select"
+              >
+                <option value="kg">Chilogrammi (kg)</option>
+                <option value="g">Grammi (g)</option>
+                <option value="lt">Litri (lt)</option>
+                <option value="ml">Millilitri (ml)</option>
+                <option value="pz">Pezzi (pz)</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Costo Unitario (€)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={ingredientForm.cost}
+                onChange={(e) => setIngredientForm({ ...ingredientForm, cost: e.target.value })}
+                className="input"
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 pt-4">
+            <button onClick={handleAddIngredient} className="btn-primary flex-1">
+              Aggiungi
+            </button>
+            <button onClick={() => setShowAddModal(false)} className="btn-secondary">
+              Annulla
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Update Quantity Modal */}
+      <Modal
+        isOpen={showUpdateModal}
+        onClose={() => setShowUpdateModal(false)}
+        title={`Aggiorna ${selectedItem?.ingredient_name}`}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="bg-dark-900 rounded-xl p-4">
+            <p className="text-sm text-dark-400">Quantità attuale</p>
+            <p className="text-2xl font-bold text-white">
+              {selectedItem?.quantity.toFixed(2)} {selectedItem?.unit}
+            </p>
+          </div>
+
+          <div>
+            <label className="label">Modalità</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setUpdateMode('add')}
+                className={`py-2 rounded-xl font-medium transition-all ${
+                  updateMode === 'add'
+                    ? 'bg-primary-500 text-dark-900'
+                    : 'bg-dark-700 text-dark-300'
+                }`}
+              >
+                Aggiungi
+              </button>
+              <button
+                onClick={() => setUpdateMode('set')}
+                className={`py-2 rounded-xl font-medium transition-all ${
+                  updateMode === 'set'
+                    ? 'bg-primary-500 text-dark-900'
+                    : 'bg-dark-700 text-dark-300'
+                }`}
+              >
+                Imposta
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="label">
+              {updateMode === 'add' ? 'Quantità da aggiungere' : 'Nuova quantità'}
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={updateQuantity}
+              onChange={(e) => setUpdateQuantity(e.target.value)}
+              className="input"
+              placeholder="0.00"
+            />
+          </div>
+
+          {updateMode === 'add' && updateQuantity && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3">
+              <p className="text-sm text-emerald-400">
+                Nuova quantità: {((selectedItem?.quantity || 0) + parseFloat(updateQuantity || '0')).toFixed(2)} {selectedItem?.unit}
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 pt-4">
+            <button onClick={handleUpdateQuantity} className="btn-primary flex-1">
+              Aggiorna
+            </button>
+            <button onClick={() => setShowUpdateModal(false)} className="btn-secondary">
+              Annulla
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
