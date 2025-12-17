@@ -321,13 +321,28 @@ export function Orders() {
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="font-semibold text-white">
-                              Ordine #{order.id}
-                            </p>
-                            <p className="text-sm text-dark-400">
-                              {orderTypeLabels[order.order_type]}
-                              {order.table_name && ` - ${order.table_name}`}
-                            </p>
+                            {order.session_id ? (
+                              // Ordine con sessione (conto aperto)
+                              <>
+                                <p className="font-semibold text-white">
+                                  {order.table_name} - Comanda #{order.order_number || 1}
+                                </p>
+                                <p className="text-xs text-primary-400/70">
+                                  Conto Aperto
+                                </p>
+                              </>
+                            ) : (
+                              // Ordine singolo normale
+                              <>
+                                <p className="font-semibold text-white">
+                                  Ordine #{order.id}
+                                </p>
+                                <p className="text-sm text-dark-400">
+                                  {orderTypeLabels[order.order_type]}
+                                  {order.table_name && ` - ${order.table_name}`}
+                                </p>
+                              </>
+                            )}
                             {order.customer_name && (
                               <p className="text-sm text-dark-400">
                                 {order.customer_name}
@@ -390,11 +405,21 @@ export function Orders() {
       <Modal
         isOpen={showDetails}
         onClose={() => setShowDetails(false)}
-        title={`Ordine #${selectedOrder?.id}`}
+        title={selectedOrder?.session_id
+          ? `${selectedOrder.table_name} - Comanda #${selectedOrder.order_number || 1}`
+          : `Ordine #${selectedOrder?.id}`
+        }
         size="lg"
       >
         {selectedOrder && (
           <div className="space-y-4">
+            {/* Session Badge */}
+            {selectedOrder.session_id && (
+              <div className="bg-primary-500/10 border border-primary-500/30 rounded-xl p-3 text-center">
+                <span className="text-primary-400 font-medium">Conto Aperto - Sessione #{selectedOrder.session_id}</span>
+              </div>
+            )}
+
             {/* Order Info */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -421,22 +446,26 @@ export function Orders() {
                   <p className="font-medium text-white">{selectedOrder.customer_name}</p>
                 </div>
               )}
-              <div>
-                <p className="text-sm text-dark-400">Pagamento</p>
-                <p className="font-medium text-white capitalize">
-                  {selectedOrder.payment_method === 'cash'
-                    ? 'Contanti'
-                    : selectedOrder.payment_method === 'card'
-                    ? 'Carta'
-                    : 'Online'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-dark-400">SMAC</p>
-                <p className="font-medium text-white">
-                  {selectedOrder.smac_passed ? 'Sì' : 'No'}
-                </p>
-              </div>
+              {!selectedOrder.session_id && (
+                <>
+                  <div>
+                    <p className="text-sm text-dark-400">Pagamento</p>
+                    <p className="font-medium text-white capitalize">
+                      {selectedOrder.payment_method === 'cash'
+                        ? 'Contanti'
+                        : selectedOrder.payment_method === 'card'
+                        ? 'Carta'
+                        : 'Online'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-dark-400">SMAC</p>
+                    <p className="font-medium text-white">
+                      {selectedOrder.smac_passed ? 'Sì' : 'No'}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Items */}

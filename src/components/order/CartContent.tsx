@@ -48,6 +48,10 @@ interface CartContentProps {
   removeFromCart: (itemId: number) => void;
   updateItemNotes: (itemId: number, notes: string) => void;
   submitOrder: () => void;
+  // Props per sessione (conto aperto)
+  isSessionOrder?: boolean;
+  sessionTableName?: string;
+  orderNumber?: number;
 }
 
 export function CartContent({
@@ -81,89 +85,109 @@ export function CartContent({
   removeFromCart,
   updateItemNotes,
   submitOrder,
+  isSessionOrder = false,
+  sessionTableName,
+  orderNumber,
 }: CartContentProps) {
   return (
     <div className={`flex flex-col ${isMobile ? 'h-full' : ''}`}>
-      {/* Order Type */}
-      <div className="p-3 border-b border-dark-700">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setOrderType('dine_in')}
-            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all flex-1 ${
-              orderType === 'dine_in'
-                ? 'bg-primary-500 text-dark-900'
-                : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-            }`}
-          >
-            <Users className="w-5 h-5" />
-            <span className="text-sm font-medium">Tavolo</span>
-          </button>
-          <button
-            onClick={() => setOrderType('takeaway')}
-            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all flex-1 ${
-              orderType === 'takeaway'
-                ? 'bg-primary-500 text-dark-900'
-                : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-            }`}
-          >
-            <Clock className="w-5 h-5" />
-            <span className="text-sm font-medium">Asporto</span>
-          </button>
-          <button
-            onClick={() => setOrderType('delivery')}
-            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all flex-1 ${
-              orderType === 'delivery'
-                ? 'bg-primary-500 text-dark-900'
-                : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-            }`}
-          >
-            <Bike className="w-5 h-5" />
-            <span className="text-sm font-medium">Domicilio</span>
-          </button>
-        </div>
-
-        {/* Table Selection */}
-        {orderType === 'dine_in' && (
-          <div className="mt-3">
-            <p className="text-xs text-dark-400 mb-2">Seleziona tavolo:</p>
-            <div className="flex flex-wrap gap-2">
-              {tables.map((table) => (
-                <button
-                  key={table.id}
-                  onClick={() => setSelectedTable(table.id)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                    selectedTable === table.id
-                      ? 'bg-primary-500 text-dark-900'
-                      : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-                  }`}
-                >
-                  {table.name}
-                </button>
-              ))}
+      {/* Session Header - Se è un ordine per sessione */}
+      {isSessionOrder && (
+        <div className="p-3 bg-primary-500/10 border-b border-primary-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-primary-400 font-medium">Comanda #{orderNumber}</p>
+              <p className="text-lg font-bold text-white">{sessionTableName}</p>
+            </div>
+            <div className="px-3 py-1 bg-primary-500/20 rounded-lg">
+              <span className="text-sm font-medium text-primary-400">Conto Aperto</span>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Customer Info for delivery/takeaway */}
-        {(orderType === 'takeaway' || orderType === 'delivery') && (
-          <div className="mt-3 space-y-2">
-            <input
-              type="text"
-              placeholder="Nome cliente"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="input py-2.5 text-base"
-            />
-            <input
-              type="tel"
-              placeholder="Telefono"
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              className="input py-2.5 text-base"
-            />
+      {/* Order Type - Nascosto per sessioni */}
+      {!isSessionOrder && (
+        <div className="p-3 border-b border-dark-700">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setOrderType('dine_in')}
+              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all flex-1 ${
+                orderType === 'dine_in'
+                  ? 'bg-primary-500 text-dark-900'
+                  : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+              }`}
+            >
+              <Users className="w-5 h-5" />
+              <span className="text-sm font-medium">Tavolo</span>
+            </button>
+            <button
+              onClick={() => setOrderType('takeaway')}
+              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all flex-1 ${
+                orderType === 'takeaway'
+                  ? 'bg-primary-500 text-dark-900'
+                  : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+              }`}
+            >
+              <Clock className="w-5 h-5" />
+              <span className="text-sm font-medium">Asporto</span>
+            </button>
+            <button
+              onClick={() => setOrderType('delivery')}
+              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all flex-1 ${
+                orderType === 'delivery'
+                  ? 'bg-primary-500 text-dark-900'
+                  : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+              }`}
+            >
+              <Bike className="w-5 h-5" />
+              <span className="text-sm font-medium">Domicilio</span>
+            </button>
           </div>
-        )}
-      </div>
+
+          {/* Table Selection */}
+          {orderType === 'dine_in' && (
+            <div className="mt-3">
+              <p className="text-xs text-dark-400 mb-2">Seleziona tavolo:</p>
+              <div className="flex flex-wrap gap-2">
+                {tables.map((table) => (
+                  <button
+                    key={table.id}
+                    onClick={() => setSelectedTable(table.id)}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      selectedTable === table.id
+                        ? 'bg-primary-500 text-dark-900'
+                        : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                    }`}
+                  >
+                    {table.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Customer Info for delivery/takeaway */}
+          {(orderType === 'takeaway' || orderType === 'delivery') && (
+            <div className="mt-3 space-y-2">
+              <input
+                type="text"
+                placeholder="Nome cliente"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="input py-2.5 text-base"
+              />
+              <input
+                type="tel"
+                placeholder="Telefono"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                className="input py-2.5 text-base"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Cart Header */}
       <div className="px-3 py-2 bg-dark-900/50 flex items-center justify-between">
@@ -290,70 +314,83 @@ export function CartContent({
             />
           </div>
 
-          {/* Payment Methods */}
-          <div className="px-3 py-3 flex items-center gap-2 border-b border-dark-700">
-            <div className="flex gap-2 flex-1">
+          {/* Payment Methods - Nascosto per sessioni (pagamento alla chiusura) */}
+          {!isSessionOrder && (
+            <div className="px-3 py-3 flex items-center gap-2 border-b border-dark-700">
+              <div className="flex gap-2 flex-1">
+                <button
+                  onClick={() => setPaymentMethod('cash')}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl transition-all flex-1 ${
+                    paymentMethod === 'cash'
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                  }`}
+                >
+                  <Banknote className="w-5 h-5" />
+                  <span className="text-xs font-medium">Contanti</span>
+                </button>
+                <button
+                  onClick={() => setPaymentMethod('card')}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl transition-all flex-1 ${
+                    paymentMethod === 'card'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                  }`}
+                >
+                  <CreditCard className="w-5 h-5" />
+                  <span className="text-xs font-medium">Carta</span>
+                </button>
+                <button
+                  onClick={() => setPaymentMethod('online')}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl transition-all flex-1 ${
+                    paymentMethod === 'online'
+                      ? 'bg-purple-500 text-white'
+                      : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                  }`}
+                >
+                  <Smartphone className="w-5 h-5" />
+                  <span className="text-xs font-medium">Online</span>
+                </button>
+              </div>
               <button
-                onClick={() => setPaymentMethod('cash')}
-                className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl transition-all flex-1 ${
-                  paymentMethod === 'cash'
-                    ? 'bg-emerald-500 text-white'
+                onClick={() => setSmacPassed(!smacPassed)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
+                  smacPassed
+                    ? 'bg-primary-500 text-dark-900'
                     : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
                 }`}
               >
-                <Banknote className="w-5 h-5" />
-                <span className="text-xs font-medium">Contanti</span>
-              </button>
-              <button
-                onClick={() => setPaymentMethod('card')}
-                className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl transition-all flex-1 ${
-                  paymentMethod === 'card'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-                }`}
-              >
-                <CreditCard className="w-5 h-5" />
-                <span className="text-xs font-medium">Carta</span>
-              </button>
-              <button
-                onClick={() => setPaymentMethod('online')}
-                className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl transition-all flex-1 ${
-                  paymentMethod === 'online'
-                    ? 'bg-purple-500 text-white'
-                    : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-                }`}
-              >
-                <Smartphone className="w-5 h-5" />
-                <span className="text-xs font-medium">Online</span>
+                {smacPassed && <Check className="w-4 h-4" />}
+                <span className="text-xs font-medium">SMAC</span>
               </button>
             </div>
-            <button
-              onClick={() => setSmacPassed(!smacPassed)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
-                smacPassed
-                  ? 'bg-primary-500 text-dark-900'
-                  : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
-              }`}
-            >
-              {smacPassed && <Check className="w-4 h-4" />}
-              <span className="text-xs font-medium">SMAC</span>
-            </button>
-          </div>
+          )}
 
           {/* Totals */}
           <div className="px-3 py-3 space-y-1">
-            <div className="flex justify-between text-sm text-dark-400">
-              <span>Subtotale</span>
-              <span>€{cartTotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-sm text-dark-400">
-              <span>IVA ({ivaRate}%)</span>
-              <span>€{ivaAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-xl font-bold text-white pt-2">
-              <span>Totale</span>
-              <span className="text-primary-400">€{grandTotal.toFixed(2)}</span>
-            </div>
+            {isSessionOrder ? (
+              // Per sessioni, mostra solo il totale comanda
+              <div className="flex justify-between text-xl font-bold text-white">
+                <span>Totale Comanda</span>
+                <span className="text-primary-400">€{cartTotal.toFixed(2)}</span>
+              </div>
+            ) : (
+              // Per ordini normali, mostra subtotale, IVA e totale
+              <>
+                <div className="flex justify-between text-sm text-dark-400">
+                  <span>Subtotale</span>
+                  <span>€{cartTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-dark-400">
+                  <span>IVA ({ivaRate}%)</span>
+                  <span>€{ivaAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xl font-bold text-white pt-2">
+                  <span>Totale</span>
+                  <span className="text-primary-400">€{grandTotal.toFixed(2)}</span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Confirm Button */}
@@ -365,6 +402,11 @@ export function CartContent({
             >
               {isSubmitting ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-dark-900"></div>
+              ) : isSessionOrder ? (
+                <>
+                  <Check className="w-5 h-5" />
+                  Invia Comanda #{orderNumber} - €{cartTotal.toFixed(2)}
+                </>
               ) : (
                 <>
                   <Check className="w-5 h-5" />

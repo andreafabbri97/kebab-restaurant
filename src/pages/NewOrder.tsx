@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ShoppingCart, ChevronUp, X } from 'lucide-react';
 import {
   getCategories,
@@ -7,21 +7,29 @@ import {
   getTables,
   createOrder,
   getSettings,
+  getTableSession,
+  getNextOrderNumber,
+  updateSessionTotal,
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { CartContent } from '../components/order/CartContent';
-import type { Category, MenuItem, Table, CartItem, Settings } from '../types';
+import type { Category, MenuItem, Table, CartItem, Settings, TableSession } from '../types';
 
 type OrderType = 'dine_in' | 'takeaway' | 'delivery';
 type PaymentMethod = 'cash' | 'card' | 'online';
 
 export function NewOrder() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Session state (conto aperto)
+  const [activeSession, setActiveSession] = useState<TableSession | null>(null);
+  const [nextOrderNumber, setNextOrderNumber] = useState<number>(1);
 
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -38,9 +46,13 @@ export function NewOrder() {
   // Mobile cart panel state
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
+  // Leggi parametri URL per sessione
+  const sessionIdParam = searchParams.get('session');
+  const tableIdParam = searchParams.get('table');
+
   useEffect(() => {
     loadData();
-  }, []);
+  }, [sessionIdParam, tableIdParam]);
 
   async function loadData() {
     try {
@@ -56,6 +68,26 @@ export function NewOrder() {
       setSettings(setts);
       if (cats.length > 0) {
         setSelectedCategory(cats[0].id);
+      }
+
+      // Se c'è una sessione, caricala
+      if (sessionIdParam) {
+        const sessionId = parseInt(sessionIdParam);
+        const session = await getTableSession(sessionId);
+        if (session) {
+          setActiveSession(session);
+          setSelectedTable(session.table_id);
+          setOrderType('dine_in');
+          const orderNum = await getNextOrderNumber(sessionId);
+          setNextOrderNumber(orderNum);
+          // Precompila cliente se presente nella sessione
+          if (session.customer_name) setCustomerName(session.customer_name);
+          if (session.customer_phone) setCustomerPhone(session.customer_phone);
+        }
+      } else if (tableIdParam) {
+        // Solo tavolo senza sessione
+        setSelectedTable(parseInt(tableIdParam));
+        setOrderType('dine_in');
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -124,7 +156,8 @@ export function NewOrder() {
       return;
     }
 
-    if (orderType === 'dine_in' && !selectedTable) {
+    // Per ordini al tavolo senza sessione, richiedi un tavolo
+    if (orderType === 'dine_in' && !selectedTable && !activeSession) {
       showToast('Seleziona un tavolo', 'warning');
       return;
     }
@@ -132,17 +165,22 @@ export function NewOrder() {
     setIsSubmitting(true);
 
     try {
+      // Per sessioni attive, il totale non include IVA separata (già inclusa nel prezzo)
+      // e non serve metodo pagamento (si fa alla chiusura conto)
       const order = {
         date: new Date().toISOString().split('T')[0],
-        total: grandTotal,
-        payment_method: paymentMethod,
+        total: activeSession ? cartTotal : grandTotal, // Per sessione usa cartTotal senza IVA separata
+        payment_method: activeSession ? 'cash' : paymentMethod, // Placeholder per sessioni
         order_type: orderType,
         table_id: orderType === 'dine_in' ? selectedTable ?? undefined : undefined,
         notes: notes || undefined,
         status: 'pending' as const,
-        smac_passed: smacPassed,
+        smac_passed: activeSession ? false : smacPassed, // SMAC si gestisce alla chiusura
         customer_name: customerName || undefined,
         customer_phone: customerPhone || undefined,
+        // Campi sessione
+        session_id: activeSession?.id,
+        order_number: activeSession ? nextOrderNumber : undefined,
       };
 
       const items = cart.map((item) => ({
@@ -154,8 +192,16 @@ export function NewOrder() {
 
       await createOrder(order, items);
 
-      showToast('Ordine creato con successo!', 'success');
-      navigate('/orders');
+      // Se c'è una sessione, aggiorna il totale della sessione
+      if (activeSession) {
+        await updateSessionTotal(activeSession.id);
+        showToast(`Comanda #${nextOrderNumber} inviata!`, 'success');
+        // Torna alla pagina tavoli
+        navigate('/tables');
+      } else {
+        showToast('Ordine creato con successo!', 'success');
+        navigate('/orders');
+      }
     } catch (error) {
       console.error('Error creating order:', error);
       showToast('Errore nella creazione dell\'ordine', 'error');
@@ -172,12 +218,15 @@ export function NewOrder() {
     );
   }
 
+  // Per sessioni, nascondi selezione tavolo e pagamento (già gestiti)
+  const isSessionOrder = !!activeSession;
+
   // Props comuni per CartContent
   const cartContentProps = {
     orderType,
-    setOrderType,
+    setOrderType: isSessionOrder ? () => {} : setOrderType, // Blocca cambio tipo per sessioni
     selectedTable,
-    setSelectedTable,
+    setSelectedTable: isSessionOrder ? () => {} : setSelectedTable, // Blocca cambio tavolo per sessioni
     tables,
     customerName,
     setCustomerName,
@@ -203,6 +252,10 @@ export function NewOrder() {
     removeFromCart,
     updateItemNotes,
     submitOrder,
+    // Props per sessione
+    isSessionOrder,
+    sessionTableName: activeSession?.table_name,
+    orderNumber: nextOrderNumber,
   };
 
   return (

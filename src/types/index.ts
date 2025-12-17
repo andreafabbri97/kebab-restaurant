@@ -145,6 +145,9 @@ export interface Order {
   customer_name?: string;
   customer_phone?: string;
   created_at: string;
+  // Campi per sessione tavolo (conto aperto)
+  session_id?: number;
+  order_number?: number; // Numero comanda nella sessione (1, 2, 3...)
 }
 
 export interface OrderItem {
@@ -330,4 +333,31 @@ export interface Invoice {
   payment_date?: string;
   notes?: string;
   created_at: string;
+}
+
+// ============== SESSIONE TAVOLO (CONTO APERTO) ==============
+export interface TableSession {
+  id: number;
+  table_id: number;
+  table_name?: string;
+  opened_at: string;
+  closed_at?: string;
+  status: 'open' | 'closed' | 'paid';
+  total: number;
+  payment_method?: 'cash' | 'card' | 'online' | 'split';
+  customer_name?: string;
+  customer_phone?: string;
+  covers: number; // Numero coperti
+  notes?: string;
+  smac_passed: boolean;
+}
+
+// Pagamento parziale per split bill
+export interface SessionPayment {
+  id: number;
+  session_id: number;
+  amount: number;
+  payment_method: 'cash' | 'card' | 'online';
+  paid_at: string;
+  notes?: string; // es. "Marco", "Ragazza bionda"
 }

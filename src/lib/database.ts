@@ -22,6 +22,8 @@ import type {
   DishCost,
   DishIngredientCost,
   Invoice,
+  TableSession,
+  SessionPayment,
 } from '../types';
 
 // Local storage fallback for demo mode
@@ -169,6 +171,10 @@ function initDemoData() {
 
   // Storico consumi (inizialmente vuoto)
   initIfNotExists('ingredient_consumptions', []);
+
+  // Sessioni tavolo e pagamenti (inizialmente vuoti)
+  initIfNotExists('table_sessions', []);
+  initIfNotExists('session_payments', []);
 
   // Flag initialized non è più necessario perché usiamo initIfNotExists
   setLocalData('initialized', true);
@@ -1703,4 +1709,299 @@ export async function getStatsForPeriod(startDate: string, endDate: string): Pro
   const ordersByType = Object.entries(typeMap).map(([type, count]) => ({ type, count }));
 
   return { dailyStats, revenueByPaymentMethod, ordersByType };
+}
+
+// ============== SESSIONI TAVOLO (CONTO APERTO) ==============
+
+export async function createTableSession(
+  tableId: number,
+  covers: number = 1,
+  customerName?: string,
+  customerPhone?: string
+): Promise<TableSession> {
+  const tables = await getTables();
+  const table = tables.find(t => t.id === tableId);
+
+  const newSession: TableSession = {
+    id: Date.now(),
+    table_id: tableId,
+    table_name: table?.name,
+    opened_at: new Date().toISOString(),
+    status: 'open',
+    total: 0,
+    covers,
+    customer_name: customerName,
+    customer_phone: customerPhone,
+    smac_passed: false,
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('table_sessions')
+      .insert({
+        table_id: tableId,
+        covers,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        status: 'open',
+        total: 0,
+        smac_passed: false,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return { ...data, table_name: table?.name };
+  }
+
+  const sessions = getLocalData<TableSession[]>('table_sessions', []);
+  sessions.push(newSession);
+  setLocalData('table_sessions', sessions);
+  return newSession;
+}
+
+export async function getTableSession(sessionId: number): Promise<TableSession | null> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('table_sessions')
+      .select('*, tables(name)')
+      .eq('id', sessionId)
+      .single();
+    if (error) return null;
+    return { ...data, table_name: data.tables?.name };
+  }
+  const sessions = getLocalData<TableSession[]>('table_sessions', []);
+  const tables = getLocalData<Table[]>('tables', []);
+  const session = sessions.find(s => s.id === sessionId);
+  if (session) {
+    return { ...session, table_name: tables.find(t => t.id === session.table_id)?.name };
+  }
+  return null;
+}
+
+export async function getActiveSessionForTable(tableId: number): Promise<TableSession | null> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('table_sessions')
+      .select('*, tables(name)')
+      .eq('table_id', tableId)
+      .eq('status', 'open')
+      .single();
+    if (error) return null;
+    return { ...data, table_name: data.tables?.name };
+  }
+  const sessions = getLocalData<TableSession[]>('table_sessions', []);
+  const tables = getLocalData<Table[]>('tables', []);
+  const session = sessions.find(s => s.table_id === tableId && s.status === 'open');
+  if (session) {
+    return { ...session, table_name: tables.find(t => t.id === session.table_id)?.name };
+  }
+  return null;
+}
+
+export async function getActiveSessions(): Promise<TableSession[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('table_sessions')
+      .select('*, tables(name)')
+      .eq('status', 'open')
+      .order('opened_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(s => ({ ...s, table_name: s.tables?.name }));
+  }
+  const sessions = getLocalData<TableSession[]>('table_sessions', []);
+  const tables = getLocalData<Table[]>('tables', []);
+  return sessions
+    .filter(s => s.status === 'open')
+    .map(s => ({ ...s, table_name: tables.find(t => t.id === s.table_id)?.name }))
+    .sort((a, b) => new Date(b.opened_at).getTime() - new Date(a.opened_at).getTime());
+}
+
+export async function getSessionOrders(sessionId: number): Promise<Order[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*, tables(name)')
+      .eq('session_id', sessionId)
+      .order('order_number', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(o => ({ ...o, table_name: o.tables?.name }));
+  }
+  const orders = getLocalData<Order[]>('orders', []);
+  const tables = getLocalData<Table[]>('tables', []);
+  return orders
+    .filter(o => o.session_id === sessionId)
+    .map(o => ({ ...o, table_name: tables.find(t => t.id === o.table_id)?.name }))
+    .sort((a, b) => (a.order_number || 1) - (b.order_number || 1));
+}
+
+export async function updateSessionTotal(sessionId: number): Promise<void> {
+  const orders = await getSessionOrders(sessionId);
+  const total = orders
+    .filter(o => o.status !== 'cancelled')
+    .reduce((sum, o) => sum + o.total, 0);
+
+  if (isSupabaseConfigured && supabase) {
+    await supabase
+      .from('table_sessions')
+      .update({ total })
+      .eq('id', sessionId);
+    return;
+  }
+  const sessions = getLocalData<TableSession[]>('table_sessions', []);
+  const index = sessions.findIndex(s => s.id === sessionId);
+  if (index !== -1) {
+    sessions[index].total = total;
+    setLocalData('table_sessions', sessions);
+  }
+}
+
+export async function closeTableSession(
+  sessionId: number,
+  paymentMethod: 'cash' | 'card' | 'online' | 'split',
+  smacPassed: boolean
+): Promise<TableSession> {
+  // Aggiorna totale prima di chiudere
+  await updateSessionTotal(sessionId);
+
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('table_sessions')
+      .update({
+        status: 'paid',
+        payment_method: paymentMethod,
+        smac_passed: smacPassed,
+        closed_at: new Date().toISOString(),
+      })
+      .eq('id', sessionId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  const sessions = getLocalData<TableSession[]>('table_sessions', []);
+  const index = sessions.findIndex(s => s.id === sessionId);
+  if (index !== -1) {
+    sessions[index] = {
+      ...sessions[index],
+      status: 'paid',
+      payment_method: paymentMethod,
+      smac_passed: smacPassed,
+      closed_at: new Date().toISOString(),
+    };
+    setLocalData('table_sessions', sessions);
+    return sessions[index];
+  }
+  throw new Error('Sessione non trovata');
+}
+
+export async function transferTableSession(sessionId: number, newTableId: number): Promise<TableSession> {
+  const tables = await getTables();
+  const newTable = tables.find(t => t.id === newTableId);
+
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('table_sessions')
+      .update({ table_id: newTableId })
+      .eq('id', sessionId)
+      .select()
+      .single();
+    if (error) throw error;
+    return { ...data, table_name: newTable?.name };
+  }
+
+  const sessions = getLocalData<TableSession[]>('table_sessions', []);
+  const index = sessions.findIndex(s => s.id === sessionId);
+  if (index !== -1) {
+    sessions[index].table_id = newTableId;
+    sessions[index].table_name = newTable?.name;
+    setLocalData('table_sessions', sessions);
+    return sessions[index];
+  }
+  throw new Error('Sessione non trovata');
+}
+
+// Calcola il prossimo numero di comanda per una sessione
+export async function getNextOrderNumber(sessionId: number): Promise<number> {
+  const orders = await getSessionOrders(sessionId);
+  if (orders.length === 0) return 1;
+  const maxOrderNumber = Math.max(...orders.map(o => o.order_number || 1));
+  return maxOrderNumber + 1;
+}
+
+// ============== PAGAMENTI SESSIONE (SPLIT BILL) ==============
+
+export async function addSessionPayment(
+  sessionId: number,
+  amount: number,
+  paymentMethod: 'cash' | 'card' | 'online',
+  notes?: string
+): Promise<SessionPayment> {
+  const newPayment: SessionPayment = {
+    id: Date.now(),
+    session_id: sessionId,
+    amount,
+    payment_method: paymentMethod,
+    paid_at: new Date().toISOString(),
+    notes,
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('session_payments')
+      .insert({
+        session_id: sessionId,
+        amount,
+        payment_method: paymentMethod,
+        notes,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  const payments = getLocalData<SessionPayment[]>('session_payments', []);
+  payments.push(newPayment);
+  setLocalData('session_payments', payments);
+  return newPayment;
+}
+
+export async function getSessionPayments(sessionId: number): Promise<SessionPayment[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('session_payments')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('paid_at', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+  const payments = getLocalData<SessionPayment[]>('session_payments', []);
+  return payments
+    .filter(p => p.session_id === sessionId)
+    .sort((a, b) => new Date(a.paid_at).getTime() - new Date(b.paid_at).getTime());
+}
+
+export async function getSessionRemainingAmount(sessionId: number): Promise<number> {
+  const session = await getTableSession(sessionId);
+  if (!session) return 0;
+
+  const payments = await getSessionPayments(sessionId);
+  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+
+  return Math.max(0, session.total - totalPaid);
+}
+
+export async function deleteSessionPayment(paymentId: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from('session_payments')
+      .delete()
+      .eq('id', paymentId);
+    if (error) throw error;
+    return;
+  }
+  const payments = getLocalData<SessionPayment[]>('session_payments', []);
+  setLocalData('session_payments', payments.filter(p => p.id !== paymentId));
 }

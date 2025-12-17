@@ -83,7 +83,10 @@ CREATE TABLE IF NOT EXISTS orders (
   smac_passed BOOLEAN DEFAULT false,
   customer_name VARCHAR(100),
   customer_phone VARCHAR(30),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  -- Campi per sessione tavolo (conto aperto)
+  session_id INTEGER, -- Riferimento a table_sessions, aggiunto dopo creazione tabella
+  order_number INTEGER DEFAULT 1 -- Numero comanda nella sessione
 );
 
 -- ============== ORDER ITEMS ==============
@@ -206,6 +209,41 @@ CREATE TABLE IF NOT EXISTS cash_closures (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(date)
 );
+
+-- ============== TABLE SESSIONS (Conto Aperto) ==============
+CREATE TABLE IF NOT EXISTS table_sessions (
+  id SERIAL PRIMARY KEY,
+  table_id INTEGER NOT NULL REFERENCES tables(id) ON DELETE CASCADE,
+  opened_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  closed_at TIMESTAMP WITH TIME ZONE,
+  status VARCHAR(20) NOT NULL DEFAULT 'open',
+  total DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  payment_method VARCHAR(20),
+  customer_name VARCHAR(100),
+  customer_phone VARCHAR(30),
+  covers INTEGER DEFAULT 1,
+  notes TEXT,
+  smac_passed BOOLEAN DEFAULT false
+);
+
+-- ============== SESSION PAYMENTS (Split Bill) ==============
+CREATE TABLE IF NOT EXISTS session_payments (
+  id SERIAL PRIMARY KEY,
+  session_id INTEGER NOT NULL REFERENCES table_sessions(id) ON DELETE CASCADE,
+  amount DECIMAL(10, 2) NOT NULL,
+  payment_method VARCHAR(20) NOT NULL,
+  paid_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  notes VARCHAR(100)
+);
+
+-- Aggiungi colonne session_id e order_number a orders (se non esistono)
+-- ALTER TABLE orders ADD COLUMN IF NOT EXISTS session_id INTEGER REFERENCES table_sessions(id);
+-- ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_number INTEGER DEFAULT 1;
+
+-- INDEX per performance sessioni
+CREATE INDEX IF NOT EXISTS idx_sessions_table_id ON table_sessions(table_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON table_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_session_payments_session ON session_payments(session_id);
 
 -- ============================================
 -- INSERIMENTO DATI DI DEFAULT
