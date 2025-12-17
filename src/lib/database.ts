@@ -734,7 +734,7 @@ export async function getSettings(): Promise<Settings> {
       settings[row.key] = row.value;
     });
     return {
-      shop_name: settings.shop_name || 'Kebab San Marino',
+      shop_name: settings.shop_name || 'Il Mio Ristorante',
       currency: settings.currency || '€',
       iva_rate: parseFloat(settings.iva_rate || '17'),
       default_threshold: parseFloat(settings.default_threshold || '10'),
@@ -745,7 +745,7 @@ export async function getSettings(): Promise<Settings> {
     };
   }
   return getLocalData('settings', {
-    shop_name: 'Kebab San Marino',
+    shop_name: 'Il Mio Ristorante',
     currency: '€',
     iva_rate: 17,
     default_threshold: 10,
@@ -765,7 +765,11 @@ export async function updateSettings(settings: Partial<Settings>): Promise<void>
     return;
   }
   const currentSettings = getLocalData<Settings>('settings', {} as Settings);
-  setLocalData('settings', { ...currentSettings, ...settings });
+  const newSettings = { ...currentSettings, ...settings };
+  setLocalData('settings', newSettings);
+
+  // Emetti un evento custom per notificare i componenti che le settings sono cambiate
+  window.dispatchEvent(new CustomEvent('settings-updated', { detail: newSettings }));
 }
 
 // ============== STATISTICS ==============

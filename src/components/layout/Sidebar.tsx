@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -27,6 +28,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import { useTheme } from '../../context/ThemeContext';
 import { ROLE_LABELS } from '../../types';
 import { isSupabaseConfigured } from '../../lib/supabase';
+import { getSettings } from '../../lib/database';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, permission: 'dashboard' },
@@ -52,6 +54,32 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout, hasPermission } = useAuth();
   const { isRealtimeConnected } = useNotifications();
   const { theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useTheme();
+  const [shopName, setShopName] = useState('Il Mio Ristorante');
+
+  // Carica il nome del ristorante dalle settings
+  useEffect(() => {
+    function loadShopName() {
+      getSettings().then((settings) => {
+        if (settings.shop_name) {
+          setShopName(settings.shop_name);
+        }
+      });
+    }
+
+    loadShopName();
+
+    // Ascolta per aggiornamenti delle settings
+    const handleSettingsUpdate = (event: CustomEvent) => {
+      if (event.detail?.shop_name) {
+        setShopName(event.detail.shop_name);
+      }
+    };
+
+    window.addEventListener('settings-updated', handleSettingsUpdate as EventListener);
+    return () => {
+      window.removeEventListener('settings-updated', handleSettingsUpdate as EventListener);
+    };
+  }, []);
 
   // Filtra navigazione in base ai permessi
   const filteredNavigation = navigation.filter((item) => hasPermission(item.permission));
@@ -100,47 +128,57 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        {/* Header con logo e close button */}
-        <div className={`p-4 ${sidebarCollapsed ? 'lg:p-3' : 'lg:p-6'} border-b border-dark-700`}>
+        {/* Header compatto con nome ristorante e utente */}
+        <div className={`px-3 py-2 ${sidebarCollapsed ? 'lg:px-2' : ''} border-b border-dark-700`}>
           <div className="flex items-center justify-between">
-            <div className={`flex items-center ${sidebarCollapsed ? 'lg:justify-center lg:w-full' : 'gap-3'}`}>
-              <div className="w-10 h-10 rounded-xl bg-primary-500 flex items-center justify-center flex-shrink-0">
-                <UtensilsCrossed className="w-6 h-6 text-dark-900" />
+            <div className={`flex items-center ${sidebarCollapsed ? 'lg:justify-center lg:w-full' : 'gap-2'}`}>
+              <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center flex-shrink-0">
+                <UtensilsCrossed className="w-4 h-4 text-dark-900" />
               </div>
               <div className={sidebarCollapsed ? 'lg:hidden' : ''}>
-                <h1 className="font-bold text-lg text-white">Restaurant</h1>
-                <p className="text-xs text-dark-400">Manager</p>
+                <h1 className="font-semibold text-sm text-white truncate max-w-[160px]" title={shopName}>
+                  {shopName}
+                </h1>
               </div>
             </div>
             {/* Close button - solo mobile */}
             <button
               onClick={onClose}
-              className="lg:hidden p-2 hover:bg-dark-800 rounded-lg transition-colors"
+              className="lg:hidden p-1.5 hover:bg-dark-800 rounded-lg transition-colors"
             >
               <X className="w-5 h-5 text-dark-400" />
             </button>
           </div>
-        </div>
 
-        {/* User Info */}
-        {user && (
-          <div className={`p-4 ${sidebarCollapsed ? 'lg:p-3' : ''} border-b border-dark-700`}>
-            <div className={`flex items-center ${sidebarCollapsed ? 'lg:justify-center' : 'gap-3'}`}>
-              <div className="w-10 h-10 rounded-full bg-dark-700 flex items-center justify-center flex-shrink-0">
-                <span className="text-lg font-semibold text-primary-400">
+          {/* User info inline - compatto */}
+          {user && !sidebarCollapsed && (
+            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-dark-700/50">
+              <div className="w-6 h-6 rounded-full bg-dark-700 flex items-center justify-center flex-shrink-0">
+                <span className="text-xs font-semibold text-primary-400">
                   {user.name.charAt(0).toUpperCase()}
                 </span>
               </div>
-              <div className={`flex-1 min-w-0 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
-                <p className="font-medium text-white text-sm truncate">{user.name}</p>
-                <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border ${getRoleBadgeClass()}`}>
-                  <Shield className="w-3 h-3" />
+              <div className="flex-1 min-w-0 flex items-center gap-2">
+                <p className="font-medium text-white text-xs truncate">{user.name}</p>
+                <div className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] border ${getRoleBadgeClass()}`}>
+                  <Shield className="w-2.5 h-2.5" />
                   {ROLE_LABELS[user.role]}
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* User avatar quando collapsed */}
+          {user && sidebarCollapsed && (
+            <div className="hidden lg:flex justify-center mt-2 pt-2 border-t border-dark-700/50">
+              <div className="w-8 h-8 rounded-full bg-dark-700 flex items-center justify-center" title={user.name}>
+                <span className="text-sm font-semibold text-primary-400">
+                  {user.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Navigation */}
         <nav className={`flex-1 p-3 ${sidebarCollapsed ? 'lg:p-2' : 'lg:p-4'} space-y-1 overflow-y-auto`}>
