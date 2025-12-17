@@ -12,7 +12,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { getSettings, updateSettings } from '../lib/database';
-import { isSupabaseConfigured, DATABASE_SCHEMA } from '../lib/supabase';
+import { isSupabaseConfigured } from '../lib/supabase';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import type { Settings as SettingsType } from '../types';
@@ -96,9 +96,9 @@ export function Settings() {
     }
   }
 
-  function copySchema() {
-    navigator.clipboard.writeText(DATABASE_SCHEMA);
-    showToast('Schema copiato negli appunti', 'success');
+  function openSchemaFile() {
+    // Apri il link al file schema su GitHub
+    window.open('https://github.com/Raf-Dee/kebab-restaurant-app/blob/main/supabase-schema.sql', '_blank');
   }
 
   if (loading) {
@@ -336,7 +336,7 @@ export function Settings() {
         isOpen={showSchemaModal}
         onClose={() => setShowSchemaModal(false)}
         title="Configura Supabase"
-        size="xl"
+        size="lg"
       >
         <div className="space-y-4">
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
@@ -344,7 +344,7 @@ export function Settings() {
             <ol className="text-sm text-dark-300 space-y-2 list-decimal list-inside">
               <li>Vai su <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-primary-400 underline">supabase.com</a> e crea un account gratuito</li>
               <li>Crea un nuovo progetto</li>
-              <li>Vai su <strong>SQL Editor</strong> e incolla lo schema qui sotto</li>
+              <li>Vai su <strong>SQL Editor</strong> e incolla lo schema SQL</li>
               <li>Vai su <strong>Settings → API</strong> e copia URL e anon key</li>
               <li>Crea un file <code className="bg-dark-700 px-1 rounded">.env</code> nella root del progetto con:
                 <pre className="mt-2 p-2 bg-dark-900 rounded text-xs overflow-x-auto">
@@ -356,16 +356,14 @@ VITE_SUPABASE_ANON_KEY=your-anon-key`}
             </ol>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="label mb-0">Schema SQL per Supabase</label>
-              <button onClick={copySchema} className="btn-secondary btn-sm">
-                Copia Schema
-              </button>
-            </div>
-            <pre className="p-4 bg-dark-900 rounded-xl text-xs text-dark-300 overflow-auto max-h-96">
-              {DATABASE_SCHEMA}
-            </pre>
+          <div className="bg-dark-900 rounded-xl p-4">
+            <p className="text-dark-300 mb-3">
+              Lo schema SQL completo si trova nel file <code className="bg-dark-700 px-1 rounded">supabase-schema.sql</code> nella root del progetto.
+            </p>
+            <button onClick={openSchemaFile} className="btn-secondary w-full">
+              <ExternalLink className="w-4 h-4" />
+              Apri Schema SQL su GitHub
+            </button>
           </div>
 
           <button onClick={() => setShowSchemaModal(false)} className="btn-primary w-full">

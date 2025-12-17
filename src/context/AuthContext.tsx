@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { User } from '../types';
 import { ROLE_PERMISSIONS } from '../types';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -36,24 +37,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  // Inizializza utente superadmin di default se non esiste
+  // Inizializza utente superadmin di default se non esiste (solo localStorage)
   useEffect(() => {
-    const users = JSON.parse(localStorage.getItem('kebab_users') || '[]');
-    if (users.length === 0) {
-      const defaultSuperAdmin: User = {
-        id: 1,
-        username: 'admin',
-        password: 'admin123', // In produzione: hash
-        name: 'Andrea Fabbri',
-        role: 'superadmin',
-        active: true,
-        created_at: new Date().toISOString(),
-      };
-      localStorage.setItem('kebab_users', JSON.stringify([defaultSuperAdmin]));
+    if (!isSupabaseConfigured) {
+      const users = JSON.parse(localStorage.getItem('kebab_users') || '[]');
+      if (users.length === 0) {
+        const defaultSuperAdmin: User = {
+          id: 1,
+          username: 'admin',
+          password: 'admin123', // In produzione: hash
+          name: 'Andrea Fabbri',
+          role: 'superadmin',
+          active: true,
+          created_at: new Date().toISOString(),
+        };
+        localStorage.setItem('kebab_users', JSON.stringify([defaultSuperAdmin]));
+      }
     }
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
+    // Se Supabase è configurato, usa il database online
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('username', username.toLowerCase())
+          .eq('password', password) // In produzione: usare hash
+          .eq('active', true)
+          .single();
+
+        if (error || !data) {
+          return false;
+        }
+
+        // Aggiorna last_login
+        await supabase
+          .from('users')
+          .update({ last_login: new Date().toISOString() })
+          .eq('id', data.id);
+
+        const loggedUser: User = {
+          id: data.id,
+          username: data.username,
+          password: data.password,
+          name: data.name,
+          role: data.role,
+          active: data.active,
+          created_at: data.created_at,
+          last_login: new Date().toISOString(),
+        };
+
+        setUser(loggedUser);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(loggedUser));
+        return true;
+      } catch (err) {
+        console.error('Errore login Supabase:', err);
+        return false;
+      }
+    }
+
+    // Fallback a localStorage
     const users: User[] = JSON.parse(localStorage.getItem('kebab_users') || '[]');
     const foundUser = users.find(
       (u) => u.username.toLowerCase() === username.toLowerCase() && u.password === password
@@ -65,10 +110,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const updatedUsers = users.map((u) => (u.id === foundUser.id ? updatedUser : u));
       localStorage.setItem('kebab_users', JSON.stringify(updatedUsers));
 
-      // Salva utente loggato (senza password)
-      const safeUser = { ...updatedUser };
-      setUser(safeUser);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(safeUser));
+      // Salva utente loggato
+      setUser(updatedUser);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
       return true;
     }
 

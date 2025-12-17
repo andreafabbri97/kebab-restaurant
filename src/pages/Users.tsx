@@ -16,6 +16,7 @@ import { showToast } from '../components/ui/Toast';
 import { useAuth } from '../context/AuthContext';
 import type { User, UserRole } from '../types';
 import { ROLE_LABELS } from '../types';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export function Users() {
   const [users, setUsers] = useState<User[]>([]);
@@ -39,10 +40,24 @@ export function Users() {
     loadUsers();
   }, []);
 
-  function loadUsers() {
+  async function loadUsers() {
     setLoading(true);
-    const storedUsers = JSON.parse(localStorage.getItem('kebab_users') || '[]');
-    setUsers(storedUsers);
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .order('name');
+        if (error) throw error;
+        setUsers(data || []);
+      } else {
+        const storedUsers = JSON.parse(localStorage.getItem('kebab_users') || '[]');
+        setUsers(storedUsers);
+      }
+    } catch (err) {
+      console.error('Errore caricamento utenti:', err);
+      showToast('Errore nel caricamento utenti', 'error');
+    }
     setLoading(false);
   }
 
@@ -69,7 +84,7 @@ export function Users() {
     setShowModal(true);
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!formData.username || !formData.name) {
       showToast('Username e nome sono obbligatori', 'warning');
       return;
@@ -91,75 +106,138 @@ export function Users() {
       return;
     }
 
-    let updatedUsers: User[];
-
-    if (editingUser) {
-      // Modifica utente esistente
-      updatedUsers = users.map((u) => {
-        if (u.id === editingUser.id) {
-          return {
-            ...u,
+    try {
+      if (isSupabaseConfigured && supabase) {
+        if (editingUser) {
+          // Modifica utente esistente
+          const updateData: Partial<User> = {
             username: formData.username,
             name: formData.name,
             role: formData.role,
-            // Aggiorna password solo se inserita
-            ...(formData.password && { password: formData.password }),
           };
-        }
-        return u;
-      });
-      showToast('Utente modificato con successo', 'success');
-    } else {
-      // Nuovo utente
-      const newUser: User = {
-        id: Date.now(),
-        username: formData.username,
-        password: formData.password,
-        name: formData.name,
-        role: formData.role,
-        active: true,
-        created_at: new Date().toISOString(),
-      };
-      updatedUsers = [...users, newUser];
-      showToast('Utente creato con successo', 'success');
-    }
+          if (formData.password) {
+            updateData.password = formData.password;
+          }
 
-    localStorage.setItem('kebab_users', JSON.stringify(updatedUsers));
-    setUsers(updatedUsers);
-    setShowModal(false);
+          const { error } = await supabase
+            .from('users')
+            .update(updateData)
+            .eq('id', editingUser.id);
+          if (error) throw error;
+          showToast('Utente modificato con successo', 'success');
+        } else {
+          // Nuovo utente
+          const { error } = await supabase.from('users').insert({
+            username: formData.username,
+            password: formData.password,
+            name: formData.name,
+            role: formData.role,
+            active: true,
+          });
+          if (error) throw error;
+          showToast('Utente creato con successo', 'success');
+        }
+        await loadUsers();
+      } else {
+        // Fallback localStorage
+        let updatedUsers: User[];
+
+        if (editingUser) {
+          updatedUsers = users.map((u) => {
+            if (u.id === editingUser.id) {
+              return {
+                ...u,
+                username: formData.username,
+                name: formData.name,
+                role: formData.role,
+                ...(formData.password && { password: formData.password }),
+              };
+            }
+            return u;
+          });
+          showToast('Utente modificato con successo', 'success');
+        } else {
+          const newUser: User = {
+            id: Date.now(),
+            username: formData.username,
+            password: formData.password,
+            name: formData.name,
+            role: formData.role,
+            active: true,
+            created_at: new Date().toISOString(),
+          };
+          updatedUsers = [...users, newUser];
+          showToast('Utente creato con successo', 'success');
+        }
+
+        localStorage.setItem('kebab_users', JSON.stringify(updatedUsers));
+        setUsers(updatedUsers);
+      }
+      setShowModal(false);
+    } catch (err) {
+      console.error('Errore salvataggio utente:', err);
+      showToast('Errore nel salvataggio', 'error');
+    }
   }
 
-  function toggleUserStatus(userId: number) {
+  async function toggleUserStatus(userId: number) {
     // Non permettere di disattivare se stesso
     if (userId === currentUser?.id) {
       showToast('Non puoi disattivare il tuo account', 'error');
       return;
     }
 
-    const updatedUsers = users.map((u) => {
-      if (u.id === userId) {
-        return { ...u, active: !u.active };
-      }
-      return u;
-    });
+    const userToToggle = users.find(u => u.id === userId);
+    if (!userToToggle) return;
 
-    localStorage.setItem('kebab_users', JSON.stringify(updatedUsers));
-    setUsers(updatedUsers);
-    showToast('Stato utente aggiornato', 'success');
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase
+          .from('users')
+          .update({ active: !userToToggle.active })
+          .eq('id', userId);
+        if (error) throw error;
+        await loadUsers();
+      } else {
+        const updatedUsers = users.map((u) => {
+          if (u.id === userId) {
+            return { ...u, active: !u.active };
+          }
+          return u;
+        });
+        localStorage.setItem('kebab_users', JSON.stringify(updatedUsers));
+        setUsers(updatedUsers);
+      }
+      showToast('Stato utente aggiornato', 'success');
+    } catch (err) {
+      console.error('Errore aggiornamento stato:', err);
+      showToast('Errore nell\'aggiornamento', 'error');
+    }
   }
 
-  function deleteUser(userId: number) {
+  async function deleteUser(userId: number) {
     // Non permettere di eliminare se stesso
     if (userId === currentUser?.id) {
       showToast('Non puoi eliminare il tuo account', 'error');
       return;
     }
 
-    const updatedUsers = users.filter((u) => u.id !== userId);
-    localStorage.setItem('kebab_users', JSON.stringify(updatedUsers));
-    setUsers(updatedUsers);
-    setShowDeleteConfirm(null);
-    showToast('Utente eliminato', 'success');
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.from('users').delete().eq('id', userId);
+        if (error) throw error;
+        await loadUsers();
+      } else {
+        const updatedUsers = users.filter((u) => u.id !== userId);
+        localStorage.setItem('kebab_users', JSON.stringify(updatedUsers));
+        setUsers(updatedUsers);
+      }
+      setShowDeleteConfirm(null);
+      showToast('Utente eliminato', 'success');
+    } catch (err) {
+      console.error('Errore eliminazione utente:', err);
+      showToast('Errore nell\'eliminazione', 'error');
+    }
   }
 
   function getRoleIcon(role: UserRole) {
