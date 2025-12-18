@@ -12,6 +12,7 @@ import {
   updateSessionTotal,
   getActiveSessionForTable,
   getSessionOrders,
+  createTableSession,
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { CartContent } from '../components/order/CartContent';
@@ -54,6 +55,15 @@ export function NewOrder() {
   const [detectedSession, setDetectedSession] = useState<TableSession | null>(null);
   const [detectedSessionOrders, setDetectedSessionOrders] = useState<Order[]>([]);
   const [pendingTableId, setPendingTableId] = useState<number | null>(null);
+
+  // Modal per chiedere se aprire conto dopo ordine su tavolo senza sessione
+  const [showOpenSessionModal, setShowOpenSessionModal] = useState(false);
+  const [pendingOrderData, setPendingOrderData] = useState<{
+    order: Parameters<typeof createOrder>[0];
+    items: Parameters<typeof createOrder>[1];
+    tableId: number;
+    tableName: string;
+  } | null>(null);
 
   // Leggi parametri URL per sessione
   const sessionIdParam = searchParams.get('session');
@@ -226,25 +236,61 @@ export function NewOrder() {
       return;
     }
 
+    // Se è un ordine al tavolo senza sessione attiva, chiedi se aprire un conto
+    if (orderType === 'dine_in' && selectedTable && !activeSession) {
+      const order = {
+        date: new Date().toISOString().split('T')[0],
+        total: grandTotal,
+        payment_method: paymentMethod,
+        order_type: orderType,
+        table_id: selectedTable,
+        notes: notes || undefined,
+        status: 'pending' as const,
+        smac_passed: smacPassed,
+        customer_name: customerName || undefined,
+        customer_phone: customerPhone || undefined,
+      };
+
+      const items = cart.map((item) => ({
+        menu_item_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+        notes: item.notes,
+      }));
+
+      const tableName = tables.find(t => t.id === selectedTable)?.name || `Tavolo ${selectedTable}`;
+
+      setPendingOrderData({ order, items, tableId: selectedTable, tableName });
+      setShowOpenSessionModal(true);
+      return;
+    }
+
+    await executeOrder();
+  }
+
+  // Esegue effettivamente l'ordine (chiamato direttamente o dopo conferma modal)
+  async function executeOrder(openSession?: boolean, sessionId?: number) {
     setIsSubmitting(true);
 
     try {
       // Per sessioni attive, il totale non include IVA separata (già inclusa nel prezzo)
       // e non serve metodo pagamento (si fa alla chiusura conto)
+      const isSessionOrder = activeSession || openSession;
+
       const order = {
         date: new Date().toISOString().split('T')[0],
-        total: activeSession ? cartTotal : grandTotal, // Per sessione usa cartTotal senza IVA separata
-        payment_method: activeSession ? 'cash' : paymentMethod, // Placeholder per sessioni
+        total: isSessionOrder ? cartTotal : grandTotal,
+        payment_method: isSessionOrder ? 'cash' : paymentMethod,
         order_type: orderType,
         table_id: orderType === 'dine_in' ? selectedTable ?? undefined : undefined,
         notes: notes || undefined,
         status: 'pending' as const,
-        smac_passed: activeSession ? false : smacPassed, // SMAC si gestisce alla chiusura
+        smac_passed: isSessionOrder ? false : smacPassed,
         customer_name: customerName || undefined,
         customer_phone: customerPhone || undefined,
         // Campi sessione
-        session_id: activeSession?.id,
-        order_number: activeSession ? nextOrderNumber : undefined,
+        session_id: activeSession?.id || sessionId,
+        order_number: isSessionOrder ? (activeSession ? nextOrderNumber : 1) : undefined,
       };
 
       const items = cart.map((item) => ({
@@ -256,11 +302,14 @@ export function NewOrder() {
 
       await createOrder(order, items);
 
-      // Se c'è una sessione, aggiorna il totale della sessione
+      // Se c'è una sessione (esistente o appena creata), aggiorna il totale
       if (activeSession) {
         await updateSessionTotal(activeSession.id);
         showToast(`Comanda #${nextOrderNumber} inviata!`, 'success');
-        // Torna alla pagina tavoli
+        navigate('/tables');
+      } else if (sessionId) {
+        await updateSessionTotal(sessionId);
+        showToast('Ordine creato e conto aperto!', 'success');
         navigate('/tables');
       } else {
         showToast('Ordine creato con successo!', 'success');
@@ -272,6 +321,44 @@ export function NewOrder() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  // Conferma ordine E apertura conto
+  async function confirmOpenSession() {
+    if (!pendingOrderData) return;
+
+    setIsSubmitting(true);
+
+    try {
+      // Crea la sessione
+      const session = await createTableSession(
+        pendingOrderData.tableId,
+        1, // coperti default
+        pendingOrderData.order.customer_name
+      );
+
+      // Chiudi il modal
+      setShowOpenSessionModal(false);
+      setPendingOrderData(null);
+
+      // Esegui l'ordine con la sessione
+      await executeOrder(true, session.id);
+    } catch (error) {
+      console.error('Error creating session:', error);
+      showToast('Errore nell\'apertura del conto', 'error');
+      setIsSubmitting(false);
+    }
+  }
+
+  // Conferma ordine SENZA aprire conto
+  async function confirmWithoutSession() {
+    if (!pendingOrderData) return;
+
+    setShowOpenSessionModal(false);
+    setPendingOrderData(null);
+
+    // Esegui l'ordine normalmente senza sessione
+    await executeOrder(false);
   }
 
   if (loading) {
@@ -593,6 +680,67 @@ export function NewOrder() {
                 className="btn-secondary w-full"
               >
                 No, crea ordine separato
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal per chiedere se aprire conto */}
+      <Modal
+        isOpen={showOpenSessionModal}
+        onClose={() => setShowOpenSessionModal(false)}
+        title="Aprire un Conto?"
+        size="md"
+      >
+        {pendingOrderData && (
+          <div className="space-y-6">
+            {/* Info */}
+            <div className="flex items-start gap-3 p-4 bg-primary-500/10 border border-primary-500/30 rounded-xl">
+              <Users className="w-6 h-6 text-primary-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-primary-400">
+                  Stai creando un ordine per {pendingOrderData.tableName}
+                </p>
+                <p className="text-sm text-dark-300 mt-1">
+                  Vuoi aprire un conto per questo tavolo? Così potrai aggiungere altre comande in seguito.
+                </p>
+              </div>
+            </div>
+
+            {/* Order Summary */}
+            <div className="p-4 bg-dark-900 rounded-xl">
+              <h3 className="font-semibold text-white mb-2">Riepilogo Ordine</h3>
+              <div className="flex justify-between items-center">
+                <span className="text-dark-400">{cartItemsCount} articoli</span>
+                <span className="text-xl font-bold text-primary-400">€{grandTotal.toFixed(2)}</span>
+              </div>
+              {customerName && (
+                <p className="text-sm text-dark-400 mt-2">
+                  Cliente: <span className="text-white">{customerName}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={confirmOpenSession}
+                disabled={isSubmitting}
+                className="btn-primary w-full py-3"
+              >
+                {isSubmitting ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-dark-900 mx-auto"></div>
+                ) : (
+                  'Sì, apri conto e invia ordine'
+                )}
+              </button>
+              <button
+                onClick={confirmWithoutSession}
+                disabled={isSubmitting}
+                className="btn-secondary w-full"
+              >
+                No, solo ordine singolo
               </button>
             </div>
           </div>
