@@ -127,7 +127,12 @@ export function Tables() {
     const hasActiveSession = activeSessions.some(s => s.table_id === tableId);
     if (hasActiveSession) return 'occupied';
 
-    const hasReservation = reservations.some(r => r.table_id === tableId && r.status === 'confirmed');
+    // Controlla se il tavolo è in una prenotazione (anche in table_ids per tavoli uniti)
+    const hasReservation = reservations.some(r => {
+      if (r.status !== 'confirmed') return false;
+      const tableIds = r.table_ids || [r.table_id];
+      return tableIds.includes(tableId);
+    });
     if (hasReservation) return 'reserved';
 
     return 'available';
@@ -732,7 +737,12 @@ export function Tables() {
                       </p>
                       <div className="flex items-center gap-3 text-sm text-dark-400">
                         <span>{res.time}</span>
-                        <span>{res.table_name}</span>
+                        <span className="flex items-center gap-1">
+                          {res.table_ids && res.table_ids.length > 1 && (
+                            <Link2 className="w-3 h-3 text-primary-400" />
+                          )}
+                          {res.table_name}
+                        </span>
                         <span>{res.guests} ospiti</span>
                       </div>
                       {res.phone && (
@@ -1031,8 +1041,17 @@ export function Tables() {
               </div>
               <div className="p-4 bg-dark-900 rounded-xl text-center">
                 <Link2 className="w-6 h-6 text-primary-400 mx-auto mb-2" />
-                <p className="text-sm text-dark-400">Tavolo</p>
+                <p className="text-sm text-dark-400">
+                  {selectedReservation.table_ids && selectedReservation.table_ids.length > 1
+                    ? 'Tavoli Uniti'
+                    : 'Tavolo'}
+                </p>
                 <p className="font-semibold text-white">{selectedReservation.table_name}</p>
+                {selectedReservation.table_ids && selectedReservation.table_ids.length > 1 && (
+                  <p className="text-xs text-primary-400 mt-1">
+                    {selectedReservation.table_ids.length} tavoli
+                  </p>
+                )}
               </div>
             </div>
 
