@@ -313,7 +313,7 @@ export async function deleteMenuItem(id: number): Promise<void> {
 // ============== ORDERS ==============
 export async function getOrders(date?: string): Promise<Order[]> {
   if (isSupabaseConfigured && supabase) {
-    let query = supabase.from('orders').select('*, tables(name)').order('created_at', { ascending: false });
+    let query = supabase.from('orders').select('*, tables(name), table_sessions(status)').order('created_at', { ascending: false });
     if (date) {
       query = query.eq('date', date);
     }
@@ -322,6 +322,7 @@ export async function getOrders(date?: string): Promise<Order[]> {
     return (data || []).map(order => ({
       ...order,
       table_name: order.tables?.name,
+      session_status: order.table_sessions?.status,
     }));
   }
   let orders = getLocalData<Order[]>('orders', []);
@@ -329,9 +330,11 @@ export async function getOrders(date?: string): Promise<Order[]> {
     orders = orders.filter(o => o.date === date);
   }
   const tables = getLocalData<Table[]>('tables', []);
+  const sessions = getLocalData<TableSession[]>('table_sessions', []);
   return orders.map(order => ({
     ...order,
     table_name: tables.find(t => t.id === order.table_id)?.name,
+    session_status: order.session_id ? sessions.find(s => s.id === order.session_id)?.status : undefined,
   })).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 

@@ -322,13 +322,17 @@ export function Orders() {
                         <div className="flex items-start justify-between">
                           <div>
                             {order.session_id ? (
-                              // Ordine con sessione (conto aperto)
+                              // Ordine con sessione
                               <>
                                 <p className="font-semibold text-white">
                                   {order.table_name} - Comanda #{order.order_number || 1}
                                 </p>
-                                <p className="text-xs text-primary-400/70">
-                                  Conto Aperto
+                                <p className={`text-xs ${
+                                  order.session_status === 'open'
+                                    ? 'text-primary-400/70'
+                                    : 'text-emerald-400/70'
+                                }`}>
+                                  {order.session_status === 'open' ? 'Conto Aperto' : 'Conto Chiuso'}
                                 </p>
                               </>
                             ) : (
@@ -415,8 +419,18 @@ export function Orders() {
           <div className="space-y-4">
             {/* Session Badge */}
             {selectedOrder.session_id && (
-              <div className="bg-primary-500/10 border border-primary-500/30 rounded-xl p-3 text-center">
-                <span className="text-primary-400 font-medium">Conto Aperto - Sessione #{selectedOrder.session_id}</span>
+              <div className={`rounded-xl p-3 text-center border ${
+                selectedOrder.session_status === 'open'
+                  ? 'bg-primary-500/10 border-primary-500/30'
+                  : 'bg-emerald-500/10 border-emerald-500/30'
+              }`}>
+                <span className={`font-medium ${
+                  selectedOrder.session_status === 'open'
+                    ? 'text-primary-400'
+                    : 'text-emerald-400'
+                }`}>
+                  {selectedOrder.session_status === 'open' ? 'Conto Aperto' : 'Conto Chiuso'} - Sessione #{selectedOrder.session_id}
+                </span>
               </div>
             )}
 

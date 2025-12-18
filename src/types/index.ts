@@ -148,6 +148,7 @@ export interface Order {
   // Campi per sessione tavolo (conto aperto)
   session_id?: number;
   order_number?: number; // Numero comanda nella sessione (1, 2, 3...)
+  session_status?: 'open' | 'closed' | 'paid'; // Stato della sessione associata
 }
 
 export interface OrderItem {
