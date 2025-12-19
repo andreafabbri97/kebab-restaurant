@@ -1,3 +1,9 @@
+/**
+ * KEBAB RESTAURANT MANAGEMENT SYSTEM
+ * Copyright (c) 2024-2025 Andrea Fabbri. Tutti i diritti riservati.
+ * Licenza: Proprietaria - Vedere file LICENSE
+ */
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, User, Lock, AlertCircle } from 'lucide-react';
@@ -119,9 +125,10 @@ export function Login() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-dark-500 text-sm mt-6">
-          Restaurant Manager v2.0 - Sistema Gestionale
-        </p>
+        <div className="text-center text-dark-500 text-sm mt-6">
+          <p>Restaurant Manager v2.0</p>
+          <p className="mt-1">© 2024-2025 Andrea Fabbri - Tutti i diritti riservati</p>
+        </div>
       </div>
     </div>
   );

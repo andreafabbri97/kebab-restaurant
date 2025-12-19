@@ -1,3 +1,9 @@
+/**
+ * KEBAB RESTAURANT MANAGEMENT SYSTEM
+ * Copyright (c) 2024-2025 Andrea Fabbri. Tutti i diritti riservati.
+ * Licenza: Proprietaria - Vedere file LICENSE
+ */
+
 import { NavLink } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import {
@@ -292,7 +298,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           {!sidebarCollapsed && (
             <div className="text-[10px] text-dark-500 text-center pt-1 hidden lg:block">
-              v2.0
+              <div>v2.0</div>
+              <div className="mt-0.5">© 2024-2025 Andrea Fabbri</div>
             </div>
           )}
         </div>

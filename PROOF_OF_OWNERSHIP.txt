@@ -1,0 +1,101 @@
+================================================================================
+                    PROVA DI PROPRIETÀ INTELLETTUALE
+                    PROOF OF INTELLECTUAL PROPERTY OWNERSHIP
+================================================================================
+
+SOFTWARE: Kebab Restaurant Management System
+VERSIONE: 2.0
+PROPRIETARIO: Andrea Fabbri
+DATA GENERAZIONE: 2025-12-19 15:56:16 UTC+1
+TIPO LICENZA: Proprietaria (Tutti i diritti riservati)
+
+================================================================================
+                              DICHIARAZIONE
+================================================================================
+
+Io sottoscritto Andrea Fabbri dichiaro di essere l'unico autore e proprietario
+del software "Kebab Restaurant Management System" (di seguito "Software").
+
+Il Software è stato sviluppato interamente da me a partire da Dicembre 2024.
+Questo documento, insieme allo storico dei commit su GitHub e agli hash SHA256
+dei file sorgente, costituisce prova della proprietà intellettuale.
+
+================================================================================
+                    HASH SHA256 DEI FILE PRINCIPALI
+================================================================================
+
+Questi hash crittografici identificano univocamente i file sorgente alla data
+di generazione di questo documento. Qualsiasi modifica ai file genererebbe
+hash differenti.
+
+FILE: LICENSE
+HASH: 15ed3a30291b79b08d9862a014b4dd3a353b57f4ceef21a92073f0eb29eb252f
+
+FILE: src/main.tsx
+HASH: 8e39723573dc91d3899b9779d6fae6529e530133c441a2c76413b851d2a9f6df
+
+FILE: src/App.tsx
+HASH: 041e0c257617f0441e80f818e9f0f6dac66c5b6febfd3232bc154fbc61669986
+
+================================================================================
+                       REPOSITORY GIT
+================================================================================
+
+Repository: https://github.com/andreafabbri97/kebab-restaurant
+Branch: main
+Prima pubblicazione: Dicembre 2024
+
+Lo storico dei commit Git documenta l'evoluzione del Software e costituisce
+ulteriore prova della paternità del codice.
+
+================================================================================
+                         TECNOLOGIE UTILIZZATE
+================================================================================
+
+- React 19 + TypeScript
+- Vite
+- Tailwind CSS
+- Supabase (PostgreSQL)
+- Lucide React Icons
+
+================================================================================
+                           FUNZIONALITÀ
+================================================================================
+
+- Gestione ordini (asporto, domicilio, tavolo)
+- Gestione tavoli e prenotazioni
+- Sistema split bill (3 modalità)
+- Calcolatore resto
+- Gestione menu e categorie
+- Calcolo costo piatti (food cost)
+- Inventario e ricette
+- Gestione personale e turni
+- Chiusura cassa giornaliera
+- Sistema SMAC (tessere fedeltà)
+- Report e statistiche
+- Sistema multi-utente con ruoli (superadmin, admin, staff)
+- Tema chiaro/scuro
+- Ottimizzato per mobile
+
+================================================================================
+                       NOTE LEGALI
+================================================================================
+
+Questo documento è generato automaticamente e costituisce prova di esistenza
+del Software alla data indicata. Si consiglia di:
+
+1. Conservare una copia di questo file in luogo sicuro
+2. Inviare una copia PEC a se stessi per marca temporale legale
+3. Considerare deposito presso SIAE sezione OLAF per tutela formale
+4. Mantenere il repository Git privato o con accesso limitato
+
+In caso di contestazione, lo storico Git, gli hash SHA256 e questo documento
+possono essere utilizzati come prova in sede legale.
+
+================================================================================
+
+Generato il: 2025-12-19
+Proprietario: Andrea Fabbri
+Software: Kebab Restaurant Management System v2.0
+
+================================================================================
