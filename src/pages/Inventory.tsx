@@ -233,8 +233,13 @@ export function Inventory() {
       return;
     }
 
+    const qty = parseFloat(updateQuantity);
+    if (isNaN(qty) || qty < 0) {
+      showToast('Inserisci un valore numerico valido', 'warning');
+      return;
+    }
+
     try {
-      const qty = parseFloat(updateQuantity);
       const newQty = updateMode === 'add'
         ? selectedItem.quantity + qty
         : qty;

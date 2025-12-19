@@ -2293,7 +2293,8 @@ export async function transferTableSession(sessionId: number, newTableId: number
 export async function getNextOrderNumber(sessionId: number): Promise<number> {
   const orders = await getSessionOrders(sessionId);
   if (orders.length === 0) return 1;
-  const maxOrderNumber = Math.max(...orders.map(o => o.order_number || 1));
+  const orderNumbers = orders.map(o => o.order_number || 1);
+  const maxOrderNumber = orderNumbers.reduce((max, n) => Math.max(max, n), 0);
   return maxOrderNumber + 1;
 }
 

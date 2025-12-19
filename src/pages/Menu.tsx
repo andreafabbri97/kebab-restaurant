@@ -110,11 +110,17 @@ export function Menu() {
       return;
     }
 
+    const price = parseFloat(itemForm.price);
+    if (isNaN(price) || price < 0) {
+      showToast('Inserisci un prezzo valido', 'warning');
+      return;
+    }
+
     try {
       const data = {
         name: itemForm.name,
         category_id: itemForm.category_id,
-        price: parseFloat(itemForm.price),
+        price,
         description: itemForm.description || undefined,
         available: itemForm.available,
       };

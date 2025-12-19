@@ -84,6 +84,11 @@ export function CashRegister() {
 
     const opening = parseFloat(openingCash);
     const closing = parseFloat(closingCash);
+
+    if (isNaN(opening) || isNaN(closing) || opening < 0 || closing < 0) {
+      showToast('Inserisci valori numerici validi', 'error');
+      return;
+    }
     const expectedCash = opening + (summary?.cash_revenue || 0);
     const difference = closing - expectedCash;
 
