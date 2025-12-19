@@ -14,6 +14,8 @@ import {
   Trash2,
   Eye,
   X,
+  Settings,
+  DollarSign,
 } from 'lucide-react';
 import {
   getInventory,
@@ -27,10 +29,12 @@ import {
   createSupply,
   deleteSupply,
   getSupplyStats,
+  getInventorySettings,
+  updateInventorySettings,
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
-import type { InventoryItem, EOQResult, Ingredient, Supply, SupplyItem } from '../types';
+import type { InventoryItem, EOQResult, Ingredient, Supply, SupplyItem, InventorySettings, CostCalculationMethod } from '../types';
 
 // Interfaccia per item temporanei nella creazione fornitura
 interface TempSupplyItem {
@@ -88,19 +92,27 @@ export function Inventory() {
     unit_cost: '',
   });
 
+  // Inventory settings state
+  const [inventorySettings, setInventorySettings] = useState<InventorySettings>({
+    cost_calculation_method: 'fixed',
+    moving_avg_months: 3,
+  });
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
 
   async function loadData() {
     try {
-      const [inv, low, eoq, ing, sup, stats] = await Promise.all([
+      const [inv, low, eoq, ing, sup, stats, invSettings] = await Promise.all([
         getInventory(),
         getLowStockItems(),
         calculateEOQ(),
         getIngredients(),
         getSupplies(),
         getSupplyStats(),
+        getInventorySettings(),
       ]);
       setInventory(inv);
       setLowStock(low);
@@ -108,6 +120,7 @@ export function Inventory() {
       setIngredients(ing);
       setSupplies(sup);
       setSupplyStats(stats);
+      setInventorySettings(invSettings);
     } catch (error) {
       console.error('Error loading data:', error);
       showToast('Errore nel caricamento dati', 'error');
@@ -115,6 +128,31 @@ export function Inventory() {
       setLoading(false);
     }
   }
+
+  async function handleSaveSettings() {
+    try {
+      await updateInventorySettings(inventorySettings);
+      showToast('Impostazioni salvate', 'success');
+      setShowSettingsModal(false);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      showToast('Errore nel salvataggio', 'error');
+    }
+  }
+
+  const costMethodLabels: Record<CostCalculationMethod, string> = {
+    fixed: 'Costo Fisso',
+    last: 'Ultimo Costo',
+    weighted_avg: 'Media Ponderata',
+    moving_avg: 'Media Mobile',
+  };
+
+  const costMethodDescriptions: Record<CostCalculationMethod, string> = {
+    fixed: 'Il costo unitario non cambia mai automaticamente. Devi aggiornarlo manualmente.',
+    last: 'Il costo unitario viene aggiornato con il costo dell\'ultima fornitura.',
+    weighted_avg: 'Il costo viene calcolato come media ponderata tra stock esistente e nuova fornitura.',
+    moving_avg: 'Il costo viene calcolato come media delle forniture degli ultimi N mesi.',
+  };
 
   // Ingredienti da riordinare (giorni fino al riordino < 7)
   const urgentReorders = eoqData.filter(e => e.days_until_reorder < 7 && e.avg_daily_consumption > 0);
@@ -647,6 +685,33 @@ export function Inventory() {
 
       {activeTab === 'eoq' && (
         <>
+          {/* Cost Settings Card */}
+          <div className="card p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center">
+                  <DollarSign className="w-5 h-5 text-primary-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">Calcolo Costo Unitario</h3>
+                  <p className="text-sm text-dark-400">
+                    Metodo: <span className="text-primary-400">{costMethodLabels[inventorySettings.cost_calculation_method]}</span>
+                    {inventorySettings.cost_calculation_method === 'moving_avg' && (
+                      <span className="text-dark-500"> ({inventorySettings.moving_avg_months} mesi)</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                className="btn-secondary flex items-center gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                Configura
+              </button>
+            </div>
+          </div>
+
           {/* EOQ Info Box */}
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
             <h3 className="font-semibold text-blue-400 mb-2">Cos'è l'EOQ?</h3>
@@ -1187,6 +1252,98 @@ export function Inventory() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Inventory Settings Modal */}
+      <Modal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        title="Impostazioni Costo Ingredienti"
+        size="md"
+      >
+        <div className="space-y-6">
+          {/* Method Selection */}
+          <div>
+            <label className="label">Metodo di Calcolo del Costo Unitario</label>
+            <div className="space-y-3">
+              {(['fixed', 'last', 'weighted_avg', 'moving_avg'] as CostCalculationMethod[]).map((method) => (
+                <button
+                  key={method}
+                  onClick={() => setInventorySettings({ ...inventorySettings, cost_calculation_method: method })}
+                  className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                    inventorySettings.cost_calculation_method === method
+                      ? 'border-primary-500 bg-primary-500/10'
+                      : 'border-dark-600 hover:border-dark-500'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`font-medium ${
+                      inventorySettings.cost_calculation_method === method ? 'text-primary-400' : 'text-white'
+                    }`}>
+                      {costMethodLabels[method]}
+                    </span>
+                    {inventorySettings.cost_calculation_method === method && (
+                      <span className="text-primary-400 text-sm">✓ Selezionato</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-dark-400 mt-1">
+                    {costMethodDescriptions[method]}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Moving Average Months - Only shown when moving_avg is selected */}
+          {inventorySettings.cost_calculation_method === 'moving_avg' && (
+            <div className="bg-dark-900 rounded-xl p-4">
+              <label className="label">Periodo Media Mobile</label>
+              <p className="text-sm text-dark-400 mb-3">
+                Seleziona il numero di mesi da considerare per la media mobile (ultimi forniture nell'ultimo anno)
+              </p>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min="1"
+                  max="12"
+                  value={inventorySettings.moving_avg_months}
+                  onChange={(e) => setInventorySettings({
+                    ...inventorySettings,
+                    moving_avg_months: parseInt(e.target.value)
+                  })}
+                  className="flex-1 h-2 bg-dark-700 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                />
+                <div className="bg-dark-800 px-4 py-2 rounded-lg min-w-[80px] text-center">
+                  <span className="text-xl font-bold text-primary-400">{inventorySettings.moving_avg_months}</span>
+                  <span className="text-dark-400 text-sm ml-1">mesi</span>
+                </div>
+              </div>
+              <div className="flex justify-between text-xs text-dark-500 mt-2">
+                <span>1 mese</span>
+                <span>6 mesi</span>
+                <span>12 mesi</span>
+              </div>
+            </div>
+          )}
+
+          {/* Info Box */}
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+            <p className="text-sm text-blue-400">
+              <strong>Nota:</strong> Il metodo selezionato verrà applicato automaticamente quando registri nuove forniture.
+              I costi esistenti non verranno ricalcolati retroattivamente.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-3 pt-4 border-t border-dark-700">
+            <button onClick={handleSaveSettings} className="btn-primary flex-1">
+              Salva Impostazioni
+            </button>
+            <button onClick={() => setShowSettingsModal(false)} className="btn-secondary">
+              Annulla
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

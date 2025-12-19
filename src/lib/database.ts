@@ -24,6 +24,8 @@ import type {
   Invoice,
   TableSession,
   SessionPayment,
+  InventorySettings,
+  CostCalculationMethod,
 } from '../types';
 
 // Local storage fallback for demo mode
@@ -1031,6 +1033,114 @@ export async function updateSettings(settings: Partial<Settings>): Promise<void>
   window.dispatchEvent(new CustomEvent('settings-updated', { detail: newSettings }));
 }
 
+// ============== INVENTORY SETTINGS ==============
+const DEFAULT_INVENTORY_SETTINGS: InventorySettings = {
+  cost_calculation_method: 'fixed',
+  moving_avg_months: 3,
+};
+
+export async function getInventorySettings(): Promise<InventorySettings> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('inventory_settings').select('*').limit(1).single();
+    if (error || !data) return DEFAULT_INVENTORY_SETTINGS;
+    return data;
+  }
+  return getLocalData<InventorySettings>('inventory_settings', DEFAULT_INVENTORY_SETTINGS);
+}
+
+export async function updateInventorySettings(settings: Partial<InventorySettings>): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: existing } = await supabase.from('inventory_settings').select('id').limit(1).single();
+
+    if (existing) {
+      const { error } = await supabase.from('inventory_settings').update(settings).eq('id', existing.id);
+      if (error) throw error;
+    } else {
+      const newSettings = { ...DEFAULT_INVENTORY_SETTINGS, ...settings };
+      const { error } = await supabase.from('inventory_settings').insert(newSettings);
+      if (error) throw error;
+    }
+    return;
+  }
+  const currentSettings = getLocalData<InventorySettings>('inventory_settings', DEFAULT_INVENTORY_SETTINGS);
+  const newSettings = { ...currentSettings, ...settings };
+  setLocalData('inventory_settings', newSettings);
+}
+
+// Calcola il nuovo costo unitario basato sul metodo impostato
+export async function calculateNewUnitCost(
+  ingredientId: number,
+  currentCost: number,
+  currentQuantity: number,
+  newQuantity: number,
+  newUnitCost: number
+): Promise<number> {
+  const settings = await getInventorySettings();
+
+  switch (settings.cost_calculation_method) {
+    case 'fixed':
+      // Costo fisso - non cambia mai
+      return currentCost;
+
+    case 'last':
+      // Ultimo costo - usa sempre il costo dell'ultima fornitura
+      return newUnitCost;
+
+    case 'weighted_avg': {
+      // Media ponderata - calcola la media basata sulle quantità
+      const totalQuantity = currentQuantity + newQuantity;
+      if (totalQuantity === 0) return newUnitCost;
+      const weightedCost = ((currentCost * currentQuantity) + (newUnitCost * newQuantity)) / totalQuantity;
+      return Math.round(weightedCost * 100) / 100; // Arrotonda a 2 decimali
+    }
+
+    case 'moving_avg': {
+      // Media mobile - calcola la media delle ultime N mesi di forniture
+      const months = settings.moving_avg_months;
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - months);
+      const startDateStr = startDate.toISOString().split('T')[0];
+
+      // Ottieni le forniture degli ultimi N mesi per questo ingrediente
+      const supplies = await getSupplies();
+      const supplyIds = supplies
+        .filter(s => s.date >= startDateStr)
+        .map(s => s.id);
+
+      if (supplyIds.length === 0) {
+        // Nessuna fornitura nel periodo, usa il nuovo costo
+        return newUnitCost;
+      }
+
+      // Ottieni i dettagli delle forniture per questo ingrediente
+      let totalCost = 0;
+      let totalQty = 0;
+
+      for (const supplyId of supplyIds) {
+        const items = await getSupplyItems(supplyId);
+        const item = items.find(i => i.ingredient_id === ingredientId);
+        if (item) {
+          // unit_cost è il costo totale per quella fornitura, quindi calcoliamo il costo per unità
+          const unitCostPerUnit = item.unit_cost / item.quantity;
+          totalCost += item.unit_cost;
+          totalQty += item.quantity;
+        }
+      }
+
+      // Aggiungi la nuova fornitura al calcolo
+      totalCost += newUnitCost * newQuantity;
+      totalQty += newQuantity;
+
+      if (totalQty === 0) return newUnitCost;
+      const avgCost = totalCost / totalQty;
+      return Math.round(avgCost * 100) / 100;
+    }
+
+    default:
+      return currentCost;
+  }
+}
+
 // ============== STATISTICS ==============
 export async function getDailyStats(date: string): Promise<{ orders: number; revenue: number; avgOrder: number }> {
   const orders = await getOrders(date);
@@ -1401,26 +1511,45 @@ export async function createSupply(
     const { error: itemsError } = await supabase.from('supply_items').insert(supplyItems);
     if (itemsError) throw itemsError;
 
-    // Aggiorna l'inventario
+    // Aggiorna l'inventario e i costi
     for (const item of items) {
+      // Ottieni dati attuali inventario e ingrediente
       const { data: invData } = await supabase
         .from('inventory')
         .select('quantity')
         .eq('ingredient_id', item.ingredient_id)
         .single();
 
+      const { data: ingData } = await supabase
+        .from('ingredients')
+        .select('cost')
+        .eq('id', item.ingredient_id)
+        .single();
+
+      const currentQuantity = invData?.quantity || 0;
+      const currentCost = ingData?.cost || 0;
+
+      // Aggiorna quantità inventario
       if (invData) {
         await supabase
           .from('inventory')
-          .update({ quantity: invData.quantity + item.quantity })
+          .update({ quantity: currentQuantity + item.quantity })
           .eq('ingredient_id', item.ingredient_id);
       }
 
-      // Aggiorna anche il costo dell'ingrediente (costo unitario = costo totale / quantità)
-      const unitCost = item.quantity > 0 ? item.unit_cost / item.quantity : item.unit_cost;
+      // Calcola il nuovo costo unitario in base alle impostazioni
+      const newUnitCostPerUnit = item.quantity > 0 ? item.unit_cost / item.quantity : item.unit_cost;
+      const calculatedCost = await calculateNewUnitCost(
+        item.ingredient_id,
+        currentCost,
+        currentQuantity,
+        item.quantity,
+        newUnitCostPerUnit
+      );
+
       await supabase
         .from('ingredients')
-        .update({ cost: unitCost })
+        .update({ cost: calculatedCost })
         .eq('id', item.ingredient_id);
     }
 
@@ -1456,15 +1585,24 @@ export async function createSupply(
   for (const item of items) {
     // Aggiorna quantità inventario
     const invIndex = inventory.findIndex(i => i.ingredient_id === item.ingredient_id);
+    const currentQuantity = invIndex !== -1 ? inventory[invIndex].quantity : 0;
     if (invIndex !== -1) {
       inventory[invIndex].quantity += item.quantity;
     }
 
-    // Aggiorna costo ingrediente (costo unitario = costo totale / quantità)
+    // Calcola e aggiorna costo ingrediente in base alle impostazioni
     const ingIndex = ingredients.findIndex(i => i.id === item.ingredient_id);
     if (ingIndex !== -1) {
-      const unitCost = item.quantity > 0 ? item.unit_cost / item.quantity : item.unit_cost;
-      ingredients[ingIndex].cost = unitCost;
+      const currentCost = ingredients[ingIndex].cost;
+      const newUnitCostPerUnit = item.quantity > 0 ? item.unit_cost / item.quantity : item.unit_cost;
+      const calculatedCost = await calculateNewUnitCost(
+        item.ingredient_id,
+        currentCost,
+        currentQuantity,
+        item.quantity,
+        newUnitCostPerUnit
+      );
+      ingredients[ingIndex].cost = calculatedCost;
     }
   }
   setLocalData('inventory', inventory);

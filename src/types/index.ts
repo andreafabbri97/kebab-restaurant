@@ -365,3 +365,11 @@ export interface SessionPayment {
   paid_at: string;
   notes?: string; // es. "Marco", "Ragazza bionda"
 }
+
+// ============== IMPOSTAZIONI COSTO INGREDIENTI ==============
+export type CostCalculationMethod = 'fixed' | 'last' | 'weighted_avg' | 'moving_avg';
+
+export interface InventorySettings {
+  cost_calculation_method: CostCalculationMethod;
+  moving_avg_months: number; // Numero di mesi per media mobile (1-12)
+}
