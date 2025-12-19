@@ -442,8 +442,9 @@ export function NewOrder() {
               {filteredItems.map((item) => {
                 const inCart = cart.find((c) => c.id === item.id);
                 return (
-                  <div
+                  <button
                     key={item.id}
+                    onClick={() => addToCart(item)}
                     className="menu-item-card text-left relative"
                   >
                     {/* Quantità badge */}
@@ -453,20 +454,14 @@ export function NewOrder() {
                       </div>
                     )}
 
-                    {/* Area cliccabile per aggiungere */}
-                    <button
-                      onClick={() => addToCart(item)}
-                      className="w-full text-left"
-                    >
-                      <h3 className="font-semibold text-white mb-1 line-clamp-2">
-                        {item.name}
-                      </h3>
-                      {item.description && (
-                        <p className="text-sm text-dark-400 mb-2 line-clamp-2">
-                          {item.description}
-                        </p>
-                      )}
-                    </button>
+                    <h3 className="font-semibold text-white mb-1 line-clamp-2">
+                      {item.name}
+                    </h3>
+                    {item.description && (
+                      <p className="text-sm text-dark-400 mb-2 line-clamp-2">
+                        {item.description}
+                      </p>
+                    )}
 
                     {/* Footer con prezzo e controlli */}
                     <div className="flex items-center justify-between mt-2">
@@ -476,18 +471,18 @@ export function NewOrder() {
 
                       {/* Pulsante rimuovi - visibile solo se nel carrello */}
                       {inCart && (
-                        <button
+                        <div
                           onClick={(e) => {
                             e.stopPropagation();
                             updateQuantity(item.id, -1);
                           }}
-                          className="w-8 h-8 rounded-lg bg-dark-700 hover:bg-red-500/20 flex items-center justify-center transition-colors"
+                          className="w-8 h-8 rounded-lg bg-dark-700 hover:bg-red-500/20 flex items-center justify-center transition-colors cursor-pointer"
                         >
                           <Minus className="w-4 h-4 text-red-400" />
-                        </button>
+                        </div>
                       )}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -525,9 +520,10 @@ export function NewOrder() {
             {filteredItems.map((item) => {
               const inCart = cart.find((c) => c.id === item.id);
               return (
-                <div
+                <button
                   key={item.id}
-                  className="relative bg-dark-800 rounded-xl p-3 text-left border border-dark-700"
+                  onClick={() => addToCart(item)}
+                  className="relative bg-dark-800 rounded-xl p-3 text-left border border-dark-700 active:scale-[0.98] transition-transform"
                 >
                   {/* Quantità badge */}
                   {inCart && (
@@ -536,15 +532,9 @@ export function NewOrder() {
                     </div>
                   )}
 
-                  {/* Area cliccabile per aggiungere */}
-                  <button
-                    onClick={() => addToCart(item)}
-                    className="w-full text-left active:scale-[0.98] transition-transform"
-                  >
-                    <h3 className="font-semibold text-white text-sm line-clamp-2 mb-1">
-                      {item.name}
-                    </h3>
-                  </button>
+                  <h3 className="font-semibold text-white text-sm line-clamp-2 mb-1">
+                    {item.name}
+                  </h3>
 
                   {/* Footer con prezzo e controlli */}
                   <div className="flex items-center justify-between mt-1">
@@ -554,7 +544,7 @@ export function NewOrder() {
 
                     {/* Pulsante rimuovi - visibile solo se nel carrello */}
                     {inCart && (
-                      <button
+                      <div
                         onClick={(e) => {
                           e.stopPropagation();
                           updateQuantity(item.id, -1);
@@ -562,10 +552,10 @@ export function NewOrder() {
                         className="w-7 h-7 rounded-lg bg-dark-700 active:bg-red-500/30 flex items-center justify-center transition-colors"
                       >
                         <Minus className="w-3.5 h-3.5 text-red-400" />
-                      </button>
+                      </div>
                     )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
