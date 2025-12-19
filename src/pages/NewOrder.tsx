@@ -10,9 +10,9 @@ import {
   getTableSession,
   updateSessionTotal,
   getActiveSessionForTable,
-  getSessionOrder,
+  getSessionOrders,
   createTableSession,
-  addItemsToOrder,
+  getNextOrderNumber,
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { CartContent } from '../components/order/CartContent';
@@ -175,10 +175,10 @@ export function NewOrder() {
     const existingSession = await getActiveSessionForTable(tableId);
 
     if (existingSession) {
-      // Carica l'ordine della sessione per mostrare i dettagli
-      const order = await getSessionOrder(existingSession.id);
+      // Carica gli ordini (comande) della sessione per mostrare i dettagli
+      const orders = await getSessionOrders(existingSession.id);
       setDetectedSession(existingSession);
-      setDetectedSessionOrders(order ? [order] : []);
+      setDetectedSessionOrders(orders);
       setPendingTableId(tableId);
       setShowSessionDetectedModal(true);
     } else {
@@ -275,24 +275,17 @@ export function NewOrder() {
         notes: item.notes,
       }));
 
-      // Se c'è una sessione attiva, controlla se esiste già un ordine
-      if (activeSession) {
-        const existingOrder = await getSessionOrder(activeSession.id);
-
-        if (existingOrder) {
-          // AGGIUNGI items all'ordine esistente (comanda aggiuntiva)
-          await addItemsToOrder(existingOrder.id, items, cartTotal);
-          await updateSessionTotal(activeSession.id);
-          showToast('Comanda aggiunta al conto!', 'success');
-          navigate('/tables');
-          return;
-        }
-      }
-
-      // Crea nuovo ordine (prima comanda o ordine singolo)
+      // Determina se è un ordine con sessione
       const isSessionOrder = activeSession || openSession;
       const currentSessionId = activeSession?.id || sessionId;
 
+      // Se c'è una sessione, calcola il numero di comanda
+      let orderNumber: number | undefined;
+      if (currentSessionId) {
+        orderNumber = await getNextOrderNumber(currentSessionId);
+      }
+
+      // Crea SEMPRE un nuovo ordine (ogni comanda = un ordine nel Kanban cucina)
       const order = {
         date: new Date().toISOString().split('T')[0],
         total: isSessionOrder ? cartTotal : grandTotal,
@@ -305,6 +298,7 @@ export function NewOrder() {
         customer_name: customerName || undefined,
         customer_phone: customerPhone || undefined,
         session_id: currentSessionId,
+        order_number: orderNumber,
       };
 
       await createOrder(order, items);
@@ -312,7 +306,10 @@ export function NewOrder() {
       // Se c'è una sessione (esistente o appena creata), aggiorna il totale
       if (activeSession) {
         await updateSessionTotal(activeSession.id);
-        showToast('Prima comanda inviata!', 'success');
+        const comandaMsg = orderNumber && orderNumber > 1
+          ? `Comanda ${orderNumber} inviata!`
+          : 'Prima comanda inviata!';
+        showToast(comandaMsg, 'success');
         navigate('/tables');
       } else if (sessionId) {
         await updateSessionTotal(sessionId);

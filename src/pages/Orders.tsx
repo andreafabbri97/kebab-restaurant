@@ -21,7 +21,7 @@ import {
   ChevronUp,
   Receipt,
 } from 'lucide-react';
-import { getOrders, getOrderItems, updateOrderStatus, deleteOrder, updateOrder, getTables, getOrdersByDateRange, updateOrderStatusBulk, deleteOrdersBulk, closeTableSession } from '../lib/database';
+import { getOrders, getOrderItems, updateOrderStatus, deleteOrder, updateOrder, getTables, getOrdersByDateRange, updateOrderStatusBulk, deleteOrdersBulk, closeTableSession, getSessionOrders } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -89,6 +89,10 @@ export function Orders() {
   const [historyStatusFilter, setHistoryStatusFilter] = useState<string>('all');
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
   const [bulkAction, setBulkAction] = useState<string>('');
+
+  // Per mostrare le comande di una sessione nei dettagli
+  const [sessionOrders, setSessionOrders] = useState<Order[]>([]);
+  const [sessionOrdersItems, setSessionOrdersItems] = useState<Record<number, OrderItem[]>>({});
 
   const loadOrdersCallback = useCallback(async () => {
     setLoading(true);
@@ -181,6 +185,26 @@ export function Orders() {
     try {
       const items = await getOrderItems(order.id);
       setOrderItems(items);
+
+      // Se l'ordine ha una sessione, carica tutte le comande della sessione
+      if (order.session_id) {
+        const allSessionOrders = await getSessionOrders(order.session_id);
+        setSessionOrders(allSessionOrders);
+
+        // Carica gli items di ogni comanda
+        const itemsMap: Record<number, OrderItem[]> = {};
+        await Promise.all(
+          allSessionOrders.map(async (o) => {
+            const orderItems = await getOrderItems(o.id);
+            itemsMap[o.id] = orderItems;
+          })
+        );
+        setSessionOrdersItems(itemsMap);
+      } else {
+        setSessionOrders([]);
+        setSessionOrdersItems({});
+      }
+
       setShowDetails(true);
     } catch (error) {
       console.error('Error loading order items:', error);
@@ -516,7 +540,7 @@ export function Orders() {
                                 </span>
                                 <span className="font-medium text-white text-sm truncate">
                                   {order.session_id
-                                    ? `${order.table_name}`
+                                    ? `${order.table_name}${order.order_number ? ` - C${order.order_number}` : ''}`
                                     : order.table_name
                                     ? `${orderTypeLabels[order.order_type]} - ${order.table_name}`
                                     : order.customer_name
@@ -778,7 +802,12 @@ export function Orders() {
                             </button>
                           </td>
                           <td>
-                            <span className="font-mono text-white">#{order.id}</span>
+                            <div>
+                              <span className="font-mono text-white">#{order.id}</span>
+                              {order.session_id && order.order_number && (
+                                <p className="text-xs text-dark-400">Comanda {order.order_number}</p>
+                              )}
+                            </div>
                           </td>
                           <td>
                             <div>
@@ -865,7 +894,7 @@ export function Orders() {
         isOpen={showDetails}
         onClose={() => setShowDetails(false)}
         title={selectedOrder?.session_id
-          ? `${selectedOrder.table_name} - Comanda #${selectedOrder.order_number || 1}`
+          ? `${selectedOrder.table_name} - Conto${sessionOrders.length > 1 ? ` (${sessionOrders.length} comande)` : ''}`
           : `Ordine #${selectedOrder?.id}`
         }
         size="lg"
@@ -884,7 +913,8 @@ export function Orders() {
                     ? 'text-primary-400'
                     : 'text-emerald-400'
                 }`}>
-                  {selectedOrder.session_status === 'open' ? 'Conto Aperto' : 'Conto Chiuso'} - Sessione #{selectedOrder.session_id}
+                  {selectedOrder.session_status === 'open' ? 'Conto Aperto' : 'Conto Chiuso'}
+                  {sessionOrders.length > 1 && ` - ${sessionOrders.length} comande`}
                 </span>
               </div>
             )}
@@ -937,33 +967,78 @@ export function Orders() {
               )}
             </div>
 
-            {/* Items */}
-            <div>
-              <p className="text-sm text-dark-400 mb-2">Prodotti</p>
-              <div className="space-y-2">
-                {orderItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between p-3 bg-dark-900 rounded-xl"
-                  >
-                    <div>
-                      <p className="font-medium text-white">
-                        {item.quantity}x {item.menu_item_name}
-                      </p>
-                      {item.notes && (
-                        <p className="text-sm text-dark-400">{item.notes}</p>
-                      )}
+            {/* Items - Mostro tutte le comande se è una sessione con più ordini */}
+            {selectedOrder.session_id && sessionOrders.length > 1 ? (
+              <div className="space-y-4">
+                <p className="text-sm text-dark-400">Comande del conto</p>
+                {sessionOrders.map((order) => (
+                  <div key={order.id} className="bg-dark-900 rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono bg-dark-700 px-2 py-1 rounded text-dark-300">
+                          #{order.id}
+                        </span>
+                        <span className="font-medium text-white">
+                          Comanda {order.order_number || 1}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={statusConfig[order.status]?.color || 'badge-secondary'}>
+                          {statusConfig[order.status]?.label || order.status}
+                        </span>
+                        <span className="font-bold text-primary-400">
+                          €{order.total.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
-                    <p className="font-medium text-primary-400">
-                      €{(item.price * item.quantity).toFixed(2)}
-                    </p>
+                    {/* Items di questa comanda */}
+                    <div className="space-y-1 pl-2 border-l-2 border-dark-700">
+                      {(sessionOrdersItems[order.id] || []).map((item) => (
+                        <div key={item.id} className="flex items-center justify-between text-sm">
+                          <div>
+                            <span className="text-white">{item.quantity}x {item.menu_item_name}</span>
+                            {item.notes && (
+                              <span className="text-amber-400 ml-2">⚠️ {item.notes}</span>
+                            )}
+                          </div>
+                          <span className="text-dark-300">€{(item.price * item.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {order.notes && (
+                      <p className="text-xs text-dark-400 mt-2 italic">📝 {order.notes}</p>
+                    )}
                   </div>
                 ))}
               </div>
-            </div>
+            ) : (
+              <div>
+                <p className="text-sm text-dark-400 mb-2">Prodotti</p>
+                <div className="space-y-2">
+                  {orderItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-3 bg-dark-900 rounded-xl"
+                    >
+                      <div>
+                        <p className="font-medium text-white">
+                          {item.quantity}x {item.menu_item_name}
+                        </p>
+                        {item.notes && (
+                          <p className="text-sm text-dark-400">{item.notes}</p>
+                        )}
+                      </div>
+                      <p className="font-medium text-primary-400">
+                        €{(item.price * item.quantity).toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Notes */}
-            {selectedOrder.notes && (
+            {selectedOrder.notes && !selectedOrder.session_id && (
               <div>
                 <p className="text-sm text-dark-400 mb-2">Note</p>
                 <p className="p-3 bg-dark-900 rounded-xl text-white">
@@ -974,9 +1049,14 @@ export function Orders() {
 
             {/* Total */}
             <div className="flex items-center justify-between pt-4 border-t border-dark-700">
-              <span className="text-lg font-semibold text-white">Totale</span>
+              <span className="text-lg font-semibold text-white">
+                {selectedOrder.session_id && sessionOrders.length > 1 ? 'Totale Conto' : 'Totale'}
+              </span>
               <span className="text-2xl font-bold text-primary-400">
-                €{selectedOrder.total.toFixed(2)}
+                €{selectedOrder.session_id && sessionOrders.length > 1
+                  ? sessionOrders.reduce((sum, o) => sum + o.total, 0).toFixed(2)
+                  : selectedOrder.total.toFixed(2)
+                }
               </span>
             </div>
 
