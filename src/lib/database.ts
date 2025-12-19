@@ -1082,7 +1082,8 @@ export async function getSettings(): Promise<Settings> {
       email: data?.email,
     };
   }
-  return getLocalData('settings', {
+  // Carica settings da localStorage e unisce con i default per garantire che tutti i campi esistano
+  const defaults: Settings = {
     shop_name: 'Il Mio Ristorante',
     menu_slogan: '',
     currency: '€',
@@ -1090,7 +1091,9 @@ export async function getSettings(): Promise<Settings> {
     iva_included: true, // Default: IVA inclusa nei prezzi
     default_threshold: 10,
     language: 'it',
-  });
+  };
+  const saved = getLocalData<Partial<Settings>>('settings', {});
+  return { ...defaults, ...saved };
 }
 
 export async function updateSettings(settings: Partial<Settings>): Promise<void> {
@@ -1108,6 +1111,7 @@ export async function updateSettings(settings: Partial<Settings>): Promise<void>
         shop_name: 'Il Mio Ristorante',
         currency: '€',
         iva_rate: 17,
+        iva_included: true,
         default_threshold: 10,
         language: 'it',
         ...settings

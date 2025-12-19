@@ -231,16 +231,16 @@ export function Dashboard() {
         </div>
         <div className="card-body">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <Link to="/orders/new" className="btn-primary text-center py-4 sm:py-6 flex flex-col items-center gap-2">
-              <ShoppingCart className="w-6 h-6 sm:w-8 sm:h-8" />
-              <span className="text-sm sm:text-base">{t('orders.newOrder')}</span>
+            <Link to="/orders" className="btn-primary text-center py-4 sm:py-6 flex flex-col items-center gap-2">
+              <ChefHat className="w-6 h-6 sm:w-8 sm:h-8" />
+              <span className="text-sm sm:text-base">{t('sidebar.orders')}</span>
             </Link>
             <Link to="/tables" className="btn-secondary text-center py-4 sm:py-6 flex flex-col items-center gap-2">
               <Users className="w-6 h-6 sm:w-8 sm:h-8" />
               <span className="text-sm sm:text-base">{t('sidebar.tables')}</span>
             </Link>
             <Link to="/menu" className="btn-secondary text-center py-4 sm:py-6 flex flex-col items-center gap-2">
-              <ChefHat className="w-6 h-6 sm:w-8 sm:h-8" />
+              <ShoppingCart className="w-6 h-6 sm:w-8 sm:h-8" />
               <span className="text-sm sm:text-base">{t('sidebar.menu')}</span>
             </Link>
             <Link to="/reports" className="btn-secondary text-center py-4 sm:py-6 flex flex-col items-center gap-2">

@@ -679,7 +679,18 @@ export function Staff() {
       {/* Employee Modal */}
       <Modal
         isOpen={showEmployeeModal}
-        onClose={() => setShowEmployeeModal(false)}
+        onClose={() => {
+          setShowEmployeeModal(false);
+          setEditingEmployee(null);
+          setEmployeeForm({
+            name: '',
+            role: '',
+            hourly_rate: '',
+            phone: '',
+            email: '',
+            active: true,
+          });
+        }}
         title={editingEmployee ? 'Modifica Dipendente' : 'Nuovo Dipendente'}
         size="md"
       >
@@ -773,7 +784,18 @@ export function Staff() {
       {/* Shift Modal */}
       <Modal
         isOpen={showShiftModal}
-        onClose={() => setShowShiftModal(false)}
+        onClose={() => {
+          setShowShiftModal(false);
+          // Reset form to defaults
+          setShiftForm({
+            employee_id: employees[0]?.id || 0,
+            date: new Date().toISOString().split('T')[0],
+            start_time: '09:00',
+            end_time: '17:00',
+            shift_type: 'worked',
+            notes: '',
+          });
+        }}
         title="Nuovo Turno"
         size="md"
       >
