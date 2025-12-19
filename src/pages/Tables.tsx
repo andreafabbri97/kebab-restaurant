@@ -55,7 +55,7 @@ import { useLanguage } from '../context/LanguageContext';
 import type { Table, Reservation, TableSession, Order, SessionPayment, SessionPaymentItem, OrderItem, Receipt as ReceiptType } from '../types';
 
 export function Tables() {
-  const { t: _t } = useLanguage(); // Will be used for translations
+  useLanguage(); // Ready for translations
   const navigate = useNavigate();
   const [tables, setTables] = useState<Table[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);

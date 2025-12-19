@@ -22,7 +22,7 @@ import { useLanguage } from '../context/LanguageContext';
 import type { DishCost, MenuItem } from '../types';
 
 export function DishCosts() {
-  const { t: _t } = useLanguage(); // Will be used for translations
+  useLanguage(); // Ready for translations
   const [loading, setLoading] = useState(true);
   const [dishCosts, setDishCosts] = useState<DishCost[]>([]);
   const [summary, setSummary] = useState<{

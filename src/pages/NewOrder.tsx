@@ -24,7 +24,7 @@ type OrderType = 'dine_in' | 'takeaway' | 'delivery';
 type PaymentMethod = 'cash' | 'card' | 'online';
 
 export function NewOrder() {
-  const { t: _t } = useLanguage(); // Will be used for translations
+  useLanguage(); // Ready for translations
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);

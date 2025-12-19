@@ -22,7 +22,7 @@ import { useLanguage } from '../context/LanguageContext';
 import type { MenuItem, Ingredient, MenuItemIngredient } from '../types';
 
 export function Recipes() {
-  const { t: _t } = useLanguage(); // Will be used for translations
+  useLanguage(); // Ready for translations
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [recipes, setRecipes] = useState<MenuItemIngredient[]>([]);

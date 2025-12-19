@@ -29,7 +29,7 @@ import { useLanguage } from '../context/LanguageContext';
 import type { Employee, WorkShift } from '../types';
 
 export function Staff() {
-  const { t: _t } = useLanguage(); // Will be used for translations
+  useLanguage(); // Ready for translations
   const { user, hasPermission } = useAuth();
   const canFullAccess = hasPermission('staff.full');
 
@@ -257,11 +257,17 @@ export function Staff() {
     }
 
     try {
-      const startHour = parseInt(shiftForm.start_time.split(':')[0]);
-      const endHour = parseInt(shiftForm.end_time.split(':')[0]);
-      const startMin = parseInt(shiftForm.start_time.split(':')[1]) / 60;
-      const endMin = parseInt(shiftForm.end_time.split(':')[1]) / 60;
-      const hoursWorked = (endHour + endMin) - (startHour + startMin);
+      // Calcolo ore lavorato con supporto turni notturni
+      const [startHour, startMin] = shiftForm.start_time.split(':').map(Number);
+      const [endHour, endMin] = shiftForm.end_time.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      let hoursWorked = (endMinutes - startMinutes) / 60;
+
+      // Gestione turni notturni (fine < inizio)
+      if (hoursWorked < 0) {
+        hoursWorked += 24;
+      }
 
       await createWorkShift({
         employee_id: shiftForm.employee_id,

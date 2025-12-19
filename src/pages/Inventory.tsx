@@ -48,7 +48,7 @@ interface TempSupplyItem {
 }
 
 export function Inventory() {
-  const { t: _t } = useLanguage(); // Will be used for translations
+  useLanguage(); // Ready for translations
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
   const [eoqData, setEoqData] = useState<EOQResult[]>([]);

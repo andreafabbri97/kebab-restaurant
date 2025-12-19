@@ -49,7 +49,7 @@ async function updateOrderSmac(orderId: number, smacPassed: boolean): Promise<vo
 }
 
 export function Smac() {
-  const { t: _t } = useLanguage(); // Will be used for translations
+  useLanguage(); // Ready for translations
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);

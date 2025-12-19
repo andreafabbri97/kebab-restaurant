@@ -33,7 +33,7 @@ interface GuideSection {
 }
 
 export function GuideFAQ() {
-  const { t: _t } = useLanguage(); // Will be used for translations
+  useLanguage(); // Ready for translations
   const { isSuperAdmin, isAdmin } = useAuth();
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');

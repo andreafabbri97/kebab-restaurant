@@ -22,7 +22,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { getEmployees } from '../lib/database';
 
 export function Users() {
-  const { t: _t } = useLanguage(); // Will be used for translations
+  useLanguage(); // Ready for translations
   const [users, setUsers] = useState<User[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
