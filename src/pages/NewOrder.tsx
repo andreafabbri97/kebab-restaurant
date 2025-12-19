@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ShoppingCart, ChevronUp, X, Users, Clock, AlertCircle, Plus, Minus } from 'lucide-react';
+import { ShoppingCart, ChevronUp, X, Users, Clock, AlertCircle, Minus } from 'lucide-react';
 import {
   getCategories,
   getMenuItems,
@@ -474,28 +474,17 @@ export function NewOrder() {
                         €{item.price.toFixed(2)}
                       </p>
 
-                      {/* Controlli quantità - visibili solo se nel carrello */}
+                      {/* Pulsante rimuovi - visibile solo se nel carrello */}
                       {inCart && (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateQuantity(item.id, -1);
-                            }}
-                            className="w-8 h-8 rounded-lg bg-dark-700 hover:bg-red-500/20 flex items-center justify-center transition-colors"
-                          >
-                            <Minus className="w-4 h-4 text-red-400" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              addToCart(item);
-                            }}
-                            className="w-8 h-8 rounded-lg bg-dark-700 hover:bg-emerald-500/20 flex items-center justify-center transition-colors"
-                          >
-                            <Plus className="w-4 h-4 text-emerald-400" />
-                          </button>
-                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateQuantity(item.id, -1);
+                          }}
+                          className="w-8 h-8 rounded-lg bg-dark-700 hover:bg-red-500/20 flex items-center justify-center transition-colors"
+                        >
+                          <Minus className="w-4 h-4 text-red-400" />
+                        </button>
                       )}
                     </div>
                   </div>
@@ -563,28 +552,17 @@ export function NewOrder() {
                       €{item.price.toFixed(2)}
                     </p>
 
-                    {/* Controlli quantità - visibili solo se nel carrello */}
+                    {/* Pulsante rimuovi - visibile solo se nel carrello */}
                     {inCart && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            updateQuantity(item.id, -1);
-                          }}
-                          className="w-7 h-7 rounded-lg bg-dark-700 active:bg-red-500/30 flex items-center justify-center transition-colors"
-                        >
-                          <Minus className="w-3.5 h-3.5 text-red-400" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addToCart(item);
-                          }}
-                          className="w-7 h-7 rounded-lg bg-dark-700 active:bg-emerald-500/30 flex items-center justify-center transition-colors"
-                        >
-                          <Plus className="w-3.5 h-3.5 text-emerald-400" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateQuantity(item.id, -1);
+                        }}
+                        className="w-7 h-7 rounded-lg bg-dark-700 active:bg-red-500/30 flex items-center justify-center transition-colors"
+                      >
+                        <Minus className="w-3.5 h-3.5 text-red-400" />
+                      </button>
                     )}
                   </div>
                 </div>
