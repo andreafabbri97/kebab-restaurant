@@ -79,7 +79,7 @@ export function Tables() {
   // Split bill state
   const [splitMode, setSplitMode] = useState<'manual' | 'romana' | 'items'>('manual');
   const [allSessionItems, setAllSessionItems] = useState<(OrderItem & { order_number?: number })[]>([]);
-  const [selectedItems, setSelectedItems] = useState<number[]>([]);
+  const [selectedItems, setSelectedItems] = useState<Record<number, number>>({}); // itemId -> quantità selezionata
   const [romanaForm, setRomanaForm] = useState({ totalPeople: '', payingPeople: '' });
 
   // Form states
@@ -519,7 +519,7 @@ export function Tables() {
     if (!selectedSession) return;
     setSplitPaymentForm({ amount: '', method: 'cash', notes: '' });
     setSplitMode('manual');
-    setSelectedItems([]);
+    setSelectedItems({});
     setRomanaForm({ totalPeople: selectedSession.covers.toString(), payingPeople: '' });
     setChangeCalculator({ customerGives: '', showChange: false });
 
@@ -556,20 +556,63 @@ export function Tables() {
     return Math.min(perPersonAmount * payingPeople, remainingAmount);
   }
 
-  // Calcola totale items selezionati
+  // Calcola totale items selezionati (con quantità parziali)
   function calculateSelectedItemsTotal(): number {
-    return allSessionItems
-      .filter(item => selectedItems.includes(item.id))
-      .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    return Object.entries(selectedItems).reduce((sum, [itemId, qty]) => {
+      const item = allSessionItems.find(i => i.id === Number(itemId));
+      if (item && qty > 0) {
+        return sum + (item.price * qty);
+      }
+      return sum;
+    }, 0);
   }
 
-  // Toggle selezione item
-  function toggleItemSelection(itemId: number) {
-    setSelectedItems(prev =>
-      prev.includes(itemId)
-        ? prev.filter(id => id !== itemId)
-        : [...prev, itemId]
-    );
+  // Incrementa quantità selezionata per un item
+  function incrementItemSelection(itemId: number) {
+    const item = allSessionItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    setSelectedItems(prev => {
+      const current = prev[itemId] || 0;
+      if (current < item.quantity) {
+        return { ...prev, [itemId]: current + 1 };
+      }
+      return prev;
+    });
+  }
+
+  // Decrementa quantità selezionata per un item
+  function decrementItemSelection(itemId: number) {
+    setSelectedItems(prev => {
+      const current = prev[itemId] || 0;
+      if (current > 0) {
+        const newValue = current - 1;
+        if (newValue === 0) {
+          const { [itemId]: _, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [itemId]: newValue };
+      }
+      return prev;
+    });
+  }
+
+  // Seleziona tutti o deseleziona tutti per un item
+  function toggleAllItemQuantity(itemId: number) {
+    const item = allSessionItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    setSelectedItems(prev => {
+      const current = prev[itemId] || 0;
+      if (current === item.quantity) {
+        // Deseleziona tutto
+        const { [itemId]: _, ...rest } = prev;
+        return rest;
+      } else {
+        // Seleziona tutto
+        return { ...prev, [itemId]: item.quantity };
+      }
+    });
   }
 
   // Applica calcolatore alla romana
@@ -589,17 +632,21 @@ export function Tables() {
   function applyItemsSelection() {
     const amount = calculateSelectedItemsTotal();
     if (amount > 0 && amount <= remainingAmount) {
-      const itemNames = allSessionItems
-        .filter(item => selectedItems.includes(item.id))
-        .map(item => item.menu_item_name)
+      // Genera descrizione con quantità
+      const itemDescriptions = Object.entries(selectedItems)
+        .map(([itemId, qty]) => {
+          const item = allSessionItems.find(i => i.id === Number(itemId));
+          return item ? `${qty}x ${item.menu_item_name}` : '';
+        })
+        .filter(Boolean)
         .join(', ');
       setSplitPaymentForm(prev => ({
         ...prev,
         amount: Math.min(amount, remainingAmount).toFixed(2),
-        notes: itemNames.length > 30 ? itemNames.substring(0, 30) + '...' : itemNames
+        notes: itemDescriptions.length > 40 ? itemDescriptions.substring(0, 40) + '...' : itemDescriptions
       }));
       setSplitMode('manual');
-      setSelectedItems([]);
+      setSelectedItems({});
     }
   }
 
@@ -1654,7 +1701,7 @@ export function Tables() {
                   </div>
                 )}
 
-                {/* Per Consumazione - Item Selection */}
+                {/* Per Consumazione - Item Selection con quantità parziali */}
                 {splitMode === 'items' && (
                   <div className="p-4 border border-blue-500/30 bg-blue-500/5 rounded-xl space-y-4">
                     <h4 className="font-medium text-white flex items-center gap-2">
@@ -1662,47 +1709,95 @@ export function Tables() {
                       Paga per Consumazione
                     </h4>
                     <p className="text-sm text-dark-400">
-                      Seleziona i prodotti che questa persona ha ordinato.
+                      Seleziona quanti pezzi di ogni prodotto pagare. Usa + e - per scegliere la quantità.
                     </p>
-                    <div className="max-h-48 overflow-y-auto space-y-2">
+                    <div className="max-h-64 sm:max-h-80 overflow-y-auto space-y-2">
                       {allSessionItems.length === 0 ? (
                         <p className="text-center text-dark-500 py-4">Nessun prodotto ordinato</p>
                       ) : (
-                        allSessionItems.map((item) => (
-                          <button
-                            key={item.id}
-                            onClick={() => toggleItemSelection(item.id)}
-                            className={`w-full p-3 rounded-lg border-2 flex items-center justify-between transition-all ${
-                              selectedItems.includes(item.id)
-                                ? 'border-blue-500 bg-blue-500/10'
-                                : 'border-dark-700 hover:border-dark-600'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              {selectedItems.includes(item.id) ? (
-                                <CheckSquare className="w-5 h-5 text-blue-400" />
-                              ) : (
-                                <Square className="w-5 h-5 text-dark-500" />
-                              )}
-                              <div className="text-left">
-                                <p className="text-white font-medium">{item.menu_item_name}</p>
-                                <p className="text-xs text-dark-400">
-                                  Comanda #{item.order_number} • Qtà: {item.quantity}
-                                </p>
+                        allSessionItems.map((item) => {
+                          const selectedQty = selectedItems[item.id] || 0;
+                          const isSelected = selectedQty > 0;
+                          return (
+                            <div
+                              key={item.id}
+                              className={`p-3 rounded-lg border-2 transition-all ${
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-500/10'
+                                  : 'border-dark-700'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                {/* Info prodotto */}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-white font-medium truncate">{item.menu_item_name}</p>
+                                  <p className="text-xs text-dark-400">
+                                    €{item.price.toFixed(2)} cad. • Ord. {item.quantity} pz
+                                  </p>
+                                </div>
+
+                                {/* Controlli quantità */}
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {/* Bottone seleziona tutto (tap rapido) */}
+                                  <button
+                                    onClick={() => toggleAllItemQuantity(item.id)}
+                                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                                      selectedQty === item.quantity
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                                    }`}
+                                  >
+                                    Tutti
+                                  </button>
+
+                                  {/* Controlli +/- */}
+                                  <div className="flex items-center gap-1 bg-dark-800 rounded-lg p-1">
+                                    <button
+                                      onClick={() => decrementItemSelection(item.id)}
+                                      disabled={selectedQty === 0}
+                                      className="w-8 h-8 rounded-lg bg-dark-700 hover:bg-dark-600 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                                    >
+                                      <span className="text-lg font-bold text-white">-</span>
+                                    </button>
+                                    <span className={`w-8 text-center font-bold ${
+                                      isSelected ? 'text-blue-400' : 'text-dark-500'
+                                    }`}>
+                                      {selectedQty}
+                                    </span>
+                                    <button
+                                      onClick={() => incrementItemSelection(item.id)}
+                                      disabled={selectedQty >= item.quantity}
+                                      className="w-8 h-8 rounded-lg bg-dark-700 hover:bg-dark-600 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                                    >
+                                      <span className="text-lg font-bold text-white">+</span>
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
+
+                              {/* Subtotale se selezionato */}
+                              {isSelected && (
+                                <div className="mt-2 pt-2 border-t border-dark-600 flex justify-between items-center">
+                                  <span className="text-xs text-dark-400">
+                                    {selectedQty}/{item.quantity} selezionati
+                                  </span>
+                                  <span className="text-sm font-semibold text-blue-400">
+                                    €{(item.price * selectedQty).toFixed(2)}
+                                  </span>
+                                </div>
+                              )}
                             </div>
-                            <span className="font-semibold text-white">
-                              €{(item.price * item.quantity).toFixed(2)}
-                            </span>
-                          </button>
-                        ))
+                          );
+                        })
                       )}
                     </div>
-                    {selectedItems.length > 0 && (
+                    {Object.keys(selectedItems).length > 0 && (
                       <div className="p-3 bg-dark-900 rounded-lg">
                         <div className="flex justify-between items-center">
                           <span className="text-dark-400">Prodotti selezionati:</span>
-                          <span className="text-white">{selectedItems.length}</span>
+                          <span className="text-white">
+                            {Object.values(selectedItems).reduce((sum, qty) => sum + qty, 0)} pz
+                          </span>
                         </div>
                         <div className="flex justify-between items-center mt-2">
                           <span className="text-dark-400">Totale:</span>
@@ -1719,7 +1814,7 @@ export function Tables() {
                     )}
                     <button
                       onClick={applyItemsSelection}
-                      disabled={selectedItems.length === 0}
+                      disabled={Object.keys(selectedItems).length === 0}
                       className="btn-primary w-full bg-blue-600 hover:bg-blue-700"
                     >
                       Applica Selezione

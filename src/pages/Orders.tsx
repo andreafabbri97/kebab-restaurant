@@ -20,6 +20,10 @@ import {
   ChevronDown,
   ChevronUp,
   Receipt,
+  Banknote,
+  CreditCard,
+  Globe,
+  Calculator,
 } from 'lucide-react';
 import { getOrders, getOrderItems, updateOrderStatus, deleteOrder, updateOrder, getTables, getOrdersByDateRange, updateOrderStatusBulk, deleteOrdersBulk, closeTableSession, getSessionOrders, updateSessionTotal } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
@@ -96,6 +100,17 @@ export function Orders() {
 
   // Per espandere le sessioni nello storico
   const [expandedSessions, setExpandedSessions] = useState<Set<number>>(new Set());
+
+  // Payment modal state (per chiudi conto da storico)
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [sessionToClose, setSessionToClose] = useState<{ id: number; total: number } | null>(null);
+  const [paymentForm, setPaymentForm] = useState({
+    method: 'cash' as 'cash' | 'card' | 'online',
+    smac: false,
+  });
+  const [changeCalculator, setChangeCalculator] = useState({
+    customerGives: '',
+  });
 
   const loadOrdersCallback = useCallback(async () => {
     setLoading(true);
@@ -273,22 +288,45 @@ export function Orders() {
     }
   }
 
-  // Chiude il conto aperto associato all'ordine
-  async function handleCloseSession() {
+  // Apre il modal di pagamento per chiudere il conto
+  async function handleOpenPaymentModal() {
     if (!selectedOrder?.session_id) return;
 
     try {
+      // Carica tutte le comande della sessione per avere il totale corretto
+      const allSessionOrders = await getSessionOrders(selectedOrder.session_id);
+      const sessionTotal = allSessionOrders.reduce((sum, o) => sum + o.total, 0);
+
+      setSessionToClose({ id: selectedOrder.session_id, total: sessionTotal });
+      setPaymentForm({ method: 'cash', smac: false });
+      setChangeCalculator({ customerGives: '' });
+      setShowEditModal(false);
+      setShowPaymentModal(true);
+    } catch (error) {
+      console.error('Error loading session orders:', error);
+      showToast('Errore nel caricamento del conto', 'error');
+    }
+  }
+
+  // Conferma la chiusura del conto con il metodo di pagamento selezionato
+  async function confirmCloseSession() {
+    if (!sessionToClose) return;
+
+    try {
       await closeTableSession(
-        selectedOrder.session_id,
-        editForm.payment_method,
-        editForm.smac_passed
+        sessionToClose.id,
+        paymentForm.method,
+        paymentForm.smac
       );
 
-      // Aggiorna lo stato dell'ordine a consegnato
-      await updateOrderStatus(selectedOrder.id, 'delivered');
+      // Aggiorna lo stato di tutti gli ordini della sessione a consegnato
+      if (selectedOrder) {
+        await updateOrderStatus(selectedOrder.id, 'delivered');
+      }
 
       showToast('Conto chiuso con successo', 'success');
-      setShowEditModal(false);
+      setShowPaymentModal(false);
+      setSessionToClose(null);
       loadOrdersCallback();
       if (activeTab === 'history') loadHistoryOrders();
     } catch (error) {
@@ -1521,7 +1559,7 @@ export function Orders() {
                   </p>
                 </div>
                 <button
-                  onClick={handleCloseSession}
+                  onClick={handleOpenPaymentModal}
                   className="btn-primary bg-emerald-600 hover:bg-emerald-700 flex items-center gap-2"
                 >
                   <Receipt className="w-4 h-4" />
@@ -1553,6 +1591,152 @@ export function Orders() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Payment Modal (Chiudi Conto da Storico) */}
+      <Modal
+        isOpen={showPaymentModal}
+        onClose={() => {
+          setShowPaymentModal(false);
+          setSessionToClose(null);
+        }}
+        title="Chiudi Conto"
+        size="sm"
+      >
+        {sessionToClose && (
+          <div className="space-y-6">
+            <div className="text-center p-4 bg-dark-900 rounded-xl">
+              <p className="text-sm text-dark-400">Totale da pagare</p>
+              <p className="text-3xl font-bold text-primary-400">€{sessionToClose.total.toFixed(2)}</p>
+            </div>
+
+            <div>
+              <label className="label">Metodo di Pagamento</label>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={() => setPaymentForm({ ...paymentForm, method: 'cash' })}
+                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-colors ${
+                    paymentForm.method === 'cash'
+                      ? 'border-primary-500 bg-primary-500/10'
+                      : 'border-dark-700 hover:border-dark-600'
+                  }`}
+                >
+                  <Banknote className="w-6 h-6" />
+                  <span className="text-sm">Contanti</span>
+                </button>
+                <button
+                  onClick={() => setPaymentForm({ ...paymentForm, method: 'card' })}
+                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-colors ${
+                    paymentForm.method === 'card'
+                      ? 'border-primary-500 bg-primary-500/10'
+                      : 'border-dark-700 hover:border-dark-600'
+                  }`}
+                >
+                  <CreditCard className="w-6 h-6" />
+                  <span className="text-sm">Carta</span>
+                </button>
+                <button
+                  onClick={() => setPaymentForm({ ...paymentForm, method: 'online' })}
+                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-colors ${
+                    paymentForm.method === 'online'
+                      ? 'border-primary-500 bg-primary-500/10'
+                      : 'border-dark-700 hover:border-dark-600'
+                  }`}
+                >
+                  <Globe className="w-6 h-6" />
+                  <span className="text-sm">Online</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="smac_payment"
+                checked={paymentForm.smac}
+                onChange={(e) => setPaymentForm({ ...paymentForm, smac: e.target.checked })}
+                className="w-5 h-5 rounded border-dark-600 bg-dark-800 text-primary-500 focus:ring-primary-500"
+              />
+              <label htmlFor="smac_payment" className="text-white">SMAC passato</label>
+            </div>
+
+            {/* Calcolatore Resto - solo per contanti */}
+            {paymentForm.method === 'cash' && sessionToClose.total > 0 && (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-3">
+                <div className="flex items-center gap-2">
+                  <Calculator className="w-4 h-4 text-emerald-400" />
+                  <span className="font-medium text-emerald-400">Calcolatore Resto</span>
+                </div>
+                <div>
+                  <label className="label text-emerald-300">Cliente dà</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={changeCalculator.customerGives}
+                      onChange={(e) => setChangeCalculator({ customerGives: e.target.value })}
+                      className="input flex-1"
+                      placeholder="Es. 50.00"
+                    />
+                    <span className="flex items-center text-dark-400">€</span>
+                  </div>
+                </div>
+                {/* Quick cash buttons */}
+                <div className="flex gap-2 flex-wrap">
+                  {[5, 10, 20, 50, 100].map(amount => (
+                    <button
+                      key={amount}
+                      type="button"
+                      onClick={() => setChangeCalculator({ customerGives: amount.toString() })}
+                      className="px-3 py-1 text-sm bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-lg transition-colors"
+                    >
+                      €{amount}
+                    </button>
+                  ))}
+                </div>
+                {changeCalculator.customerGives && parseFloat(changeCalculator.customerGives) > 0 && (
+                  <div className="p-3 bg-dark-900 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="text-dark-400">Totale conto:</span>
+                      <span className="text-white">€{sessionToClose.total.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-dark-400">Cliente dà:</span>
+                      <span className="text-white">€{parseFloat(changeCalculator.customerGives).toFixed(2)}</span>
+                    </div>
+                    <div className="border-t border-dark-700 my-2"></div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-emerald-400 font-semibold">RESTO DA DARE:</span>
+                      <span className="text-2xl font-bold text-emerald-400">
+                        €{Math.max(0, parseFloat(changeCalculator.customerGives) - sessionToClose.total).toFixed(2)}
+                      </span>
+                    </div>
+                    {parseFloat(changeCalculator.customerGives) < sessionToClose.total && (
+                      <p className="text-amber-400 text-sm mt-2">
+                        ⚠️ Il cliente non ha dato abbastanza! Mancano €{(sessionToClose.total - parseFloat(changeCalculator.customerGives)).toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 pt-4">
+              <button onClick={confirmCloseSession} className="btn-primary flex-1">
+                Conferma Pagamento
+              </button>
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  setSessionToClose(null);
+                }}
+                className="btn-secondary"
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
