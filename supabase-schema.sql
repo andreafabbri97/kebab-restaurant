@@ -168,14 +168,22 @@ CREATE TABLE IF NOT EXISTS supply_items (
 CREATE TABLE IF NOT EXISTS settings (
   id SERIAL PRIMARY KEY,
   shop_name VARCHAR(100) DEFAULT 'Kebab San Marino',
-  currency VARCHAR(10) DEFAULT 'EUR',
+  menu_slogan TEXT,
+  currency VARCHAR(10) DEFAULT '€',
   iva_rate DECIMAL(5, 2) DEFAULT 17,
+  iva_included BOOLEAN DEFAULT true,
   default_threshold INTEGER DEFAULT 10,
   language VARCHAR(10) DEFAULT 'it',
   address TEXT,
   phone VARCHAR(30),
   email VARCHAR(100)
 );
+
+-- Aggiungi colonne mancanti se esistono gia le tabelle
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS menu_slogan TEXT;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS iva_included BOOLEAN DEFAULT true;
+-- Aggiorna currency da 'EUR' a '€' per consistenza
+UPDATE settings SET currency = '€' WHERE currency = 'EUR';
 
 -- ============== USERS (per autenticazione app) ==============
 CREATE TABLE IF NOT EXISTS users (
@@ -304,8 +312,8 @@ SELECT id, 50, 10 FROM ingredients
 ON CONFLICT (ingredient_id) DO NOTHING;
 
 -- Settings iniziali
-INSERT INTO settings (shop_name, currency, iva_rate, default_threshold, language)
-VALUES ('Kebab San Marino', 'EUR', 17, 10, 'it')
+INSERT INTO settings (shop_name, currency, iva_rate, iva_included, default_threshold, language)
+VALUES ('Kebab San Marino', '€', 17, true, 10, 'it')
 ON CONFLICT DO NOTHING;
 
 -- Utente admin iniziale (password: admin123)

@@ -1158,10 +1158,37 @@ export async function updateSettings(settings: Partial<Settings>): Promise<void>
     // Prima verifica se esiste una riga nella tabella settings
     const { data: existing } = await supabase.from('settings').select('id').limit(1).single();
 
+    // Prepara i dati per il salvataggio - rimuove campi undefined/null
+    const cleanSettings = Object.fromEntries(
+      Object.entries(settings).filter(([, v]) => v !== undefined)
+    );
+
     if (existing) {
       // Aggiorna la riga esistente
-      const { error } = await supabase.from('settings').update(settings).eq('id', existing.id);
-      if (error) throw error;
+      const { error } = await supabase.from('settings').update(cleanSettings).eq('id', existing.id);
+      if (error) {
+        console.error('Supabase update error:', error);
+        // Se l'errore è dovuto a colonne mancanti, prova a salvare solo i campi base
+        if (error.message?.includes('column') || error.code === '42703') {
+          const basicSettings = {
+            shop_name: settings.shop_name,
+            currency: settings.currency,
+            iva_rate: settings.iva_rate,
+            default_threshold: settings.default_threshold,
+            language: settings.language,
+            address: settings.address,
+            phone: settings.phone,
+            email: settings.email,
+          };
+          const filteredBasic = Object.fromEntries(
+            Object.entries(basicSettings).filter(([, v]) => v !== undefined)
+          );
+          const { error: retryError } = await supabase.from('settings').update(filteredBasic).eq('id', existing.id);
+          if (retryError) throw retryError;
+        } else {
+          throw error;
+        }
+      }
     } else {
       // Inserisci una nuova riga con i valori di default + le modifiche
       const newSettings = {
@@ -1171,7 +1198,7 @@ export async function updateSettings(settings: Partial<Settings>): Promise<void>
         iva_included: true,
         default_threshold: 10,
         language: 'it',
-        ...settings
+        ...cleanSettings
       };
       const { error } = await supabase.from('settings').insert(newSettings);
       if (error) throw error;
