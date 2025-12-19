@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ShoppingCart, ChevronUp, X, Users, Clock, AlertCircle } from 'lucide-react';
+import { ShoppingCart, ChevronUp, X, Users, Clock, AlertCircle, Plus, Minus } from 'lucide-react';
 import {
   getCategories,
   getMenuItems,
@@ -439,25 +439,68 @@ export function NewOrder() {
           {/* Products Grid */}
           <div className="flex-1 overflow-y-auto">
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => addToCart(item)}
-                  className="menu-item-card text-left"
-                >
-                  <h3 className="font-semibold text-white mb-1 line-clamp-2">
-                    {item.name}
-                  </h3>
-                  {item.description && (
-                    <p className="text-sm text-dark-400 mb-2 line-clamp-2">
-                      {item.description}
-                    </p>
-                  )}
-                  <p className="text-xl font-bold text-primary-400">
-                    €{item.price.toFixed(2)}
-                  </p>
-                </button>
-              ))}
+              {filteredItems.map((item) => {
+                const inCart = cart.find((c) => c.id === item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className="menu-item-card text-left relative"
+                  >
+                    {/* Quantità badge */}
+                    {inCart && (
+                      <div className="absolute -top-2 -right-2 w-7 h-7 bg-primary-500 rounded-full flex items-center justify-center text-sm font-bold text-dark-900 z-10">
+                        {inCart.quantity}
+                      </div>
+                    )}
+
+                    {/* Area cliccabile per aggiungere */}
+                    <button
+                      onClick={() => addToCart(item)}
+                      className="w-full text-left"
+                    >
+                      <h3 className="font-semibold text-white mb-1 line-clamp-2">
+                        {item.name}
+                      </h3>
+                      {item.description && (
+                        <p className="text-sm text-dark-400 mb-2 line-clamp-2">
+                          {item.description}
+                        </p>
+                      )}
+                    </button>
+
+                    {/* Footer con prezzo e controlli */}
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-xl font-bold text-primary-400">
+                        €{item.price.toFixed(2)}
+                      </p>
+
+                      {/* Controlli quantità - visibili solo se nel carrello */}
+                      {inCart && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateQuantity(item.id, -1);
+                            }}
+                            className="w-8 h-8 rounded-lg bg-dark-700 hover:bg-red-500/20 flex items-center justify-center transition-colors"
+                          >
+                            <Minus className="w-4 h-4 text-red-400" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addToCart(item);
+                            }}
+                            className="w-8 h-8 rounded-lg bg-dark-700 hover:bg-emerald-500/20 flex items-center justify-center transition-colors"
+                          >
+                            <Plus className="w-4 h-4 text-emerald-400" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -493,23 +536,58 @@ export function NewOrder() {
             {filteredItems.map((item) => {
               const inCart = cart.find((c) => c.id === item.id);
               return (
-                <button
+                <div
                   key={item.id}
-                  onClick={() => addToCart(item)}
-                  className="relative bg-dark-800 rounded-xl p-3 text-left active:scale-[0.98] transition-transform border border-dark-700"
+                  className="relative bg-dark-800 rounded-xl p-3 text-left border border-dark-700"
                 >
+                  {/* Quantità badge */}
                   {inCart && (
-                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center text-xs font-bold text-dark-900">
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center text-xs font-bold text-dark-900 z-10">
                       {inCart.quantity}
                     </div>
                   )}
-                  <h3 className="font-semibold text-white text-sm line-clamp-2 mb-1">
-                    {item.name}
-                  </h3>
-                  <p className="text-lg font-bold text-primary-400">
-                    €{item.price.toFixed(2)}
-                  </p>
-                </button>
+
+                  {/* Area cliccabile per aggiungere */}
+                  <button
+                    onClick={() => addToCart(item)}
+                    className="w-full text-left active:scale-[0.98] transition-transform"
+                  >
+                    <h3 className="font-semibold text-white text-sm line-clamp-2 mb-1">
+                      {item.name}
+                    </h3>
+                  </button>
+
+                  {/* Footer con prezzo e controlli */}
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-lg font-bold text-primary-400">
+                      €{item.price.toFixed(2)}
+                    </p>
+
+                    {/* Controlli quantità - visibili solo se nel carrello */}
+                    {inCart && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateQuantity(item.id, -1);
+                          }}
+                          className="w-7 h-7 rounded-lg bg-dark-700 active:bg-red-500/30 flex items-center justify-center transition-colors"
+                        >
+                          <Minus className="w-3.5 h-3.5 text-red-400" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToCart(item);
+                          }}
+                          className="w-7 h-7 rounded-lg bg-dark-700 active:bg-emerald-500/30 flex items-center justify-center transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               );
             })}
           </div>
