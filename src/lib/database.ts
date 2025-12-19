@@ -231,10 +231,11 @@ export async function updateCategory(id: number, category: Partial<Category>): P
   }
   const categories = getLocalData<Category[]>('categories', []);
   const index = categories.findIndex(c => c.id === id);
-  if (index !== -1) {
-    categories[index] = { ...categories[index], ...category };
-    setLocalData('categories', categories);
+  if (index === -1) {
+    throw new Error('Categoria non trovata');
   }
+  categories[index] = { ...categories[index], ...category };
+  setLocalData('categories', categories);
   return categories[index];
 }
 
@@ -295,10 +296,11 @@ export async function updateMenuItem(id: number, item: Partial<MenuItem>): Promi
   }
   const items = getLocalData<MenuItem[]>('menu_items', []);
   const index = items.findIndex(i => i.id === id);
-  if (index !== -1) {
-    items[index] = { ...items[index], ...item };
-    setLocalData('menu_items', items);
+  if (index === -1) {
+    throw new Error('Prodotto non trovato');
   }
+  items[index] = { ...items[index], ...item };
+  setLocalData('menu_items', items);
   return items[index];
 }
 

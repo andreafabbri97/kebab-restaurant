@@ -66,6 +66,13 @@ export function NewOrder() {
     tableName: string;
   } | null>(null);
 
+  // Form per apertura conto (come in Tavoli)
+  const [sessionForm, setSessionForm] = useState({
+    covers: '2',
+    customer_name: '',
+    customer_phone: '',
+  });
+
   // Leggi parametri URL per sessione
   const sessionIdParam = searchParams.get('session');
   const tableIdParam = searchParams.get('table');
@@ -265,6 +272,13 @@ export function NewOrder() {
 
       const tableName = tables.find(t => t.id === selectedTable)?.name || `Tavolo ${selectedTable}`;
 
+      // Precompila il form sessione con i dati già inseriti
+      setSessionForm({
+        covers: '2',
+        customer_name: customerName || '',
+        customer_phone: customerPhone || '',
+      });
+
       setPendingOrderData({ order, items, tableId: selectedTable, tableName });
       setShowOpenSessionModal(true);
       return;
@@ -341,15 +355,31 @@ export function NewOrder() {
   async function confirmOpenSession() {
     if (!pendingOrderData) return;
 
+    // Validazione coperti
+    const covers = parseInt(sessionForm.covers) || 1;
+    if (covers < 1) {
+      showToast('Inserisci almeno 1 coperto', 'warning');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Crea la sessione
+      // Crea la sessione con i dati del form
       const session = await createTableSession(
         pendingOrderData.tableId,
-        1, // coperti default
-        pendingOrderData.order.customer_name
+        covers,
+        sessionForm.customer_name || undefined,
+        sessionForm.customer_phone || undefined
       );
+
+      // Aggiorna anche il nome cliente nell'ordine se inserito nel form
+      if (sessionForm.customer_name) {
+        setCustomerName(sessionForm.customer_name);
+      }
+      if (sessionForm.customer_phone) {
+        setCustomerPhone(sessionForm.customer_phone);
+      }
 
       // Chiudi il modal
       setShowOpenSessionModal(false);
@@ -768,6 +798,47 @@ export function NewOrder() {
               </div>
             </div>
 
+            {/* Form dati conto (come in Tavoli) */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-dark-300 mb-1">
+                  Numero Coperti *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={sessionForm.covers}
+                  onChange={(e) => setSessionForm({ ...sessionForm, covers: e.target.value })}
+                  className="input w-full"
+                  placeholder="2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-dark-300 mb-1">
+                  Nome Cliente (opzionale)
+                </label>
+                <input
+                  type="text"
+                  value={sessionForm.customer_name}
+                  onChange={(e) => setSessionForm({ ...sessionForm, customer_name: e.target.value })}
+                  className="input w-full"
+                  placeholder="Es. Mario Rossi"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-dark-300 mb-1">
+                  Telefono (opzionale)
+                </label>
+                <input
+                  type="tel"
+                  value={sessionForm.customer_phone}
+                  onChange={(e) => setSessionForm({ ...sessionForm, customer_phone: e.target.value })}
+                  className="input w-full"
+                  placeholder="Es. 333 1234567"
+                />
+              </div>
+            </div>
+
             {/* Order Summary */}
             <div className="p-4 bg-dark-900 rounded-xl">
               <h3 className="font-semibold text-white mb-2">Riepilogo Ordine</h3>
@@ -775,11 +846,6 @@ export function NewOrder() {
                 <span className="text-dark-400">{cartItemsCount} articoli</span>
                 <span className="text-xl font-bold text-primary-400">€{grandTotal.toFixed(2)}</span>
               </div>
-              {customerName && (
-                <p className="text-sm text-dark-400 mt-2">
-                  Cliente: <span className="text-white">{customerName}</span>
-                </p>
-              )}
             </div>
 
             {/* Actions */}
@@ -792,7 +858,7 @@ export function NewOrder() {
                 {isSubmitting ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-dark-900 mx-auto"></div>
                 ) : (
-                  'Sì, apri conto e invia ordine'
+                  'Apri Conto e Invia Ordine'
                 )}
               </button>
               <button
@@ -800,7 +866,7 @@ export function NewOrder() {
                 disabled={isSubmitting}
                 className="btn-secondary w-full"
               >
-                No, solo ordine singolo
+                No, solo ordine singolo (senza conto)
               </button>
             </div>
           </div>
