@@ -58,11 +58,10 @@ export function GuideFAQ() {
         'Clicca "Invia Ordine" per confermare',
       ],
       tips: [
-        'Tocca ovunque sulla card per aggiungere (non solo sul nome)',
-        'Il pulsante "-" appare solo se il prodotto è nel carrello',
-        'Usa la barra di ricerca per trovare prodotti velocemente',
-        'I prodotti non disponibili sono disabilitati',
-        'Puoi filtrare per categoria dal menu in alto',
+        'Per ordini veloci: cerca il prodotto per nome invece di scorrere le categorie',
+        'Se il cliente cambia idea: usa il "-" sulla card invece di andare nel carrello',
+        'Controlla sempre il totale prima di inviare, specialmente per ordini a domicilio',
+        'Per ordini SMAC: spunta la casella PRIMA di inviare, non si può aggiungere dopo',
       ],
     },
     {
@@ -78,8 +77,9 @@ export function GuideFAQ() {
         'Per chiudere il conto: clicca sul tavolo rosso → "Chiudi Conto"',
       ],
       tips: [
-        'Puoi trasferire un tavolo cliccando "Trasferisci"',
-        'Le prenotazioni si vedono anche dalla lista in basso',
+        'Se un cliente vuole cambiare tavolo: usa "Trasferisci" invece di chiudere e riaprire',
+        'Prima di chiudere un tavolo rosso verifica che tutte le comande siano state aggiunte',
+        'Se un tavolo prenotato non si presenta, liberalo manualmente dopo 15-20 minuti',
       ],
     },
     {
@@ -93,8 +93,9 @@ export function GuideFAQ() {
         'Puoi filtrare per tipo (Asporto, Domicilio, Tavolo)',
       ],
       tips: [
-        'L\'icona verde "LIVE" indica la connessione in tempo reale',
-        'Gli ordini si aggiornano automaticamente senza ricaricare',
+        'Se l\'icona è arancione/gialla invece che verde, ricarica la pagina per riconnettere',
+        'Gli ordini a domicilio hanno priorità: preparali per tempo considerando la consegna',
+        'Segna "Pronto" solo quando l\'ordine è effettivamente pronto per essere ritirato',
       ],
     },
     {
@@ -106,6 +107,10 @@ export function GuideFAQ() {
         'Clicca sui tagli (€5, €10, €20, €50, €100) o inserisci l\'importo',
         'Il sistema calcola automaticamente il resto da dare',
         'Se l\'importo è insufficiente, vedrai un avviso arancione',
+      ],
+      tips: [
+        'Per evitare errori: clicca sui tagli (€20, €50) invece di digitare a mano',
+        'Conta sempre il resto ad alta voce mentre lo consegni al cliente',
       ],
     },
     {
@@ -119,6 +124,11 @@ export function GuideFAQ() {
         '• Per Consumazione: seleziona i prodotti che paga ogni persona',
         'Aggiungi ogni pagamento separatamente',
         'Quando il totale residuo arriva a zero, il conto si chiude',
+      ],
+      tips: [
+        '"Alla Romana" è la più veloce: basta inserire il numero di persone',
+        '"Per Consumazione" è utile quando qualcuno ha ordinato molto più degli altri',
+        'Chiedi PRIMA come vogliono dividere per evitare confusione',
       ],
     },
   ];
@@ -140,8 +150,9 @@ export function GuideFAQ() {
         'Clicca sull\'icona cestino per eliminare (con conferma)',
       ],
       tips: [
-        'I prodotti non disponibili non appaiono nel Nuovo Ordine',
-        'Puoi filtrare e cercare prodotti velocemente',
+        'Disattiva un prodotto invece di eliminarlo se è solo temporaneamente esaurito',
+        'Metti prezzi "puliti" (es. €5.00, €7.50) per velocizzare i pagamenti in contanti',
+        'Usa descrizioni brevi ma chiare per aiutare lo staff a spiegare i piatti',
       ],
     },
     {
@@ -157,9 +168,9 @@ export function GuideFAQ() {
         'L\'avviso giallo indica piatti senza ricetta collegata',
       ],
       tips: [
-        'Un margine sopra il 60% è considerato ottimo',
-        'Collega le ricette per avere calcoli precisi',
-        'Su mobile i dati sono mostrati in formato card',
+        'Controlla i piatti rossi (margine basso): valuta se alzare il prezzo o ridurre le porzioni',
+        'Se un piatto mostra "0 ingredienti" vai su Ricette per collegarlo',
+        'Ordina per "Margine" per vedere subito quali piatti rendono di più',
       ],
     },
     {
@@ -174,8 +185,9 @@ export function GuideFAQ() {
         'Usa "Scarico" per registrare utilizzi manuali',
       ],
       tips: [
-        'Imposta la soglia minima per ricevere avvisi',
-        'Lo scarico automatico avviene quando si completano ordini',
+        'Controlla gli ingredienti rossi (sotto scorta) PRIMA del servizio',
+        'Fai il carico appena arriva la merce, non rimandare',
+        'Se l\'inventario non torna, fai uno scarico manuale per allineare i dati',
       ],
     },
     {
@@ -188,6 +200,11 @@ export function GuideFAQ() {
         'Questo permette lo scarico automatico dall\'inventario',
         'Permette anche il calcolo del food cost',
       ],
+      tips: [
+        'Senza ricetta collegata, l\'inventario non scala automaticamente',
+        'Inserisci le quantità esatte per porzione, non approssimative',
+        'Aggiorna le ricette se cambi le porzioni dei piatti',
+      ],
     },
     {
       title: 'Personale',
@@ -197,6 +214,10 @@ export function GuideFAQ() {
         'Gestisci turni e presenze del personale',
         'Registra entrate e uscite di ogni dipendente',
         'Visualizza il riepilogo ore lavorate',
+      ],
+      tips: [
+        'Fai timbrare entrata/uscita subito, non a fine giornata',
+        'Se qualcuno dimentica di timbrare, correggi manualmente lo stesso giorno',
       ],
     },
     {
@@ -208,6 +229,11 @@ export function GuideFAQ() {
         'Il sistema confronta con il totale previsto',
         'Registra eventuali differenze (ammanchi o eccedenze)',
         'Genera il report di chiusura giornaliera',
+      ],
+      tips: [
+        'Conta i contanti DUE volte prima di registrare per evitare errori',
+        'Se c\'è un ammanco, annotalo subito con una nota esplicativa',
+        'Fai la chiusura cassa ogni sera, non accumulare giorni',
       ],
     },
   ];
@@ -226,6 +252,10 @@ export function GuideFAQ() {
         'Top prodotti venduti',
         'Confronto con periodi precedenti',
       ],
+      tips: [
+        'Controlla la dashboard a inizio e fine servizio per avere il polso della situazione',
+        'I "Top prodotti" ti dicono cosa spingere e cosa tenere sempre disponibile',
+      ],
     },
     {
       title: 'Report & Admin',
@@ -237,6 +267,10 @@ export function GuideFAQ() {
         'Esporta report in PDF o Excel',
         'Visualizza trend e statistiche avanzate',
       ],
+      tips: [
+        'Genera il report settimanale ogni lunedì per analizzare la settimana precedente',
+        'Confronta i report mese su mese per identificare trend stagionali',
+      ],
     },
     {
       title: 'Gestione SMAC',
@@ -247,6 +281,10 @@ export function GuideFAQ() {
         'Vedi storico utilizzi per cliente',
         'Aggiungi nuove tessere manualmente',
         'Monitora le statistiche di utilizzo',
+      ],
+      tips: [
+        'Controlla i clienti più frequenti per fidelizzarli ulteriormente',
+        'Verifica che lo staff registri sempre le tessere SMAC agli ordini',
       ],
     },
     {
@@ -261,23 +299,8 @@ export function GuideFAQ() {
         'Personalizza messaggi e notifiche',
       ],
       tips: [
-        'Il nome del ristorante appare nell\'header della sidebar',
-        'Le modifiche si applicano immediatamente',
-      ],
-    },
-    {
-      title: 'Tema e Interfaccia',
-      icon: <Settings className="w-5 h-5" />,
-      content: [
-        'Cambia tema chiaro/scuro dal pulsante sole/luna nella sidebar',
-        'Riduci la sidebar su desktop cliccando "Riduci Menu"',
-        'La sidebar ridotta mostra solo le icone',
-        'Su mobile la sidebar si apre dal menu hamburger',
-        'La preferenza tema viene salvata automaticamente',
-      ],
-      tips: [
-        'Il tema scuro è consigliato per ambienti poco illuminati',
-        'La sidebar ridotta offre più spazio per i contenuti',
+        'Il nome ristorante appare nella sidebar: impostalo prima di iniziare',
+        'Configura le categorie menu in modo logico per velocizzare gli ordini',
       ],
     },
     {
@@ -294,8 +317,9 @@ export function GuideFAQ() {
         'Reimposta password se necessario',
       ],
       tips: [
-        'Ogni utente ha le proprie credenziali di accesso',
-        'I permessi si applicano immediatamente',
+        'Crea un account Staff per ogni dipendente, non condividere le credenziali',
+        'Disattiva gli account invece di eliminarli per mantenere lo storico',
+        'Dai ruolo Admin solo a chi deve gestire menu e inventario',
       ],
     },
   ];
