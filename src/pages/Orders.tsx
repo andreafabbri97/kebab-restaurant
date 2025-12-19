@@ -962,85 +962,77 @@ export function Orders() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">{t('orders.title')}</h1>
-          <p className="text-dark-400 mt-1 text-sm sm:text-base">{t('orders.subtitle')}</p>
+    <div className="space-y-2 sm:space-y-3">
+      {/* Header compatto - tutto in una riga su desktop */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 lg:gap-4">
+        {/* Titolo + Tabs inline su desktop */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-white whitespace-nowrap">{t('orders.title')}</h1>
+
+          {/* Tabs inline */}
+          <div className="flex gap-1 overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('today')}
+              className={`px-2 sm:px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap ${
+                activeTab === 'today'
+                  ? 'bg-primary-500/20 text-primary-400'
+                  : 'text-dark-400 hover:text-white hover:bg-dark-800'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>{t('common.today')}</span>
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('history');
+                if (historyOrders.length === 0) loadHistoryOrders();
+              }}
+              className={`px-2 sm:px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap ${
+                activeTab === 'history'
+                  ? 'bg-primary-500/20 text-primary-400'
+                  : 'text-dark-400 hover:text-white hover:bg-dark-800'
+              }`}
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>{t('orders.history')}</span>
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Realtime connection status */}
+
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          {/* Realtime connection status - solo icona */}
           {isSupabaseConfigured && (
-            <div className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm ${
+            <div className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs ${
               isRealtimeConnected
                 ? 'bg-emerald-500/20 text-emerald-400'
                 : 'bg-amber-500/20 text-amber-400'
-            }`}>
-              {isRealtimeConnected ? (
-                <>
-                  <Wifi className="w-4 h-4" />
-                  <span className="hidden sm:inline">Live</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-4 h-4" />
-                  <span className="hidden sm:inline">Offline</span>
-                </>
-              )}
+            }`} title={isRealtimeConnected ? 'Connesso in tempo reale' : 'Non connesso'}>
+              {isRealtimeConnected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
             </div>
           )}
-          <button onClick={loadOrdersCallback} className="btn-secondary p-2 sm:px-4 sm:py-2">
-            <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+          <button onClick={loadOrdersCallback} className="btn-secondary p-2" title="Aggiorna">
+            <RefreshCw className="w-4 h-4" />
           </button>
-          <Link to="/orders/new" className="btn-primary">
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span>{t('orders.newOrder')}</span>
+          <Link to="/orders/new" className="btn-primary py-1.5 px-3 text-sm">
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">{t('orders.newOrder')}</span>
           </Link>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 sm:gap-2 border-b border-dark-700 pb-2 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('today')}
-          className={`px-3 sm:px-4 py-2 rounded-t-lg font-medium transition-all flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap ${
-            activeTab === 'today'
-              ? 'bg-dark-800 text-primary-400 border-b-2 border-primary-500'
-              : 'text-dark-400 hover:text-white'
-          }`}
-        >
-          <Clock className="w-4 h-4" />
-          <span>{t('common.today')}</span>
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('history');
-            if (historyOrders.length === 0) loadHistoryOrders();
-          }}
-          className={`px-3 sm:px-4 py-2 rounded-t-lg font-medium transition-all flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap ${
-            activeTab === 'history'
-              ? 'bg-dark-800 text-primary-400 border-b-2 border-primary-500'
-              : 'text-dark-400 hover:text-white'
-          }`}
-        >
-          <History className="w-4 h-4" />
-          <span>{t('orders.history')}</span>
-        </button>
-      </div>
-
       {activeTab === 'today' && (
         <>
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 sm:gap-4">
-        <div className="relative flex-1 min-w-0 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-dark-400" />
+      {/* Filters - più compatti */}
+      <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
+        <div className="relative flex-1 min-w-0 sm:max-w-[200px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
           <input
             type="text"
             placeholder={t('orders.searchOrders')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="input pl-9 sm:pl-10 text-sm sm:text-base"
+            className="input pl-8 py-1.5 text-sm"
           />
         </div>
 
@@ -1049,13 +1041,13 @@ export function Orders() {
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="input w-auto flex-1 sm:flex-none text-sm sm:text-base"
+            className="input w-auto flex-1 sm:flex-none py-1.5 text-sm"
           />
 
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="select w-auto flex-1 sm:flex-none text-sm sm:text-base"
+            className="select w-auto flex-1 sm:flex-none py-1.5 text-sm"
           >
             <option value="all">{t('common.all')}</option>
             <option value="pending">{t('orders.pending')}</option>
