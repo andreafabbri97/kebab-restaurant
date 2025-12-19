@@ -421,6 +421,7 @@ export function CashRegister() {
         isOpen={showClosureModal}
         onClose={() => setShowClosureModal(false)}
         title="Chiusura Cassa"
+        size="lg"
       >
         <div className="space-y-4">
           <div className="bg-dark-800 rounded-xl p-4 space-y-2">
@@ -434,32 +435,35 @@ export function CashRegister() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">
-              Fondo Cassa Iniziale (EUR)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={openingCash}
-              onChange={(e) => setOpeningCash(e.target.value)}
-              className="input"
-              placeholder="Es: 100.00"
-            />
-          </div>
+          {/* Desktop: 2 colonne per i campi di input */}
+          <div className="lg:grid lg:grid-cols-2 lg:gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-300 mb-2">
+                Fondo Cassa Iniziale (EUR)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={openingCash}
+                onChange={(e) => setOpeningCash(e.target.value)}
+                className="input"
+                placeholder="Es: 100.00"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">
-              Contanti in Cassa Finale (EUR)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={closingCash}
-              onChange={(e) => setClosingCash(e.target.value)}
-              className="input"
-              placeholder="Es: 350.00"
-            />
+            <div className="mt-4 lg:mt-0">
+              <label className="block text-sm font-medium text-dark-300 mb-2">
+                Contanti in Cassa Finale (EUR)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={closingCash}
+                onChange={(e) => setClosingCash(e.target.value)}
+                className="input"
+                placeholder="Es: 350.00"
+              />
+            </div>
           </div>
 
           {openingCash && closingCash && (
@@ -490,8 +494,7 @@ export function CashRegister() {
             <textarea
               value={closureNotes}
               onChange={(e) => setClosureNotes(e.target.value)}
-              className="input"
-              rows={3}
+              className="input resize-none h-16"
               placeholder="Eventuali note sulla chiusura..."
             />
           </div>

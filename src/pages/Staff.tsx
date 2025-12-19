@@ -797,35 +797,39 @@ export function Staff() {
           });
         }}
         title="Nuovo Turno"
-        size="md"
+        size="lg"
       >
         <div className="space-y-4">
-          <div>
-            <label className="label">Dipendente *</label>
-            <select
-              value={shiftForm.employee_id}
-              onChange={(e) => setShiftForm({ ...shiftForm, employee_id: parseInt(e.target.value) })}
-              className="select"
-            >
-              {employees.filter(e => e.active).map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name} - {emp.role}
-                </option>
-              ))}
-            </select>
+          {/* Desktop: dipendente e data su stessa riga */}
+          <div className="lg:grid lg:grid-cols-2 lg:gap-4">
+            <div>
+              <label className="label">Dipendente *</label>
+              <select
+                value={shiftForm.employee_id}
+                onChange={(e) => setShiftForm({ ...shiftForm, employee_id: parseInt(e.target.value) })}
+                className="select"
+              >
+                {employees.filter(e => e.active).map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name} - {emp.role}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mt-4 lg:mt-0">
+              <label className="label">Data *</label>
+              <input
+                type="date"
+                value={shiftForm.date}
+                onChange={(e) => setShiftForm({ ...shiftForm, date: e.target.value })}
+                className="input"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="label">Data *</label>
-            <input
-              type="date"
-              value={shiftForm.date}
-              onChange={(e) => setShiftForm({ ...shiftForm, date: e.target.value })}
-              className="input"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          {/* Orari e tipo turno */}
+          <div className="lg:grid lg:grid-cols-4 lg:gap-4">
             <div>
               <label className="label">Inizio</label>
               <input
@@ -835,7 +839,7 @@ export function Staff() {
                 className="input"
               />
             </div>
-            <div>
+            <div className="mt-4 lg:mt-0">
               <label className="label">Fine</label>
               <input
                 type="time"
@@ -844,20 +848,19 @@ export function Staff() {
                 className="input"
               />
             </div>
-          </div>
-
-          <div>
-            <label className="label">Tipo Turno</label>
-            <select
-              value={shiftForm.shift_type}
-              onChange={(e) => setShiftForm({ ...shiftForm, shift_type: e.target.value as any })}
-              className="select"
-            >
-              <option value="worked">Lavorativo</option>
-              <option value="vacation">Ferie</option>
-              <option value="sick">Malattia</option>
-              <option value="other">Altro</option>
-            </select>
+            <div className="mt-4 lg:mt-0 lg:col-span-2">
+              <label className="label">Tipo Turno</label>
+              <select
+                value={shiftForm.shift_type}
+                onChange={(e) => setShiftForm({ ...shiftForm, shift_type: e.target.value as any })}
+                className="select"
+              >
+                <option value="worked">Lavorativo</option>
+                <option value="vacation">Ferie</option>
+                <option value="sick">Malattia</option>
+                <option value="other">Altro</option>
+              </select>
+            </div>
           </div>
 
           <div>
@@ -865,7 +868,7 @@ export function Staff() {
             <textarea
               value={shiftForm.notes}
               onChange={(e) => setShiftForm({ ...shiftForm, notes: e.target.value })}
-              className="input resize-none h-20"
+              className="input resize-none h-16"
               placeholder="Note opzionali..."
             />
           </div>

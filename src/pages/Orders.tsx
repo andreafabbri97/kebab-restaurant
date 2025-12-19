@@ -2315,127 +2315,133 @@ export function Orders() {
           setSessionToClose(null);
         }}
         title="Chiudi Conto"
-        size="sm"
+        size={paymentForm.method === 'cash' ? '2xl' : 'md'}
       >
         {sessionToClose && (
-          <div className="space-y-6">
-            <div className="text-center p-4 bg-dark-900 rounded-xl">
-              <p className="text-sm text-dark-400">Totale da pagare</p>
-              <p className="text-3xl font-bold text-primary-400">{formatPrice(sessionToClose.total)}</p>
-            </div>
-
-            <div>
-              <label className="label">Metodo di Pagamento</label>
-              <div className="grid grid-cols-3 gap-3">
-                <button
-                  onClick={() => setPaymentForm({ ...paymentForm, method: 'cash' })}
-                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-colors ${
-                    paymentForm.method === 'cash'
-                      ? 'border-primary-500 bg-primary-500/10'
-                      : 'border-dark-700 hover:border-dark-600'
-                  }`}
-                >
-                  <Banknote className="w-6 h-6" />
-                  <span className="text-sm">Contanti</span>
-                </button>
-                <button
-                  onClick={() => setPaymentForm({ ...paymentForm, method: 'card' })}
-                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-colors ${
-                    paymentForm.method === 'card'
-                      ? 'border-primary-500 bg-primary-500/10'
-                      : 'border-dark-700 hover:border-dark-600'
-                  }`}
-                >
-                  <CreditCard className="w-6 h-6" />
-                  <span className="text-sm">Carta</span>
-                </button>
-                <button
-                  onClick={() => setPaymentForm({ ...paymentForm, method: 'online' })}
-                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-colors ${
-                    paymentForm.method === 'online'
-                      ? 'border-primary-500 bg-primary-500/10'
-                      : 'border-dark-700 hover:border-dark-600'
-                  }`}
-                >
-                  <Globe className="w-6 h-6" />
-                  <span className="text-sm">Online</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="smac_payment"
-                checked={paymentForm.smac}
-                onChange={(e) => setPaymentForm({ ...paymentForm, smac: e.target.checked })}
-                className="w-5 h-5 rounded border-dark-600 bg-dark-800 text-primary-500 focus:ring-primary-500"
-              />
-              <label htmlFor="smac_payment" className="text-white">SMAC passato</label>
-            </div>
-
-            {/* Calcolatore Resto - solo per contanti */}
-            {paymentForm.method === 'cash' && sessionToClose.total > 0 && (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-3">
-                <div className="flex items-center gap-2">
-                  <Calculator className="w-4 h-4 text-emerald-400" />
-                  <span className="font-medium text-emerald-400">Calcolatore Resto</span>
+          <div className="space-y-4">
+            {/* Desktop: 2 colonne quando contanti selezionato */}
+            <div className={paymentForm.method === 'cash' ? 'lg:grid lg:grid-cols-2 lg:gap-6' : ''}>
+              {/* Colonna sinistra: Totale + Metodo + SMAC */}
+              <div className="space-y-4">
+                <div className="text-center p-4 bg-dark-900 rounded-xl">
+                  <p className="text-sm text-dark-400">Totale da pagare</p>
+                  <p className="text-3xl font-bold text-primary-400">{formatPrice(sessionToClose.total)}</p>
                 </div>
+
                 <div>
-                  <label className="label text-emerald-300">Cliente dà</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={changeCalculator.customerGives}
-                      onChange={(e) => setChangeCalculator({ customerGives: e.target.value })}
-                      className="input flex-1"
-                      placeholder="Es. 50.00"
-                    />
-                    <span className="flex items-center text-dark-400">€</span>
-                  </div>
-                </div>
-                {/* Quick cash buttons */}
-                <div className="flex gap-2 flex-wrap">
-                  {[5, 10, 20, 50, 100].map(amount => (
+                  <label className="label">Metodo di Pagamento</label>
+                  <div className="grid grid-cols-3 gap-2">
                     <button
-                      key={amount}
-                      type="button"
-                      onClick={() => setChangeCalculator({ customerGives: amount.toString() })}
-                      className="px-3 py-1 text-sm bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-lg transition-colors"
+                      onClick={() => setPaymentForm({ ...paymentForm, method: 'cash' })}
+                      className={`p-3 lg:p-4 rounded-xl border-2 flex flex-col items-center gap-1 lg:gap-2 transition-colors ${
+                        paymentForm.method === 'cash'
+                          ? 'border-primary-500 bg-primary-500/10'
+                          : 'border-dark-700 hover:border-dark-600'
+                      }`}
                     >
-                      {formatPrice(amount)}
+                      <Banknote className="w-5 h-5 lg:w-6 lg:h-6" />
+                      <span className="text-xs lg:text-sm">Contanti</span>
                     </button>
-                  ))}
-                </div>
-                {changeCalculator.customerGives && parseFloat(changeCalculator.customerGives) > 0 && (
-                  <div className="p-3 bg-dark-900 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <span className="text-dark-400">Totale conto:</span>
-                      <span className="text-white">{formatPrice(sessionToClose.total)}</span>
-                    </div>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-dark-400">Cliente dà:</span>
-                      <span className="text-white">{formatPrice(parseFloat(changeCalculator.customerGives))}</span>
-                    </div>
-                    <div className="border-t border-dark-700 my-2"></div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-emerald-400 font-semibold">RESTO DA DARE:</span>
-                      <span className="text-2xl font-bold text-emerald-400">
-                        {formatPrice(Math.max(0, parseFloat(changeCalculator.customerGives) - sessionToClose.total))}
-                      </span>
-                    </div>
-                    {parseFloat(changeCalculator.customerGives) < sessionToClose.total && (
-                      <p className="text-amber-400 text-sm mt-2">
-                        Mancano {formatPrice(sessionToClose.total - parseFloat(changeCalculator.customerGives))}
-                      </p>
-                    )}
+                    <button
+                      onClick={() => setPaymentForm({ ...paymentForm, method: 'card' })}
+                      className={`p-3 lg:p-4 rounded-xl border-2 flex flex-col items-center gap-1 lg:gap-2 transition-colors ${
+                        paymentForm.method === 'card'
+                          ? 'border-primary-500 bg-primary-500/10'
+                          : 'border-dark-700 hover:border-dark-600'
+                      }`}
+                    >
+                      <CreditCard className="w-5 h-5 lg:w-6 lg:h-6" />
+                      <span className="text-xs lg:text-sm">Carta</span>
+                    </button>
+                    <button
+                      onClick={() => setPaymentForm({ ...paymentForm, method: 'online' })}
+                      className={`p-3 lg:p-4 rounded-xl border-2 flex flex-col items-center gap-1 lg:gap-2 transition-colors ${
+                        paymentForm.method === 'online'
+                          ? 'border-primary-500 bg-primary-500/10'
+                          : 'border-dark-700 hover:border-dark-600'
+                      }`}
+                    >
+                      <Globe className="w-5 h-5 lg:w-6 lg:h-6" />
+                      <span className="text-xs lg:text-sm">Online</span>
+                    </button>
                   </div>
-                )}
-              </div>
-            )}
+                </div>
 
-            <div className="flex items-center gap-3 pt-4">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="smac_payment"
+                    checked={paymentForm.smac}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, smac: e.target.checked })}
+                    className="w-5 h-5 rounded border-dark-600 bg-dark-800 text-primary-500 focus:ring-primary-500"
+                  />
+                  <label htmlFor="smac_payment" className="text-white">SMAC passato</label>
+                </div>
+              </div>
+
+              {/* Colonna destra: Calcolatore Resto (solo contanti) */}
+              {paymentForm.method === 'cash' && sessionToClose.total > 0 && (
+                <div className="mt-4 lg:mt-0 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Calculator className="w-4 h-4 text-emerald-400" />
+                    <span className="font-medium text-emerald-400">Calcolatore Resto</span>
+                  </div>
+                  <div>
+                    <label className="label text-emerald-300">Cliente dà</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={changeCalculator.customerGives}
+                        onChange={(e) => setChangeCalculator({ customerGives: e.target.value })}
+                        className="input flex-1"
+                        placeholder="Es. 50.00"
+                      />
+                      <span className="flex items-center text-dark-400">€</span>
+                    </div>
+                  </div>
+                  {/* Quick cash buttons */}
+                  <div className="flex gap-2 flex-wrap">
+                    {[5, 10, 20, 50, 100].map(amount => (
+                      <button
+                        key={amount}
+                        type="button"
+                        onClick={() => setChangeCalculator({ customerGives: amount.toString() })}
+                        className="px-3 py-1 text-sm bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-lg transition-colors"
+                      >
+                        {formatPrice(amount)}
+                      </button>
+                    ))}
+                  </div>
+                  {changeCalculator.customerGives && parseFloat(changeCalculator.customerGives) > 0 && (
+                    <div className="p-3 bg-dark-900 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-dark-400">Totale conto:</span>
+                        <span className="text-white">{formatPrice(sessionToClose.total)}</span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-dark-400">Cliente dà:</span>
+                        <span className="text-white">{formatPrice(parseFloat(changeCalculator.customerGives))}</span>
+                      </div>
+                      <div className="border-t border-dark-700 my-2"></div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-emerald-400 font-semibold">RESTO DA DARE:</span>
+                        <span className="text-2xl font-bold text-emerald-400">
+                          {formatPrice(Math.max(0, parseFloat(changeCalculator.customerGives) - sessionToClose.total))}
+                        </span>
+                      </div>
+                      {parseFloat(changeCalculator.customerGives) < sessionToClose.total && (
+                        <p className="text-amber-400 text-sm mt-2">
+                          Mancano {formatPrice(sessionToClose.total - parseFloat(changeCalculator.customerGives))}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
               <button onClick={confirmCloseSession} className="btn-primary flex-1">
                 Conferma Pagamento
               </button>
@@ -2458,110 +2464,122 @@ export function Orders() {
         isOpen={showSplitModal}
         onClose={() => setShowSplitModal(false)}
         title="Dividi Conto"
-        size="lg"
+        size="2xl"
       >
         {sessionToClose && (
-          <div className="space-y-6">
-            {/* Summary */}
-            <div className="grid grid-cols-3 gap-4 p-4 bg-dark-900 rounded-xl">
-              <div className="text-center">
-                <p className="text-sm text-dark-400">Totale</p>
-                <p className="text-lg font-bold text-white">{formatPrice(sessionToClose.total)}</p>
+          <div className="space-y-4">
+            {/* Summary + Progress - Compatto */}
+            <div className="p-3 bg-dark-900 rounded-xl">
+              <div className="grid grid-cols-3 gap-4 mb-3">
+                <div className="text-center">
+                  <p className="text-xs text-dark-400">Totale</p>
+                  <p className="text-base lg:text-lg font-bold text-white">{formatPrice(sessionToClose.total)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-dark-400">Pagato</p>
+                  <p className="text-base lg:text-lg font-bold text-emerald-400">
+                    {formatPrice(sessionToClose.total - remainingAmount)}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-dark-400">Rimanente</p>
+                  <p className="text-base lg:text-lg font-bold text-primary-400">{formatPrice(remainingAmount)}</p>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-sm text-dark-400">Pagato</p>
-                <p className="text-lg font-bold text-emerald-400">
-                  {formatPrice(sessionToClose.total - remainingAmount)}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-dark-400">Rimanente</p>
-                <p className="text-lg font-bold text-primary-400">{formatPrice(remainingAmount)}</p>
-              </div>
+              {/* Progress Bar */}
+              {sessionToClose.total > 0 && (
+                <div className="w-full bg-dark-700 rounded-full h-2">
+                  <div
+                    className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, ((sessionToClose.total - remainingAmount) / sessionToClose.total) * 100)}%` }}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Progress Bar */}
-            {sessionToClose.total > 0 && (
-              <div className="w-full bg-dark-700 rounded-full h-3">
-                <div
-                  className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, ((sessionToClose.total - remainingAmount) / sessionToClose.total) * 100)}%` }}
-                />
-              </div>
-            )}
-
-            {/* Payments List */}
-            {sessionPayments.length > 0 && (
+            {/* Desktop: 2 colonne - Pagamenti a sinistra, Opzioni a destra */}
+            <div className="lg:grid lg:grid-cols-2 lg:gap-4">
+              {/* Colonna sinistra: Pagamenti effettuati */}
               <div>
-                <h4 className="text-sm font-medium text-dark-400 mb-2">Pagamenti effettuati</h4>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {sessionPayments.map((payment) => (
-                    <div key={payment.id} className="flex items-center justify-between p-2 bg-dark-900 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        {payment.payment_method === 'cash' && <Banknote className="w-4 h-4 text-emerald-400" />}
-                        {payment.payment_method === 'card' && <CreditCard className="w-4 h-4 text-blue-400" />}
-                        {payment.payment_method === 'online' && <Globe className="w-4 h-4 text-purple-400" />}
-                        <span className="text-white">{formatPrice(payment.amount)}</span>
-                        {payment.notes && <span className="text-dark-400 text-sm">- {payment.notes}</span>}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {payment.smac_passed && (
-                          <span className="text-xs bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full">
-                            SMAC
-                          </span>
-                        )}
-                        <button
-                          onClick={() => handlePrintPaymentReceipt(payment)}
-                          className="p-1 hover:bg-dark-700 rounded transition-colors"
-                          title="Stampa scontrino"
-                        >
-                          <Printer className="w-4 h-4 text-dark-400" />
-                        </button>
-                      </div>
+                {sessionPayments.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-dark-400 mb-2">Pagamenti effettuati</h4>
+                    <div className="space-y-2 max-h-40 lg:max-h-64 overflow-y-auto">
+                      {sessionPayments.map((payment) => (
+                        <div key={payment.id} className="flex items-center justify-between p-2 bg-dark-900 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            {payment.payment_method === 'cash' && <Banknote className="w-4 h-4 text-emerald-400" />}
+                            {payment.payment_method === 'card' && <CreditCard className="w-4 h-4 text-blue-400" />}
+                            {payment.payment_method === 'online' && <Globe className="w-4 h-4 text-purple-400" />}
+                            <span className="text-white text-sm">{formatPrice(payment.amount)}</span>
+                            {payment.notes && <span className="text-dark-400 text-xs">- {payment.notes}</span>}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {payment.smac_passed && (
+                              <span className="text-[10px] bg-primary-500/20 text-primary-400 px-1.5 py-0.5 rounded-full">
+                                SMAC
+                              </span>
+                            )}
+                            <button
+                              onClick={() => handlePrintPaymentReceipt(payment)}
+                              className="p-1 hover:bg-dark-700 rounded transition-colors"
+                              title="Stampa scontrino"
+                            >
+                              <Printer className="w-3.5 h-3.5 text-dark-400" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
+                {sessionPayments.length === 0 && (
+                  <div className="p-4 bg-dark-900 rounded-xl text-center text-dark-500 text-sm">
+                    Nessun pagamento ancora effettuato
+                  </div>
+                )}
               </div>
-            )}
 
-            {/* Split Mode Selector */}
-            {remainingAmount > 0 && (
-              <>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setSplitMode('manual')}
-                    className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
-                      splitMode === 'manual'
-                        ? 'border-primary-500 bg-primary-500/10'
-                        : 'border-dark-700 hover:border-dark-600'
-                    }`}
-                  >
-                    <Banknote className="w-5 h-5" />
-                    <span className="text-sm font-medium">Manuale</span>
-                  </button>
-                  <button
-                    onClick={() => setSplitMode('romana')}
-                    className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
-                      splitMode === 'romana'
-                        ? 'border-primary-500 bg-primary-500/10'
-                        : 'border-dark-700 hover:border-dark-600'
-                    }`}
-                  >
-                    <Calculator className="w-5 h-5" />
-                    <span className="text-sm font-medium">Alla Romana</span>
-                  </button>
-                  <button
-                    onClick={() => setSplitMode('items')}
-                    className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
-                      splitMode === 'items'
-                        ? 'border-primary-500 bg-primary-500/10'
-                        : 'border-dark-700 hover:border-dark-600'
-                    }`}
-                  >
-                    <ListChecks className="w-5 h-5" />
-                    <span className="text-sm font-medium">Per Consumazione</span>
-                  </button>
-                </div>
+              {/* Colonna destra: Opzioni pagamento */}
+              <div className="mt-4 lg:mt-0">
+                {/* Split Mode Selector */}
+                {remainingAmount > 0 && (
+                  <>
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        onClick={() => setSplitMode('manual')}
+                        className={`flex-1 p-2 lg:p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
+                          splitMode === 'manual'
+                            ? 'border-primary-500 bg-primary-500/10'
+                            : 'border-dark-700 hover:border-dark-600'
+                        }`}
+                      >
+                        <Banknote className="w-4 h-4 lg:w-5 lg:h-5" />
+                        <span className="text-xs lg:text-sm font-medium">Manuale</span>
+                      </button>
+                      <button
+                        onClick={() => setSplitMode('romana')}
+                        className={`flex-1 p-2 lg:p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
+                          splitMode === 'romana'
+                            ? 'border-primary-500 bg-primary-500/10'
+                            : 'border-dark-700 hover:border-dark-600'
+                        }`}
+                      >
+                        <Calculator className="w-4 h-4 lg:w-5 lg:h-5" />
+                        <span className="text-xs lg:text-sm font-medium">Alla Romana</span>
+                      </button>
+                      <button
+                        onClick={() => setSplitMode('items')}
+                        className={`flex-1 p-2 lg:p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
+                          splitMode === 'items'
+                            ? 'border-primary-500 bg-primary-500/10'
+                            : 'border-dark-700 hover:border-dark-600'
+                        }`}
+                      >
+                        <ListChecks className="w-4 h-4 lg:w-5 lg:h-5" />
+                        <span className="text-xs lg:text-sm font-medium">Per Prodotto</span>
+                      </button>
+                    </div>
 
                 {/* Alla Romana Calculator */}
                 {splitMode === 'romana' && (
@@ -2747,17 +2765,19 @@ export function Orders() {
                       Aggiungi Pagamento
                     </button>
                   </div>
+                  )}
+                  </>
                 )}
-              </>
-            )}
 
-            {remainingAmount === 0 && (
-              <div className="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center">
-                <Receipt className="w-12 h-12 mx-auto mb-3 text-emerald-400" />
-                <h4 className="text-xl font-bold text-emerald-400 mb-2">Conto Saldato!</h4>
-                <p className="text-dark-400">Il conto è stato completamente pagato.</p>
+                {remainingAmount === 0 && (
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center">
+                    <Receipt className="w-10 h-10 mx-auto mb-2 text-emerald-400" />
+                    <h4 className="text-lg font-bold text-emerald-400 mb-1">Conto Saldato!</h4>
+                    <p className="text-dark-400 text-sm">Il conto è stato completamente pagato.</p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             <button onClick={() => setShowSplitModal(false)} className="btn-secondary w-full">
               Chiudi
@@ -2771,98 +2791,107 @@ export function Orders() {
         isOpen={showBillStatusModal}
         onClose={() => setShowBillStatusModal(false)}
         title="Stato del Conto"
-        size="lg"
+        size="2xl"
       >
         {sessionToClose && (
-          <div className="space-y-6">
-            {/* Summary */}
-            <div className="grid grid-cols-3 gap-4 p-4 bg-dark-900 rounded-xl">
+          <div className="space-y-4">
+            {/* Summary - Compatto */}
+            <div className="grid grid-cols-3 gap-3 p-3 bg-dark-900 rounded-xl">
               <div className="text-center">
-                <p className="text-sm text-dark-400">Totale</p>
-                <p className="text-lg font-bold text-white">{formatPrice(sessionToClose.total)}</p>
+                <p className="text-xs text-dark-400">Totale</p>
+                <p className="text-base lg:text-lg font-bold text-white">{formatPrice(sessionToClose.total)}</p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-dark-400">Pagato</p>
-                <p className="text-lg font-bold text-emerald-400">
+                <p className="text-xs text-dark-400">Pagato</p>
+                <p className="text-base lg:text-lg font-bold text-emerald-400">
                   {formatPrice(sessionToClose.total - remainingAmount)}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-dark-400">Rimanente</p>
-                <p className="text-lg font-bold text-primary-400">{formatPrice(remainingAmount)}</p>
+                <p className="text-xs text-dark-400">Rimanente</p>
+                <p className="text-base lg:text-lg font-bold text-primary-400">{formatPrice(remainingAmount)}</p>
               </div>
             </div>
 
-            {/* Payments List */}
-            {sessionPayments.length > 0 ? (
+            {/* Desktop: 2 colonne */}
+            <div className="lg:grid lg:grid-cols-2 lg:gap-4">
+              {/* Colonna sinistra: Pagamenti */}
               <div>
-                <h4 className="text-sm font-medium text-dark-400 mb-3">Pagamenti effettuati ({sessionPayments.length})</h4>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {sessionPayments.map((payment, index) => (
-                    <div key={payment.id} className="p-4 bg-dark-900 rounded-xl">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {payment.payment_method === 'cash' && <Banknote className="w-5 h-5 text-emerald-400" />}
-                          {payment.payment_method === 'card' && <CreditCard className="w-5 h-5 text-blue-400" />}
-                          {payment.payment_method === 'online' && <Globe className="w-5 h-5 text-purple-400" />}
-                          <span className="font-semibold text-white">Pagamento #{index + 1}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold text-primary-400">{formatPrice(payment.amount)}</span>
-                          {payment.smac_passed && (
-                            <span className="text-xs bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full">SMAC</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-sm text-dark-400 space-y-1">
-                        <p>Data: {new Date(payment.paid_at).toLocaleString('it-IT')}</p>
-                        {payment.notes && <p>Note: {payment.notes}</p>}
-                      </div>
-                      {payment.paid_items && payment.paid_items.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-dark-700">
-                          <p className="text-xs text-dark-500 mb-2">Prodotti pagati:</p>
-                          <div className="space-y-1">
-                            {payment.paid_items.map((item, i) => (
-                              <div key={i} className="flex justify-between text-sm">
-                                <span className="text-dark-300">{item.quantity}x {item.menu_item_name}</span>
-                                <span className="text-dark-400">{formatPrice(item.price * item.quantity)}</span>
-                              </div>
-                            ))}
+                {sessionPayments.length > 0 ? (
+                  <div>
+                    <h4 className="text-sm font-medium text-dark-400 mb-2">Pagamenti ({sessionPayments.length})</h4>
+                    <div className="space-y-2 max-h-48 lg:max-h-72 overflow-y-auto">
+                      {sessionPayments.map((payment, index) => (
+                        <div key={payment.id} className="p-3 bg-dark-900 rounded-xl">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              {payment.payment_method === 'cash' && <Banknote className="w-4 h-4 text-emerald-400" />}
+                              {payment.payment_method === 'card' && <CreditCard className="w-4 h-4 text-blue-400" />}
+                              {payment.payment_method === 'online' && <Globe className="w-4 h-4 text-purple-400" />}
+                              <span className="font-medium text-white text-sm">#{index + 1}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-primary-400">{formatPrice(payment.amount)}</span>
+                              {payment.smac_passed && (
+                                <span className="text-[10px] bg-primary-500/20 text-primary-400 px-1.5 py-0.5 rounded-full">SMAC</span>
+                              )}
+                            </div>
                           </div>
+                          <div className="text-xs text-dark-400">
+                            {new Date(payment.paid_at).toLocaleString('it-IT')}
+                            {payment.notes && ` • ${payment.notes}`}
+                          </div>
+                          {payment.paid_items && payment.paid_items.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-dark-700 space-y-0.5">
+                              {payment.paid_items.map((item, i) => (
+                                <div key={i} className="flex justify-between text-xs">
+                                  <span className="text-dark-300">{item.quantity}x {item.menu_item_name}</span>
+                                  <span className="text-dark-400">{formatPrice(item.price * item.quantity)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => handlePrintPaymentReceipt(payment)}
+                            className="mt-2 w-full btn-secondary text-xs py-1.5 flex items-center justify-center gap-1"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            Stampa
+                          </button>
                         </div>
-                      )}
-                      <button
-                        onClick={() => handlePrintPaymentReceipt(payment)}
-                        className="mt-3 w-full btn-secondary text-sm py-2 flex items-center justify-center gap-2"
-                      >
-                        <Printer className="w-4 h-4" />
-                        Stampa Scontrino
-                      </button>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-dark-900 rounded-xl text-center">
+                    <FileText className="w-10 h-10 mx-auto mb-2 text-dark-600" />
+                    <p className="text-dark-400 text-sm">Nessun pagamento effettuato</p>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="p-6 bg-dark-900 rounded-xl text-center">
-                <FileText className="w-12 h-12 mx-auto mb-3 text-dark-600" />
-                <p className="text-dark-400">Nessun pagamento ancora effettuato</p>
-              </div>
-            )}
 
-            {/* Remaining items */}
-            {remainingSessionItems.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-dark-400 mb-3">Prodotti ancora da pagare</h4>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {remainingSessionItems.map((item) => (
-                    <div key={item.id} className="flex justify-between p-2 bg-dark-900 rounded-lg">
-                      <span className="text-white">{item.remainingQty}x {item.menu_item_name}</span>
-                      <span className="text-primary-400">{formatPrice(item.price * item.remainingQty)}</span>
+              {/* Colonna destra: Prodotti da pagare */}
+              <div className="mt-4 lg:mt-0">
+                {remainingSessionItems.length > 0 ? (
+                  <div>
+                    <h4 className="text-sm font-medium text-dark-400 mb-2">Da pagare ({remainingSessionItems.length})</h4>
+                    <div className="space-y-1.5 max-h-48 lg:max-h-72 overflow-y-auto">
+                      {remainingSessionItems.map((item) => (
+                        <div key={item.id} className="flex justify-between p-2 bg-dark-900 rounded-lg text-sm">
+                          <span className="text-white">{item.remainingQty}x {item.menu_item_name}</span>
+                          <span className="text-primary-400 font-medium">{formatPrice(item.price * item.remainingQty)}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center">
+                    <Receipt className="w-10 h-10 mx-auto mb-2 text-emerald-400" />
+                    <p className="text-emerald-400 font-medium">Tutto pagato!</p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             <button onClick={() => setShowBillStatusModal(false)} className="btn-secondary w-full">
               Chiudi

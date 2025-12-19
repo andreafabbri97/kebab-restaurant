@@ -1451,129 +1451,131 @@ export function Tables() {
         isOpen={showSessionModal}
         onClose={() => setShowSessionModal(false)}
         title={`Conto ${selectedSession?.table_name || ''}`}
-        size="lg"
+        size="2xl"
       >
         {selectedSession && (
-          <div className="space-y-6">
-            {/* Session Info */}
-            <div className="grid grid-cols-3 gap-4 p-4 bg-dark-900 rounded-xl">
+          <div className="space-y-4">
+            {/* Session Info - Compatto */}
+            <div className="grid grid-cols-3 gap-3 p-3 bg-dark-900 rounded-xl">
               <div className="text-center">
-                <p className="text-sm text-dark-400">Coperti</p>
-                <p className="text-xl font-bold text-white">{selectedSession.covers}</p>
+                <p className="text-xs text-dark-400">Coperti</p>
+                <p className="text-lg font-bold text-white">{selectedSession.covers}</p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-dark-400">Comande</p>
-                <p className="text-xl font-bold text-white">{sessionOrders.length}</p>
+                <p className="text-xs text-dark-400">Comande</p>
+                <p className="text-lg font-bold text-white">{sessionOrders.length}</p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-dark-400">Totale</p>
-                <p className="text-xl font-bold text-primary-400">€{selectedSession.total.toFixed(2)}</p>
+                <p className="text-xs text-dark-400">Totale</p>
+                <p className="text-lg font-bold text-primary-400">€{selectedSession.total.toFixed(2)}</p>
               </div>
             </div>
 
             {selectedSession.customer_name && (
-              <p className="text-dark-400">
+              <p className="text-dark-400 text-sm">
                 Cliente: <span className="text-white">{selectedSession.customer_name}</span>
               </p>
             )}
 
-            {/* Orders List */}
-            <div>
-              <h3 className="font-semibold text-white mb-3">Comande</h3>
-              {sessionOrders.length === 0 ? (
-                <p className="text-dark-400 text-center py-4">Nessuna comanda ancora</p>
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {sessionOrders.map((order) => (
-                    <div key={order.id} className="bg-dark-900 rounded-lg overflow-hidden">
-                      <div
-                        className="flex items-center justify-between p-3 cursor-pointer hover:bg-dark-800 transition-colors"
-                        onClick={() => toggleSessionOrderExpanded(order.id)}
-                      >
-                        <div className="flex items-center gap-2">
-                          {expandedSessionOrders.has(order.id) ? (
-                            <ChevronUp className="w-4 h-4 text-dark-400" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4 text-dark-400" />
-                          )}
-                          <div>
-                            <span className="font-medium text-white">Comanda #{order.order_number || 1}</span>
-                            <span className="text-dark-400 text-sm ml-2">(ID: {order.id})</span>
-                            <span className={`ml-2 badge ${
-                              order.status === 'pending' ? 'badge-warning' :
-                              order.status === 'preparing' ? 'badge-info' :
-                              order.status === 'ready' ? 'badge-success' :
-                              'badge-secondary'
-                            }`}>
-                              {order.status === 'pending' ? 'In attesa' :
-                               order.status === 'preparing' ? 'In preparazione' :
-                               order.status === 'ready' ? 'Pronto' :
-                               order.status === 'delivered' ? 'Consegnato' : order.status}
-                            </span>
-                          </div>
-                        </div>
-                        <span className="font-semibold text-white">€{order.total.toFixed(2)}</span>
-                      </div>
-                      {/* Expanded items */}
-                      {expandedSessionOrders.has(order.id) && (
-                        <div className="px-3 pb-3 pt-1 border-t border-dark-700">
-                          {sessionOrderItems[order.id] ? (
-                            sessionOrderItems[order.id].length > 0 ? (
-                              <div className="space-y-1">
-                                {sessionOrderItems[order.id].map((item) => (
-                                  <div key={item.id} className="flex items-center justify-between text-sm py-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-primary-400 font-medium">{item.quantity}x</span>
-                                      <span className="text-dark-300">{item.menu_item_name || 'Prodotto'}</span>
-                                      {item.notes && (
-                                        <span className="text-dark-500 text-xs italic">({item.notes})</span>
-                                      )}
-                                    </div>
-                                    <span className="text-dark-400">€{(item.price * item.quantity).toFixed(2)}</span>
-                                  </div>
-                                ))}
-                              </div>
+            {/* Desktop: 2 colonne - Comande a sinistra, Azioni a destra */}
+            <div className="lg:grid lg:grid-cols-5 lg:gap-4">
+              {/* Colonna sinistra: Orders List (3/5) */}
+              <div className="lg:col-span-3">
+                <h3 className="font-semibold text-white mb-2 text-sm">Comande</h3>
+                {sessionOrders.length === 0 ? (
+                  <p className="text-dark-400 text-center py-4 bg-dark-900 rounded-lg text-sm">Nessuna comanda ancora</p>
+                ) : (
+                  <div className="space-y-2 max-h-48 lg:max-h-64 overflow-y-auto">
+                    {sessionOrders.map((order) => (
+                      <div key={order.id} className="bg-dark-900 rounded-lg overflow-hidden">
+                        <div
+                          className="flex items-center justify-between p-2 cursor-pointer hover:bg-dark-800 transition-colors"
+                          onClick={() => toggleSessionOrderExpanded(order.id)}
+                        >
+                          <div className="flex items-center gap-2">
+                            {expandedSessionOrders.has(order.id) ? (
+                              <ChevronUp className="w-3.5 h-3.5 text-dark-400" />
                             ) : (
-                              <p className="text-dark-500 text-sm text-center py-2">Nessun prodotto</p>
-                            )
-                          ) : (
-                            <div className="flex justify-center py-2">
-                              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-primary-500"></div>
+                              <ChevronDown className="w-3.5 h-3.5 text-dark-400" />
+                            )}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-white text-sm">#{order.order_number || 1}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                order.status === 'pending' ? 'badge-warning' :
+                                order.status === 'preparing' ? 'badge-info' :
+                                order.status === 'ready' ? 'badge-success' :
+                                'badge-secondary'
+                              }`}>
+                                {order.status === 'pending' ? 'Attesa' :
+                                 order.status === 'preparing' ? 'Prep.' :
+                                 order.status === 'ready' ? 'Pronto' :
+                                 order.status === 'delivered' ? 'OK' : order.status}
+                              </span>
                             </div>
-                          )}
+                          </div>
+                          <span className="font-semibold text-white text-sm">€{order.total.toFixed(2)}</span>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                        {/* Expanded items */}
+                        {expandedSessionOrders.has(order.id) && (
+                          <div className="px-2 pb-2 pt-1 border-t border-dark-700">
+                            {sessionOrderItems[order.id] ? (
+                              sessionOrderItems[order.id].length > 0 ? (
+                                <div className="space-y-0.5">
+                                  {sessionOrderItems[order.id].map((item) => (
+                                    <div key={item.id} className="flex items-center justify-between text-xs py-0.5">
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-primary-400 font-medium">{item.quantity}x</span>
+                                        <span className="text-dark-300">{item.menu_item_name || 'Prodotto'}</span>
+                                      </div>
+                                      <span className="text-dark-400">€{(item.price * item.quantity).toFixed(2)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-dark-500 text-xs text-center py-1">Vuoto</p>
+                              )
+                            ) : (
+                              <div className="flex justify-center py-1">
+                                <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-primary-500"></div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-            {/* Actions */}
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={handleAddOrder} className="btn-primary flex items-center justify-center gap-2">
-                <ShoppingCart className="w-4 h-4" />
-                Aggiungi Comanda
-              </button>
-              <button onClick={handleTransfer} className="btn-secondary flex items-center justify-center gap-2">
-                <ArrowRight className="w-4 h-4" />
-                Trasferisci
-              </button>
-              <button onClick={handleSplitBill} className="btn-secondary flex items-center justify-center gap-2">
-                <Split className="w-4 h-4" />
-                Dividi Conto
-              </button>
-              <button onClick={handleShowBillStatus} className="btn-secondary flex items-center justify-center gap-2">
-                <ClipboardList className="w-4 h-4" />
-                Stato Conto
-              </button>
-              <button
-                onClick={handleCloseSession}
-                className="btn-primary bg-emerald-600 hover:bg-emerald-700 flex items-center justify-center gap-2 col-span-2"
-              >
-                <Receipt className="w-4 h-4" />
-                Chiudi Conto
-              </button>
+              {/* Colonna destra: Actions (2/5) */}
+              <div className="lg:col-span-2 mt-4 lg:mt-0">
+                <h3 className="font-semibold text-white mb-2 text-sm lg:block hidden">Azioni</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={handleAddOrder} className="btn-primary flex items-center justify-center gap-1.5 text-sm py-2">
+                    <ShoppingCart className="w-4 h-4" />
+                    <span className="hidden lg:inline">Nuova</span> Comanda
+                  </button>
+                  <button onClick={handleTransfer} className="btn-secondary flex items-center justify-center gap-1.5 text-sm py-2">
+                    <ArrowRight className="w-4 h-4" />
+                    Trasferisci
+                  </button>
+                  <button onClick={handleSplitBill} className="btn-secondary flex items-center justify-center gap-1.5 text-sm py-2">
+                    <Split className="w-4 h-4" />
+                    Dividi
+                  </button>
+                  <button onClick={handleShowBillStatus} className="btn-secondary flex items-center justify-center gap-1.5 text-sm py-2">
+                    <ClipboardList className="w-4 h-4" />
+                    Stato
+                  </button>
+                  <button
+                    onClick={handleCloseSession}
+                    className="btn-primary bg-emerald-600 hover:bg-emerald-700 flex items-center justify-center gap-1.5 text-sm py-2.5 col-span-2"
+                  >
+                    <Receipt className="w-4 h-4" />
+                    Chiudi Conto
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1584,134 +1586,152 @@ export function Tables() {
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         title="Chiudi Conto"
-        size="sm"
+        size={paymentForm.method === 'cash' ? '2xl' : 'sm'}
       >
         {selectedSession && (
-          <div className="space-y-6">
-            <div className="text-center p-4 bg-dark-900 rounded-xl">
-              <p className="text-sm text-dark-400">Totale da pagare</p>
-              <p className="text-3xl font-bold text-primary-400">€{selectedSession.total.toFixed(2)}</p>
-            </div>
-
-            <div>
-              <label className="label">Metodo di Pagamento</label>
-              <div className="grid grid-cols-3 gap-3">
-                <button
-                  onClick={() => setPaymentForm({ ...paymentForm, method: 'cash' })}
-                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-colors ${
-                    paymentForm.method === 'cash'
-                      ? 'border-primary-500 bg-primary-500/10'
-                      : 'border-dark-700 hover:border-dark-600'
-                  }`}
-                >
-                  <Banknote className="w-6 h-6" />
-                  <span className="text-sm">Contanti</span>
-                </button>
-                <button
-                  onClick={() => setPaymentForm({ ...paymentForm, method: 'card' })}
-                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-colors ${
-                    paymentForm.method === 'card'
-                      ? 'border-primary-500 bg-primary-500/10'
-                      : 'border-dark-700 hover:border-dark-600'
-                  }`}
-                >
-                  <CreditCard className="w-6 h-6" />
-                  <span className="text-sm">Carta</span>
-                </button>
-                <button
-                  onClick={() => setPaymentForm({ ...paymentForm, method: 'online' })}
-                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-colors ${
-                    paymentForm.method === 'online'
-                      ? 'border-primary-500 bg-primary-500/10'
-                      : 'border-dark-700 hover:border-dark-600'
-                  }`}
-                >
-                  <Globe className="w-6 h-6" />
-                  <span className="text-sm">Online</span>
-                </button>
+          <div className={paymentForm.method === 'cash' ? 'lg:grid lg:grid-cols-2 lg:gap-6' : ''}>
+            {/* Colonna sinistra: Info pagamento */}
+            <div className="space-y-6">
+              <div className="text-center p-4 bg-dark-900 rounded-xl">
+                <p className="text-sm text-dark-400">Totale da pagare</p>
+                <p className="text-3xl font-bold text-primary-400">€{selectedSession.total.toFixed(2)}</p>
               </div>
+
+              <div>
+                <label className="label">Metodo di Pagamento</label>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    onClick={() => setPaymentForm({ ...paymentForm, method: 'cash' })}
+                    className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-colors ${
+                      paymentForm.method === 'cash'
+                        ? 'border-primary-500 bg-primary-500/10'
+                        : 'border-dark-700 hover:border-dark-600'
+                    }`}
+                  >
+                    <Banknote className="w-6 h-6" />
+                    <span className="text-sm">Contanti</span>
+                  </button>
+                  <button
+                    onClick={() => setPaymentForm({ ...paymentForm, method: 'card' })}
+                    className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-colors ${
+                      paymentForm.method === 'card'
+                        ? 'border-primary-500 bg-primary-500/10'
+                        : 'border-dark-700 hover:border-dark-600'
+                    }`}
+                  >
+                    <CreditCard className="w-6 h-6" />
+                    <span className="text-sm">Carta</span>
+                  </button>
+                  <button
+                    onClick={() => setPaymentForm({ ...paymentForm, method: 'online' })}
+                    className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-colors ${
+                      paymentForm.method === 'online'
+                        ? 'border-primary-500 bg-primary-500/10'
+                        : 'border-dark-700 hover:border-dark-600'
+                    }`}
+                  >
+                    <Globe className="w-6 h-6" />
+                    <span className="text-sm">Online</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="smac"
+                  checked={paymentForm.smac}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, smac: e.target.checked })}
+                  className="w-5 h-5 rounded border-dark-600 bg-dark-800 text-primary-500 focus:ring-primary-500"
+                />
+                <label htmlFor="smac" className="text-white">SMAC passato</label>
+              </div>
+
+              {/* Pulsanti azione - mostrati qui solo se non contanti */}
+              {paymentForm.method !== 'cash' && (
+                <div className="flex items-center gap-3 pt-4">
+                  <button onClick={confirmCloseSession} className="btn-primary flex-1">
+                    Conferma Pagamento
+                  </button>
+                  <button onClick={() => setShowPaymentModal(false)} className="btn-secondary">
+                    Annulla
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="smac"
-                checked={paymentForm.smac}
-                onChange={(e) => setPaymentForm({ ...paymentForm, smac: e.target.checked })}
-                className="w-5 h-5 rounded border-dark-600 bg-dark-800 text-primary-500 focus:ring-primary-500"
-              />
-              <label htmlFor="smac" className="text-white">SMAC passato</label>
-            </div>
-
-            {/* Calcolatore Resto - solo per contanti */}
+            {/* Colonna destra: Calcolatore Resto - solo per contanti */}
             {paymentForm.method === 'cash' && selectedSession.total > 0 && (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-3">
-                <div className="flex items-center gap-2">
-                  <Calculator className="w-4 h-4 text-emerald-400" />
-                  <span className="font-medium text-emerald-400">Calcolatore Resto</span>
-                </div>
-                <div>
-                  <label className="label text-emerald-300">Cliente dà</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={changeCalculator.customerGives}
-                      onChange={(e) => setChangeCalculator({ ...changeCalculator, customerGives: e.target.value })}
-                      className="input flex-1"
-                      placeholder="Es. 50.00"
-                    />
-                    <span className="flex items-center text-dark-400">€</span>
+              <div className="mt-6 lg:mt-0 space-y-4">
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Calculator className="w-4 h-4 text-emerald-400" />
+                    <span className="font-medium text-emerald-400">Calcolatore Resto</span>
                   </div>
-                </div>
-                {/* Quick cash buttons */}
-                <div className="flex gap-2 flex-wrap">
-                  {[5, 10, 20, 50, 100].map(amount => (
-                    <button
-                      key={amount}
-                      type="button"
-                      onClick={() => setChangeCalculator({ ...changeCalculator, customerGives: amount.toString() })}
-                      className="px-3 py-1 text-sm bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-lg transition-colors"
-                    >
-                      €{amount}
-                    </button>
-                  ))}
-                </div>
-                {changeCalculator.customerGives && parseFloat(changeCalculator.customerGives) > 0 && (
-                  <div className="p-3 bg-dark-900 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <span className="text-dark-400">Totale conto:</span>
-                      <span className="text-white">€{selectedSession.total.toFixed(2)}</span>
+                  <div>
+                    <label className="label text-emerald-300">Cliente dà</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={changeCalculator.customerGives}
+                        onChange={(e) => setChangeCalculator({ ...changeCalculator, customerGives: e.target.value })}
+                        className="input flex-1"
+                        placeholder="Es. 50.00"
+                      />
+                      <span className="flex items-center text-dark-400">€</span>
                     </div>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-dark-400">Cliente dà:</span>
-                      <span className="text-white">€{parseFloat(changeCalculator.customerGives).toFixed(2)}</span>
-                    </div>
-                    <div className="border-t border-dark-700 my-2"></div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-emerald-400 font-semibold">RESTO DA DARE:</span>
-                      <span className="text-2xl font-bold text-emerald-400">
-                        €{Math.max(0, parseFloat(changeCalculator.customerGives) - selectedSession.total).toFixed(2)}
-                      </span>
-                    </div>
-                    {parseFloat(changeCalculator.customerGives) < selectedSession.total && (
-                      <p className="text-amber-400 text-sm mt-2">
-                        ⚠️ Il cliente non ha dato abbastanza! Mancano €{(selectedSession.total - parseFloat(changeCalculator.customerGives)).toFixed(2)}
-                      </p>
-                    )}
                   </div>
-                )}
+                  {/* Quick cash buttons */}
+                  <div className="flex gap-2 flex-wrap">
+                    {[5, 10, 20, 50, 100].map(amount => (
+                      <button
+                        key={amount}
+                        type="button"
+                        onClick={() => setChangeCalculator({ ...changeCalculator, customerGives: amount.toString() })}
+                        className="px-3 py-1 text-sm bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-lg transition-colors"
+                      >
+                        €{amount}
+                      </button>
+                    ))}
+                  </div>
+                  {changeCalculator.customerGives && parseFloat(changeCalculator.customerGives) > 0 && (
+                    <div className="p-3 bg-dark-900 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-dark-400">Totale conto:</span>
+                        <span className="text-white">€{selectedSession.total.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-dark-400">Cliente dà:</span>
+                        <span className="text-white">€{parseFloat(changeCalculator.customerGives).toFixed(2)}</span>
+                      </div>
+                      <div className="border-t border-dark-700 my-2"></div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-emerald-400 font-semibold">RESTO DA DARE:</span>
+                        <span className="text-2xl font-bold text-emerald-400">
+                          €{Math.max(0, parseFloat(changeCalculator.customerGives) - selectedSession.total).toFixed(2)}
+                        </span>
+                      </div>
+                      {parseFloat(changeCalculator.customerGives) < selectedSession.total && (
+                        <p className="text-amber-400 text-sm mt-2">
+                          ⚠️ Il cliente non ha dato abbastanza! Mancano €{(selectedSession.total - parseFloat(changeCalculator.customerGives)).toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Pulsanti azione per contanti */}
+                <div className="flex items-center gap-3">
+                  <button onClick={confirmCloseSession} className="btn-primary flex-1">
+                    Conferma Pagamento
+                  </button>
+                  <button onClick={() => setShowPaymentModal(false)} className="btn-secondary">
+                    Annulla
+                  </button>
+                </div>
               </div>
             )}
-
-            <div className="flex items-center gap-3 pt-4">
-              <button onClick={confirmCloseSession} className="btn-primary flex-1">
-                Conferma Pagamento
-              </button>
-              <button onClick={() => setShowPaymentModal(false)} className="btn-secondary">
-                Annulla
-              </button>
-            </div>
           </div>
         )}
       </Modal>
@@ -1754,63 +1774,68 @@ export function Tables() {
         isOpen={showSplitModal}
         onClose={() => setShowSplitModal(false)}
         title="Dividi Conto"
-        size="lg"
+        size="3xl"
       >
         {selectedSession && (
-          <div className="space-y-6">
-            {/* Summary */}
-            <div className="grid grid-cols-3 gap-4 p-4 bg-dark-900 rounded-xl">
-              <div className="text-center">
-                <p className="text-sm text-dark-400">Totale</p>
-                <p className="text-lg font-bold text-white">€{selectedSession.total.toFixed(2)}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-dark-400">Pagato</p>
-                <p className="text-lg font-bold text-emerald-400">
-                  €{(selectedSession.total - remainingAmount).toFixed(2)}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-dark-400">Rimanente</p>
-                <p className="text-lg font-bold text-primary-400">€{remainingAmount.toFixed(2)}</p>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            {selectedSession.total > 0 && (
-              <div className="w-full bg-dark-700 rounded-full h-3">
-                <div
-                  className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, ((selectedSession.total - remainingAmount) / selectedSession.total) * 100)}%` }}
-                />
-              </div>
-            )}
-
-            {/* Payments List */}
-            {sessionPayments.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-dark-400 mb-2">Pagamenti effettuati</h4>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {sessionPayments.map((payment) => (
-                    <div key={payment.id} className="flex items-center justify-between p-2 bg-dark-900 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        {payment.payment_method === 'cash' && <Banknote className="w-4 h-4 text-emerald-400" />}
-                        {payment.payment_method === 'card' && <CreditCard className="w-4 h-4 text-blue-400" />}
-                        {payment.payment_method === 'online' && <Globe className="w-4 h-4 text-purple-400" />}
-                        <span className="text-white">€{payment.amount.toFixed(2)}</span>
-                        {payment.notes && <span className="text-dark-400 text-sm">- {payment.notes}</span>}
-                      </div>
-                      {payment.smac_passed && (
-                        <span className="text-xs bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full">
-                          SMAC
-                        </span>
-                      )}
-                    </div>
-                  ))}
+          <div className="lg:grid lg:grid-cols-5 lg:gap-6">
+            {/* Colonna sinistra: Summary e Pagamenti */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* Summary */}
+              <div className="grid grid-cols-3 gap-2 p-3 bg-dark-900 rounded-xl">
+                <div className="text-center">
+                  <p className="text-xs text-dark-400">Totale</p>
+                  <p className="text-sm lg:text-base font-bold text-white">€{selectedSession.total.toFixed(2)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-dark-400">Pagato</p>
+                  <p className="text-sm lg:text-base font-bold text-emerald-400">
+                    €{(selectedSession.total - remainingAmount).toFixed(2)}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-dark-400">Rimanente</p>
+                  <p className="text-sm lg:text-base font-bold text-primary-400">€{remainingAmount.toFixed(2)}</p>
                 </div>
               </div>
-            )}
 
+              {/* Progress Bar */}
+              {selectedSession.total > 0 && (
+                <div className="w-full bg-dark-700 rounded-full h-2">
+                  <div
+                    className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, ((selectedSession.total - remainingAmount) / selectedSession.total) * 100)}%` }}
+                  />
+                </div>
+              )}
+
+              {/* Payments List */}
+              {sessionPayments.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-dark-400 mb-2">Pagamenti effettuati</h4>
+                  <div className="space-y-2 max-h-48 lg:max-h-64 overflow-y-auto">
+                    {sessionPayments.map((payment) => (
+                      <div key={payment.id} className="flex items-center justify-between p-2 bg-dark-900 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          {payment.payment_method === 'cash' && <Banknote className="w-4 h-4 text-emerald-400" />}
+                          {payment.payment_method === 'card' && <CreditCard className="w-4 h-4 text-blue-400" />}
+                          {payment.payment_method === 'online' && <Globe className="w-4 h-4 text-purple-400" />}
+                          <span className="text-white">€{payment.amount.toFixed(2)}</span>
+                          {payment.notes && <span className="text-dark-400 text-sm">- {payment.notes}</span>}
+                        </div>
+                        {payment.smac_passed && (
+                          <span className="text-xs bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full">
+                            SMAC
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Colonna destra: Opzioni pagamento */}
+            <div className="lg:col-span-3 mt-6 lg:mt-0">
             {/* Split Mode Selector */}
             {remainingAmount > 0 && (
               <>
@@ -2214,6 +2239,7 @@ export function Tables() {
             <button onClick={() => setShowSplitModal(false)} className="btn-secondary w-full">
               Chiudi
             </button>
+            </div>
           </div>
         )}
       </Modal>
@@ -2223,10 +2249,10 @@ export function Tables() {
         isOpen={showBillStatusModal}
         onClose={() => setShowBillStatusModal(false)}
         title="Stato del Conto"
-        size="lg"
+        size="2xl"
       >
         {selectedSession && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Summary */}
             <div className="grid grid-cols-3 gap-4 p-4 bg-dark-900 rounded-xl">
               <div className="text-center">
@@ -2245,11 +2271,13 @@ export function Tables() {
               </div>
             </div>
 
+            {/* Desktop: 2 colonne - Pagamenti a sinistra, Items rimanenti a destra */}
+            <div className="lg:grid lg:grid-cols-2 lg:gap-6">
             {/* Payments List */}
             {sessionPayments.length > 0 ? (
               <div>
                 <h4 className="text-sm font-medium text-dark-400 mb-3">Pagamenti effettuati ({sessionPayments.length})</h4>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
+                <div className="space-y-3 max-h-64 lg:max-h-80 overflow-y-auto">
                   {sessionPayments.map((payment, index) => (
                     <div key={payment.id} className="p-4 bg-dark-900 rounded-xl">
                       <div className="flex items-center justify-between mb-2">
@@ -2310,20 +2338,28 @@ export function Tables() {
               </div>
             )}
 
-            {/* Remaining items to pay */}
-            {remainingSessionItems.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-dark-400 mb-3">Prodotti ancora da pagare</h4>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {remainingSessionItems.map((item) => (
-                    <div key={item.id} className="flex justify-between p-2 bg-dark-900 rounded-lg">
-                      <span className="text-white">{item.remainingQty}x {item.menu_item_name}</span>
-                      <span className="text-primary-400">€{(item.price * item.remainingQty).toFixed(2)}</span>
-                    </div>
-                  ))}
+            {/* Remaining items to pay - Colonna destra su desktop */}
+            <div className="mt-4 lg:mt-0">
+              {remainingSessionItems.length > 0 ? (
+                <div>
+                  <h4 className="text-sm font-medium text-dark-400 mb-3">Prodotti ancora da pagare</h4>
+                  <div className="space-y-2 max-h-48 lg:max-h-80 overflow-y-auto">
+                    {remainingSessionItems.map((item) => (
+                      <div key={item.id} className="flex justify-between p-2 bg-dark-900 rounded-lg">
+                        <span className="text-white">{item.remainingQty}x {item.menu_item_name}</span>
+                        <span className="text-primary-400">€{(item.price * item.remainingQty).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center">
+                  <Receipt className="w-12 h-12 mx-auto mb-3 text-emerald-400" />
+                  <p className="text-emerald-400 font-medium">Tutto pagato!</p>
+                </div>
+              )}
+            </div>
+            </div>
 
             <button onClick={() => setShowBillStatusModal(false)} className="btn-secondary w-full">
               Chiudi

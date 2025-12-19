@@ -514,47 +514,71 @@ export function Menu() {
         isOpen={showItemModal}
         onClose={() => setShowItemModal(false)}
         title={editingItem ? 'Modifica Articolo' : 'Nuovo Articolo'}
-        size="md"
+        size="lg"
       >
         <div className="space-y-4">
-          <div>
-            <label className="label">Nome *</label>
-            <input
-              type="text"
-              value={itemForm.name}
-              onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
-              className="input"
-              placeholder="Nome articolo"
-            />
+          {/* Desktop: 2 colonne */}
+          <div className="lg:grid lg:grid-cols-2 lg:gap-4">
+            <div>
+              <label className="label">Nome *</label>
+              <input
+                type="text"
+                value={itemForm.name}
+                onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
+                className="input"
+                placeholder="Nome articolo"
+              />
+            </div>
+
+            <div className="mt-4 lg:mt-0">
+              <label className="label">Categoria *</label>
+              <select
+                value={itemForm.category_id}
+                onChange={(e) =>
+                  setItemForm({ ...itemForm, category_id: parseInt(e.target.value) })
+                }
+                className="select"
+              >
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div>
-            <label className="label">Categoria *</label>
-            <select
-              value={itemForm.category_id}
-              onChange={(e) =>
-                setItemForm({ ...itemForm, category_id: parseInt(e.target.value) })
-              }
-              className="select"
-            >
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <div className="lg:grid lg:grid-cols-2 lg:gap-4">
+            <div>
+              <label className="label">Prezzo (€) *</label>
+              <input
+                type="number"
+                step="0.01"
+                value={itemForm.price}
+                onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
+                className="input"
+                placeholder="0.00"
+              />
+            </div>
 
-          <div>
-            <label className="label">Prezzo (€) *</label>
-            <input
-              type="number"
-              step="0.01"
-              value={itemForm.price}
-              onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
-              className="input"
-              placeholder="0.00"
-            />
+            <div className="mt-4 lg:mt-0 flex items-center justify-between lg:items-end lg:pb-1">
+              <span className="text-white">Disponibile</span>
+              <button
+                type="button"
+                onClick={() =>
+                  setItemForm({ ...itemForm, available: !itemForm.available })
+                }
+                className={`relative w-14 h-8 rounded-full transition-colors ${
+                  itemForm.available ? 'bg-emerald-500' : 'bg-dark-600'
+                }`}
+              >
+                <span
+                  className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${
+                    itemForm.available ? 'left-7' : 'left-1'
+                  }`}
+                />
+              </button>
+            </div>
           </div>
 
           <div>
@@ -564,28 +588,9 @@ export function Menu() {
               onChange={(e) =>
                 setItemForm({ ...itemForm, description: e.target.value })
               }
-              className="input resize-none h-24"
+              className="input resize-none h-20"
               placeholder="Descrizione opzionale"
             />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-white">Disponibile</span>
-            <button
-              type="button"
-              onClick={() =>
-                setItemForm({ ...itemForm, available: !itemForm.available })
-              }
-              className={`relative w-14 h-8 rounded-full transition-colors ${
-                itemForm.available ? 'bg-emerald-500' : 'bg-dark-600'
-              }`}
-            >
-              <span
-                className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                  itemForm.available ? 'left-7' : 'left-1'
-                }`}
-              />
-            </button>
           </div>
 
           <div className="flex items-center gap-3 pt-4">

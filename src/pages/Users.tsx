@@ -645,65 +645,71 @@ export function Users() {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingUser ? 'Modifica Utente' : 'Nuovo Utente'}
-        size="md"
+        size="lg"
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-1">
-              Nome Completo *
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Es: Mario Rossi"
-              className="input"
-            />
+          {/* Desktop: Nome e Username su stessa riga */}
+          <div className="lg:grid lg:grid-cols-2 lg:gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-300 mb-1">
+                Nome Completo *
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Es: Mario Rossi"
+                className="input"
+              />
+            </div>
+
+            <div className="mt-4 lg:mt-0">
+              <label className="block text-sm font-medium text-dark-300 mb-1">
+                Username *
+              </label>
+              <input
+                type="text"
+                value={formData.username}
+                onChange={(e) =>
+                  setFormData({ ...formData, username: e.target.value.toLowerCase() })
+                }
+                placeholder="Es: mario.rossi"
+                className="input font-mono"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-1">
-              Username *
-            </label>
-            <input
-              type="text"
-              value={formData.username}
-              onChange={(e) =>
-                setFormData({ ...formData, username: e.target.value.toLowerCase() })
-              }
-              placeholder="Es: mario.rossi"
-              className="input font-mono"
-            />
-          </div>
+          {/* Desktop: Password e Ruolo su stessa riga */}
+          <div className="lg:grid lg:grid-cols-2 lg:gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-300 mb-1">
+                Password {editingUser ? '(lascia vuoto per non modificare)' : '*'}
+              </label>
+              <input
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder={editingUser ? '••••••••' : 'Inserisci password'}
+                className="input"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-1">
-              Password {editingUser ? '(lascia vuoto per non modificare)' : '*'}
-            </label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder={editingUser ? '••••••••' : 'Inserisci password'}
-              className="input"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-1">
-              Ruolo *
-            </label>
-            <select
-              value={formData.role}
-              onChange={(e) =>
-                setFormData({ ...formData, role: e.target.value as UserRole })
-              }
-              className="input"
-            >
-              <option value="staff">Staff - Solo servizio</option>
-              <option value="admin">Admin - Operativo</option>
-              <option value="superadmin">Super Admin - Accesso completo</option>
-            </select>
+            <div className="mt-4 lg:mt-0">
+              <label className="block text-sm font-medium text-dark-300 mb-1">
+                Ruolo *
+              </label>
+              <select
+                value={formData.role}
+                onChange={(e) =>
+                  setFormData({ ...formData, role: e.target.value as UserRole })
+                }
+                className="input"
+              >
+                <option value="staff">Staff - Solo servizio</option>
+                <option value="admin">Admin - Operativo</option>
+                <option value="superadmin">Super Admin - Accesso completo</option>
+              </select>
+            </div>
           </div>
 
           {/* Collegamento Dipendente - utile per Staff */}

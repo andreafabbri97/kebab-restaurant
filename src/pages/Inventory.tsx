@@ -1448,13 +1448,13 @@ export function Inventory() {
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
         title="Impostazioni Costo Ingredienti"
-        size="md"
+        size="xl"
       >
         <div className="space-y-6">
           {/* Method Selection */}
           <div>
             <label className="label">Metodo di Calcolo del Costo Unitario</label>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {(['fixed', 'last', 'weighted_avg', 'moving_avg'] as CostCalculationMethod[]).map((method) => (
                 <button
                   key={method}
@@ -1472,7 +1472,7 @@ export function Inventory() {
                       {costMethodLabels[method]}
                     </span>
                     {inventorySettings.cost_calculation_method === method && (
-                      <span className="text-primary-400 text-sm">✓ Selezionato</span>
+                      <span className="text-primary-400 text-sm">✓</span>
                     )}
                   </div>
                   <p className="text-sm text-dark-400 mt-1">
