@@ -296,11 +296,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className={`text-sm ${sidebarCollapsed ? 'lg:hidden' : ''}`}>Esci</span>
           </button>
 
-          {!sidebarCollapsed && (
-            <div className="text-[9px] text-dark-500 text-center hidden lg:block">
-              v2.0 · © 2025 Andrea Fabbri
-            </div>
-          )}
+          <div className={`text-[9px] text-dark-500 text-center ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
+            v2.0 · © 2025 Andrea Fabbri
+          </div>
         </div>
       </aside>
     </>
