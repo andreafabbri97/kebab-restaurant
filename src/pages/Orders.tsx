@@ -77,7 +77,7 @@ export function Orders() {
   const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate] = useState(new Date().toISOString().split('T')[0]); // Sempre oggi per tab "Oggi"
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -1023,9 +1023,9 @@ export function Orders() {
 
       {activeTab === 'today' && (
         <>
-      {/* Filters - più compatti */}
-      <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
-        <div className="relative flex-1 min-w-0 sm:max-w-[200px]">
+      {/* Filters - solo ricerca e stato (la data è sempre oggi) */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-0 max-w-[180px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
           <input
             type="text"
@@ -1036,26 +1036,17 @@ export function Orders() {
           />
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="input w-auto flex-1 sm:flex-none py-1.5 text-sm"
-          />
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="select w-auto flex-1 sm:flex-none py-1.5 text-sm"
-          >
-            <option value="all">{t('common.all')}</option>
-            <option value="pending">{t('orders.pending')}</option>
-            <option value="preparing">{t('orders.preparing')}</option>
-            <option value="ready">{t('orders.ready')}</option>
-            <option value="delivered">{t('orders.completed')}</option>
-          </select>
-        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="select w-auto py-1.5 text-sm"
+        >
+          <option value="all">{t('common.all')}</option>
+          <option value="pending">{t('orders.pending')}</option>
+          <option value="preparing">{t('orders.preparing')}</option>
+          <option value="ready">{t('orders.ready')}</option>
+          <option value="delivered">{t('orders.completed')}</option>
+        </select>
       </div>
 
       {loading ? (
