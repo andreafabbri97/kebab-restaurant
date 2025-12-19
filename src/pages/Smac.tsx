@@ -13,6 +13,7 @@ import {
 import { getOrders } from '../lib/database';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { showToast } from '../components/ui/Toast';
+import { useLanguage } from '../context/LanguageContext';
 import type { Order } from '../types';
 
 // Interfaccia per le voci raggruppate
@@ -48,6 +49,7 @@ async function updateOrderSmac(orderId: number, smacPassed: boolean): Promise<vo
 }
 
 export function Smac() {
+  const { t: _t } = useLanguage(); // Will be used for translations
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);

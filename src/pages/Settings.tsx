@@ -15,9 +15,11 @@ import { getSettings, updateSettings } from '../lib/database';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
+import { useLanguage } from '../context/LanguageContext';
 import type { Settings as SettingsType } from '../types';
 
 export function Settings() {
+  const { t, language, setLanguage } = useLanguage();
   const [settings, setSettings] = useState<SettingsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,7 +35,7 @@ export function Settings() {
       setSettings(data);
     } catch (error) {
       console.error('Error loading settings:', error);
-      showToast('Errore nel caricamento impostazioni', 'error');
+      showToast(t('settings.errorLoading'), 'error');
     } finally {
       setLoading(false);
     }
@@ -48,10 +50,10 @@ export function Settings() {
       // Ricarica le impostazioni dal database per confermare il salvataggio
       const savedSettings = await getSettings();
       setSettings(savedSettings);
-      showToast('Impostazioni salvate', 'success');
+      showToast(t('settings.saved'), 'success');
     } catch (error) {
       console.error('Error saving settings:', error);
-      showToast('Errore nel salvataggio', 'error');
+      showToast(t('settings.errorSaving'), 'error');
     } finally {
       setSaving(false);
     }
@@ -92,10 +94,10 @@ export function Settings() {
       a.click();
       URL.revokeObjectURL(url);
 
-      showToast('Backup esportato', 'success');
+      showToast(t('settings.backupExported'), 'success');
     } catch (error) {
       console.error('Error exporting data:', error);
-      showToast('Errore nell\'esportazione', 'error');
+      showToast(t('settings.backupError'), 'error');
     }
   }
 
@@ -117,8 +119,8 @@ export function Settings() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Impostazioni</h1>
-          <p className="text-dark-400 mt-1 text-sm sm:text-base">Configura il tuo ristorante</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">{t('settings.title')}</h1>
+          <p className="text-dark-400 mt-1 text-sm sm:text-base">{t('settings.subtitle')}</p>
         </div>
         <button onClick={handleSave} disabled={saving} className="btn-primary text-sm sm:text-base w-full sm:w-auto justify-center">
           {saving ? (
@@ -126,7 +128,7 @@ export function Settings() {
           ) : (
             <>
               <Save className="w-4 h-4 sm:w-5 sm:h-5" />
-              Salva
+              {t('common.save')}
             </>
           )}
         </button>
@@ -140,29 +142,29 @@ export function Settings() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-semibold text-white text-sm sm:text-base">Database</h3>
+              <h3 className="font-semibold text-white text-sm sm:text-base">{t('settings.database')}</h3>
               {isSupabaseConfigured ? (
                 <span className="badge-success text-xs">
                   <Check className="w-3 h-3 mr-1" />
-                  Supabase Connesso
+                  {t('settings.databaseConnected')}
                 </span>
               ) : (
                 <span className="badge-warning text-xs">
                   <AlertTriangle className="w-3 h-3 mr-1" />
-                  Modalità Demo
+                  {t('settings.databaseDemo')}
                 </span>
               )}
             </div>
             <p className="text-xs sm:text-sm text-dark-400 mt-1">
               {isSupabaseConfigured
-                ? 'I dati sono salvati nel cloud su Supabase'
-                : 'I dati sono salvati localmente nel browser. Configura Supabase per il cloud.'}
+                ? t('settings.databaseCloudDesc')
+                : t('settings.databaseLocalDesc')}
             </p>
           </div>
           {!isSupabaseConfigured && (
             <button onClick={() => setShowSchemaModal(true)} className="btn-secondary text-xs sm:text-sm w-full sm:w-auto justify-center">
               <ExternalLink className="w-4 h-4" />
-              Configura Supabase
+              {t('settings.configureSupabase')}
             </button>
           )}
         </div>
@@ -172,63 +174,63 @@ export function Settings() {
       <div className="card">
         <div className="card-header flex items-center gap-2">
           <Store className="w-4 h-4 sm:w-5 sm:h-5" />
-          <h2 className="font-semibold text-white text-sm sm:text-base">Informazioni Negozio</h2>
+          <h2 className="font-semibold text-white text-sm sm:text-base">{t('settings.shopInfo')}</h2>
         </div>
         <div className="card-body space-y-3 sm:space-y-4">
           <div>
-            <label className="label text-xs sm:text-sm">Nome Negozio</label>
+            <label className="label text-xs sm:text-sm">{t('settings.shopName')}</label>
             <input
               type="text"
               value={settings?.shop_name || ''}
               onChange={(e) => setSettings(s => s ? { ...s, shop_name: e.target.value } : null)}
               className="input text-sm sm:text-base"
-              placeholder="Nome del tuo ristorante"
+              placeholder={t('settings.shopNamePlaceholder')}
             />
           </div>
 
           <div>
-            <label className="label text-xs sm:text-sm">Slogan Menu (per PDF)</label>
+            <label className="label text-xs sm:text-sm">{t('settings.menuSlogan')}</label>
             <input
               type="text"
               value={settings?.menu_slogan || ''}
               onChange={(e) => setSettings(s => s ? { ...s, menu_slogan: e.target.value } : null)}
               className="input text-sm sm:text-base"
-              placeholder="Es: Autentica cucina mediterranea"
+              placeholder={t('settings.menuSloganPlaceholder')}
             />
-            <p className="text-xs text-dark-500 mt-1">Questo testo verrà mostrato sotto il nome nel menu PDF</p>
+            <p className="text-xs text-dark-500 mt-1">{t('settings.menuSloganHint')}</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="label text-xs sm:text-sm">Indirizzo</label>
+              <label className="label text-xs sm:text-sm">{t('settings.address')}</label>
               <input
                 type="text"
                 value={settings?.address || ''}
                 onChange={(e) => setSettings(s => s ? { ...s, address: e.target.value } : null)}
                 className="input text-sm sm:text-base"
-                placeholder="Via Example 123, San Marino"
+                placeholder={t('settings.addressPlaceholder')}
               />
             </div>
             <div>
-              <label className="label text-xs sm:text-sm">Telefono</label>
+              <label className="label text-xs sm:text-sm">{t('settings.phone')}</label>
               <input
                 type="tel"
                 value={settings?.phone || ''}
                 onChange={(e) => setSettings(s => s ? { ...s, phone: e.target.value } : null)}
                 className="input text-sm sm:text-base"
-                placeholder="+378 0549 123456"
+                placeholder={t('settings.phonePlaceholder')}
               />
             </div>
           </div>
 
           <div>
-            <label className="label text-xs sm:text-sm">Email</label>
+            <label className="label text-xs sm:text-sm">{t('settings.email')}</label>
             <input
               type="email"
               value={settings?.email || ''}
               onChange={(e) => setSettings(s => s ? { ...s, email: e.target.value } : null)}
               className="input text-sm sm:text-base"
-              placeholder="info@tuoristorante.sm"
+              placeholder={t('settings.emailPlaceholder')}
             />
           </div>
         </div>
@@ -238,24 +240,24 @@ export function Settings() {
       <div className="card">
         <div className="card-header flex items-center gap-2">
           <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
-          <h2 className="font-semibold text-white text-sm sm:text-base">Impostazioni Finanziarie</h2>
+          <h2 className="font-semibold text-white text-sm sm:text-base">{t('settings.financialSettings')}</h2>
         </div>
         <div className="card-body space-y-3 sm:space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div>
-              <label className="label text-xs sm:text-sm">Valuta</label>
+              <label className="label text-xs sm:text-sm">{t('settings.currency')}</label>
               <select
                 value={settings?.currency || '€'}
                 onChange={(e) => setSettings(s => s ? { ...s, currency: e.target.value } : null)}
                 className="select text-sm sm:text-base"
               >
-                <option value="€">Euro (€)</option>
-                <option value="$">Dollaro ($)</option>
-                <option value="£">Sterlina (£)</option>
+                <option value="€">{t('settings.currencyEuro')}</option>
+                <option value="$">{t('settings.currencyDollar')}</option>
+                <option value="£">{t('settings.currencyPound')}</option>
               </select>
             </div>
             <div>
-              <label className="label text-xs sm:text-sm">Aliquota IVA (%)</label>
+              <label className="label text-xs sm:text-sm">{t('settings.vatRate')}</label>
               <input
                 type="number"
                 value={settings?.iva_rate || 17}
@@ -265,7 +267,7 @@ export function Settings() {
               />
             </div>
             <div>
-              <label className="label text-xs sm:text-sm">Soglia Scorte</label>
+              <label className="label text-xs sm:text-sm">{t('settings.stockThreshold')}</label>
               <input
                 type="number"
                 value={settings?.default_threshold || 10}
@@ -275,6 +277,55 @@ export function Settings() {
               />
             </div>
           </div>
+
+          {/* IVA Mode Toggle */}
+          <div className="pt-3 border-t border-dark-700">
+            <label className="label text-xs sm:text-sm mb-2">Modalità IVA</label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => setSettings(s => s ? { ...s, iva_included: true } : null)}
+                className={`flex-1 flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                  settings?.iva_included !== false
+                    ? 'border-primary-500 bg-primary-500/10'
+                    : 'border-dark-700 bg-dark-800 hover:border-dark-600'
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                  settings?.iva_included !== false ? 'border-primary-500' : 'border-dark-500'
+                }`}>
+                  {settings?.iva_included !== false && <div className="w-2 h-2 rounded-full bg-primary-500" />}
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-white text-sm">IVA inclusa nei prezzi</p>
+                  <p className="text-xs text-dark-400">I prezzi del menu sono già comprensivi di IVA (consigliato)</p>
+                </div>
+              </button>
+              <button
+                onClick={() => setSettings(s => s ? { ...s, iva_included: false } : null)}
+                className={`flex-1 flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                  settings?.iva_included === false
+                    ? 'border-primary-500 bg-primary-500/10'
+                    : 'border-dark-700 bg-dark-800 hover:border-dark-600'
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                  settings?.iva_included === false ? 'border-primary-500' : 'border-dark-500'
+                }`}>
+                  {settings?.iva_included === false && <div className="w-2 h-2 rounded-full bg-primary-500" />}
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-white text-sm">IVA esclusa dai prezzi</p>
+                  <p className="text-xs text-dark-400">L'IVA viene aggiunta al totale dell'ordine</p>
+                </div>
+              </button>
+            </div>
+            <p className="text-xs text-dark-500 mt-2">
+              {settings?.iva_included !== false
+                ? `Esempio: Un prodotto a €10 include già €${(10 - 10 / (1 + (settings?.iva_rate || 17) / 100)).toFixed(2)} di IVA. Il cliente paga €10.`
+                : `Esempio: Un prodotto a €10 + IVA (${settings?.iva_rate || 17}%) = €${(10 * (1 + (settings?.iva_rate || 17) / 100)).toFixed(2)}. L'IVA viene aggiunta.`
+              }
+            </p>
+          </div>
         </div>
       </div>
 
@@ -282,18 +333,18 @@ export function Settings() {
       <div className="card">
         <div className="card-header flex items-center gap-2">
           <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
-          <h2 className="font-semibold text-white text-sm sm:text-base">Lingua e Regione</h2>
+          <h2 className="font-semibold text-white text-sm sm:text-base">{t('settings.languageSection')}</h2>
         </div>
         <div className="card-body">
           <div>
-            <label className="label text-xs sm:text-sm">Lingua</label>
+            <label className="label text-xs sm:text-sm">{t('settings.language')}</label>
             <select
-              value={settings?.language || 'it'}
-              onChange={(e) => setSettings(s => s ? { ...s, language: e.target.value } : null)}
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as 'it' | 'en')}
               className="select max-w-xs text-sm sm:text-base"
             >
-              <option value="it">Italiano</option>
-              <option value="en">English</option>
+              <option value="it">{t('settings.italian')}</option>
+              <option value="en">{t('settings.english')}</option>
             </select>
           </div>
         </div>
@@ -303,16 +354,16 @@ export function Settings() {
       <div className="card">
         <div className="card-header flex items-center gap-2">
           <Download className="w-4 h-4 sm:w-5 sm:h-5" />
-          <h2 className="font-semibold text-white text-sm sm:text-base">Backup & Ripristino</h2>
+          <h2 className="font-semibold text-white text-sm sm:text-base">{t('settings.backup')}</h2>
         </div>
         <div className="card-body space-y-3 sm:space-y-4">
           <p className="text-dark-400 text-xs sm:text-sm">
-            Esporta tutti i dati del ristorante in un file JSON per backup o migrazione.
+            {t('settings.backupDesc')}
           </p>
           <div className="flex items-center gap-3">
             <button onClick={exportData} className="btn-secondary text-sm sm:text-base">
               <Download className="w-4 h-4 sm:w-5 sm:h-5" />
-              Esporta Backup (JSON)
+              {t('settings.exportBackup')}
             </button>
           </div>
         </div>
@@ -322,25 +373,25 @@ export function Settings() {
       <div className="card">
         <div className="card-header flex items-center gap-2">
           <SettingsIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-          <h2 className="font-semibold text-white text-sm sm:text-base">Informazioni</h2>
+          <h2 className="font-semibold text-white text-sm sm:text-base">{t('settings.about')}</h2>
         </div>
         <div className="card-body">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-center">
             <div className="p-3 sm:p-4 bg-dark-900 rounded-xl">
               <p className="text-lg sm:text-2xl font-bold text-primary-400">2.0</p>
-              <p className="text-xs sm:text-sm text-dark-400">Versione</p>
+              <p className="text-xs sm:text-sm text-dark-400">{t('settings.version')}</p>
             </div>
             <div className="p-3 sm:p-4 bg-dark-900 rounded-xl">
               <p className="text-lg sm:text-2xl font-bold text-blue-400">React</p>
-              <p className="text-xs sm:text-sm text-dark-400">Frontend</p>
+              <p className="text-xs sm:text-sm text-dark-400">{t('settings.frontend')}</p>
             </div>
             <div className="p-3 sm:p-4 bg-dark-900 rounded-xl">
               <p className="text-lg sm:text-2xl font-bold text-emerald-400">Supabase</p>
-              <p className="text-xs sm:text-sm text-dark-400">Database</p>
+              <p className="text-xs sm:text-sm text-dark-400">{t('settings.databaseType')}</p>
             </div>
             <div className="p-3 sm:p-4 bg-dark-900 rounded-xl">
               <p className="text-lg sm:text-2xl font-bold text-purple-400">TS</p>
-              <p className="text-xs sm:text-sm text-dark-400">Linguaggio</p>
+              <p className="text-xs sm:text-sm text-dark-400">{t('settings.languageType')}</p>
             </div>
           </div>
         </div>

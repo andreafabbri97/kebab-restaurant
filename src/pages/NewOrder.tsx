@@ -17,12 +17,14 @@ import {
 import { showToast } from '../components/ui/Toast';
 import { CartContent } from '../components/order/CartContent';
 import { Modal } from '../components/ui/Modal';
+import { useLanguage } from '../context/LanguageContext';
 import type { Category, MenuItem, Table, CartItem, Settings, TableSession, Order } from '../types';
 
 type OrderType = 'dine_in' | 'takeaway' | 'delivery';
 type PaymentMethod = 'cash' | 'card' | 'online';
 
 export function NewOrder() {
+  const { t: _t } = useLanguage(); // Will be used for translations
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -120,8 +122,16 @@ export function NewOrder() {
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const ivaRate = settings?.iva_rate || 17;
-  const ivaAmount = cartTotal * (ivaRate / 100);
-  const grandTotal = cartTotal + ivaAmount;
+  const ivaIncluded = settings?.iva_included !== false; // Default true
+
+  // Se IVA inclusa: scorporo l'IVA dal totale (prezzi già comprensivi)
+  // Se IVA esclusa: aggiungo l'IVA al totale
+  const ivaAmount = ivaIncluded
+    ? cartTotal - (cartTotal / (1 + ivaRate / 100)) // IVA scorporata
+    : cartTotal * (ivaRate / 100); // IVA aggiunta
+  const grandTotal = ivaIncluded
+    ? cartTotal // Il cliente paga il prezzo del menu
+    : cartTotal + ivaAmount; // L'IVA viene aggiunta
 
   function addToCart(item: MenuItem) {
     setCart((prev) => {
@@ -393,6 +403,7 @@ export function NewOrder() {
     cartTotal,
     ivaRate,
     ivaAmount,
+    ivaIncluded,
     grandTotal,
     expandedItemId,
     setExpandedItemId,

@@ -51,9 +51,11 @@ import {
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
+import { useLanguage } from '../context/LanguageContext';
 import type { Table, Reservation, TableSession, Order, SessionPayment, SessionPaymentItem, OrderItem, Receipt as ReceiptType } from '../types';
 
 export function Tables() {
+  const { t: _t } = useLanguage(); // Will be used for translations
   const navigate = useNavigate();
   const [tables, setTables] = useState<Table[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);

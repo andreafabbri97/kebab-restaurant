@@ -31,7 +31,6 @@ import {
   Calculator,
   Receipt,
   HelpCircle,
-  Globe,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
@@ -72,8 +71,6 @@ const navigation = [
   { nameKey: 'sidebar.users', href: '/users', icon: UserCog, permission: 'users' },
   // Aiuto - visibile a tutti
   { nameKey: 'sidebar.guide', href: '/guide', icon: HelpCircle, permission: 'guide' },
-  // Lingua - visibile a tutti
-  { nameKey: 'sidebar.language', href: '/language', icon: Globe, permission: 'language' },
 ];
 
 interface SidebarProps {

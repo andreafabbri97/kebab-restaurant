@@ -15,12 +15,14 @@ import {
 import { Modal } from '../components/ui/Modal';
 import { showToast } from '../components/ui/Toast';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import type { User, UserRole, Employee } from '../types';
 import { ROLE_LABELS } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { getEmployees } from '../lib/database';
 
 export function Users() {
+  const { t: _t } = useLanguage(); // Will be used for translations
   const [users, setUsers] = useState<User[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);

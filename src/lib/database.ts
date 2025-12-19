@@ -1064,6 +1064,7 @@ export async function getSettings(): Promise<Settings> {
         shop_name: 'Il Mio Ristorante',
         currency: '€',
         iva_rate: 17,
+        iva_included: true, // Default: IVA inclusa nei prezzi
         default_threshold: 10,
         language: 'it',
       };
@@ -1073,6 +1074,7 @@ export async function getSettings(): Promise<Settings> {
       menu_slogan: data?.menu_slogan,
       currency: data?.currency || '€',
       iva_rate: data?.iva_rate ?? 17,
+      iva_included: data?.iva_included ?? true, // Default: IVA inclusa nei prezzi
       default_threshold: data?.default_threshold ?? 10,
       language: data?.language || 'it',
       address: data?.address,
@@ -1085,6 +1087,7 @@ export async function getSettings(): Promise<Settings> {
     menu_slogan: '',
     currency: '€',
     iva_rate: 17,
+    iva_included: true, // Default: IVA inclusa nei prezzi
     default_threshold: 10,
     language: 'it',
   });

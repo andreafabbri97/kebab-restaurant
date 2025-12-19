@@ -34,6 +34,7 @@ interface CartContentProps {
   cartTotal: number;
   ivaRate: number;
   ivaAmount: number;
+  ivaIncluded?: boolean; // true = IVA inclusa nei prezzi (default)
   grandTotal: number;
   expandedItemId: number | null;
   setExpandedItemId: (id: number | null) => void;
@@ -71,6 +72,7 @@ export function CartContent({
   cartTotal,
   ivaRate,
   ivaAmount,
+  ivaIncluded = true,
   grandTotal,
   expandedItemId,
   setExpandedItemId,
@@ -374,15 +376,27 @@ export function CartContent({
                 <span>Totale Comanda</span>
                 <span className="text-primary-400">€{cartTotal.toFixed(2)}</span>
               </div>
+            ) : ivaIncluded ? (
+              // IVA inclusa: mostra totale e IVA scorporata
+              <>
+                <div className="flex justify-between text-xl font-bold text-white">
+                  <span>Totale</span>
+                  <span className="text-primary-400">€{grandTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-dark-500">
+                  <span>di cui IVA ({ivaRate}%)</span>
+                  <span>€{ivaAmount.toFixed(2)}</span>
+                </div>
+              </>
             ) : (
-              // Per ordini normali, mostra subtotale, IVA e totale
+              // IVA esclusa: mostra subtotale + IVA = totale
               <>
                 <div className="flex justify-between text-sm text-dark-400">
                   <span>Subtotale</span>
                   <span>€{cartTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-dark-400">
-                  <span>IVA ({ivaRate}%)</span>
+                  <span>+ IVA ({ivaRate}%)</span>
                   <span>€{ivaAmount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xl font-bold text-white pt-2">

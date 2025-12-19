@@ -25,9 +25,11 @@ import {
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import type { Employee, WorkShift } from '../types';
 
 export function Staff() {
+  const { t: _t } = useLanguage(); // Will be used for translations
   const { user, hasPermission } = useAuth();
   const canFullAccess = hasPermission('staff.full');
 

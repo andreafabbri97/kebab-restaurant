@@ -24,9 +24,11 @@ import {
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
+import { useLanguage } from '../context/LanguageContext';
 import type { CashClosure, Order, Receipt as ReceiptType } from '../types';
 
 export function CashRegister() {
+  const { t: _t } = useLanguage(); // Will be used for translations
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<{

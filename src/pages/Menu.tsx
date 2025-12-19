@@ -22,9 +22,11 @@ import {
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
+import { useLanguage } from '../context/LanguageContext';
 import type { Category, MenuItem, Settings } from '../types';
 
 export function Menu() {
+  const { t: _t } = useLanguage(); // Will be used for translations
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);

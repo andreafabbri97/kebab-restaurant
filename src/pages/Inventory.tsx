@@ -35,6 +35,7 @@ import {
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
+import { useLanguage } from '../context/LanguageContext';
 import type { InventoryItem, EOQResult, Ingredient, Supply, SupplyItem, InventorySettings, CostCalculationMethod } from '../types';
 
 // Interfaccia per item temporanei nella creazione fornitura
@@ -47,6 +48,7 @@ interface TempSupplyItem {
 }
 
 export function Inventory() {
+  const { t: _t } = useLanguage(); // Will be used for translations
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
   const [eoqData, setEoqData] = useState<EOQResult[]>([]);

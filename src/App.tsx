@@ -39,7 +39,6 @@ const Users = lazy(() => import('./pages/Users').then(m => ({ default: m.Users }
 const CashRegister = lazy(() => import('./pages/CashRegister').then(m => ({ default: m.CashRegister })));
 const DishCosts = lazy(() => import('./pages/DishCosts').then(m => ({ default: m.DishCosts })));
 const GuideFAQ = lazy(() => import('./pages/GuideFAQ').then(m => ({ default: m.GuideFAQ })));
-const Language = lazy(() => import('./pages/Language').then(m => ({ default: m.Language })));
 
 // Loading component per Suspense
 function PageLoader() {
@@ -244,18 +243,6 @@ function App() {
                 <PrivateRoute permission="guide">
                   <Suspense fallback={<PageLoader />}>
                     <GuideFAQ />
-                  </Suspense>
-                </PrivateRoute>
-              }
-            />
-
-            {/* Lingua - tutti */}
-            <Route
-              path="language"
-              element={
-                <PrivateRoute permission="language">
-                  <Suspense fallback={<PageLoader />}>
-                    <Language />
                   </Suspense>
                 </PrivateRoute>
               }

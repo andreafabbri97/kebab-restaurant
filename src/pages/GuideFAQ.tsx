@@ -17,6 +17,7 @@ import {
   Search
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 interface FAQItem {
   question: string;
@@ -32,6 +33,7 @@ interface GuideSection {
 }
 
 export function GuideFAQ() {
+  const { t: _t } = useLanguage(); // Will be used for translations
   const { isSuperAdmin, isAdmin } = useAuth();
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');

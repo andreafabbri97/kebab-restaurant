@@ -18,14 +18,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   superadmin: [
     'dashboard', 'orders', 'orders.new', 'menu', 'tables',
     'inventory', 'recipes', 'staff', 'staff.full', 'reports', 'smac',
-    'settings', 'users', 'cash-register', 'dish-costs', 'guide', 'language'
+    'settings', 'users', 'cash-register', 'dish-costs', 'guide'
   ],
   admin: [
     'dashboard', 'orders', 'orders.new', 'menu', 'tables',
-    'inventory', 'recipes', 'staff', 'staff.full', 'cash-register', 'dish-costs', 'guide', 'language'
+    'inventory', 'recipes', 'staff', 'staff.full', 'cash-register', 'dish-costs', 'guide'
   ],
   staff: [
-    'orders.new', 'orders', 'tables', 'staff', 'guide', 'language'
+    'orders.new', 'orders', 'tables', 'staff', 'guide'
   ],
 };
 
@@ -222,6 +222,7 @@ export interface Settings {
   menu_slogan?: string;
   currency: string;
   iva_rate: number;
+  iva_included: boolean; // true = IVA inclusa nei prezzi (default), false = IVA aggiunta al totale
   default_threshold: number;
   language: string;
   address?: string;

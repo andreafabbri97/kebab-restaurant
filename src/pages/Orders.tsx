@@ -30,6 +30,7 @@ import {
   Printer,
   FileText,
 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 import {
   getOrders,
   getOrderItems,
@@ -55,20 +56,21 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { Order, OrderItem, Table, SessionPayment, SessionPaymentItem, Receipt as ReceiptType } from '../types';
 
 const statusConfig = {
-  pending: { label: 'In Attesa', icon: Clock, color: 'badge-warning', next: 'preparing' },
-  preparing: { label: 'In Preparazione', icon: ChefHat, color: 'badge-info', next: 'ready' },
-  ready: { label: 'Pronto', icon: CheckCircle, color: 'badge-success', next: 'delivered' },
-  delivered: { label: 'Consegnato', icon: Package, color: 'badge-success', next: null },
-  cancelled: { label: 'Annullato', icon: Trash2, color: 'badge-danger', next: null },
+  pending: { labelKey: 'orders.pending', icon: Clock, color: 'badge-warning', next: 'preparing' },
+  preparing: { labelKey: 'orders.preparing', icon: ChefHat, color: 'badge-info', next: 'ready' },
+  ready: { labelKey: 'orders.ready', icon: CheckCircle, color: 'badge-success', next: 'delivered' },
+  delivered: { labelKey: 'orders.completed', icon: Package, color: 'badge-success', next: null },
+  cancelled: { labelKey: 'orders.cancelled', icon: Trash2, color: 'badge-danger', next: null },
 };
 
-const orderTypeLabels = {
-  dine_in: 'Tavolo',
-  takeaway: 'Asporto',
-  delivery: 'Domicilio',
+const orderTypeLabelKeys = {
+  dine_in: 'orders.dineIn',
+  takeaway: 'orders.takeaway',
+  delivery: 'orders.delivery',
 };
 
 export function Orders() {
+  const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -737,7 +739,7 @@ export function Orders() {
     } else if (bulkAction) {
       try {
         await updateOrderStatusBulk(selectedOrderIds, bulkAction as Order['status']);
-        showToast(`${selectedOrderIds.length} ordini aggiornati a "${statusConfig[bulkAction as keyof typeof statusConfig]?.label || bulkAction}"`, 'success');
+        showToast(`${selectedOrderIds.length} ordini aggiornati a "${t(statusConfig[bulkAction as keyof typeof statusConfig]?.labelKey) || bulkAction}"`, 'success');
         setSelectedOrderIds([]);
         loadHistoryOrders();
       } catch (error) {
@@ -865,8 +867,8 @@ export function Orders() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Ordini</h1>
-          <p className="text-dark-400 mt-1 text-sm sm:text-base">Gestisci gli ordini del ristorante</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">{t('orders.title')}</h1>
+          <p className="text-dark-400 mt-1 text-sm sm:text-base">{t('orders.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Realtime connection status */}
@@ -894,7 +896,7 @@ export function Orders() {
           </button>
           <Link to="/orders/new" className="btn-primary">
             <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span>Nuovo Ordine</span>
+            <span>{t('orders.newOrder')}</span>
           </Link>
         </div>
       </div>
@@ -910,7 +912,7 @@ export function Orders() {
           }`}
         >
           <Clock className="w-4 h-4" />
-          <span>Oggi</span>
+          <span>{t('common.today')}</span>
         </button>
         <button
           onClick={() => {
@@ -924,7 +926,7 @@ export function Orders() {
           }`}
         >
           <History className="w-4 h-4" />
-          <span>Storico</span>
+          <span>{t('orders.history')}</span>
         </button>
       </div>
 
@@ -936,7 +938,7 @@ export function Orders() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-dark-400" />
           <input
             type="text"
-            placeholder="Cerca ordine..."
+            placeholder={t('orders.searchOrders')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input pl-9 sm:pl-10 text-sm sm:text-base"
@@ -956,11 +958,11 @@ export function Orders() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="select w-auto flex-1 sm:flex-none text-sm sm:text-base"
           >
-            <option value="all">Tutti gli stati</option>
-            <option value="pending">In Attesa</option>
-            <option value="preparing">In Preparazione</option>
-            <option value="ready">Pronto</option>
-            <option value="delivered">Consegnato</option>
+            <option value="all">{t('common.all')}</option>
+            <option value="pending">{t('orders.pending')}</option>
+            <option value="preparing">{t('orders.preparing')}</option>
+            <option value="ready">{t('orders.ready')}</option>
+            <option value="delivered">{t('orders.completed')}</option>
           </select>
         </div>
       </div>
@@ -981,14 +983,14 @@ export function Orders() {
                 <div className="card-header flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <config.icon className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="font-semibold text-sm sm:text-base">{config.label}</span>
+                    <span className="font-semibold text-sm sm:text-base">{t(config.labelKey)}</span>
                   </div>
                   <span className={config.color}>{statusOrders.length}</span>
                 </div>
                 <div className="p-3 sm:p-4 space-y-2 max-h-[50vh] sm:max-h-[60vh] overflow-y-auto">
                   {statusOrders.length === 0 ? (
                     <p className="text-dark-500 text-center py-4 text-sm">
-                      Nessun ordine
+                      {t('orders.noActiveOrders')}
                     </p>
                   ) : (
                     statusOrders.map((order) => {
@@ -1020,10 +1022,10 @@ export function Orders() {
                                   {order.session_id
                                     ? `${order.table_name}${order.order_number ? ` - C${order.order_number}` : ''}`
                                     : order.table_name
-                                    ? `${orderTypeLabels[order.order_type]} - ${order.table_name}`
+                                    ? `${t(orderTypeLabelKeys[order.order_type])} - ${order.table_name}`
                                     : order.customer_name
-                                    ? `${orderTypeLabels[order.order_type]} - ${order.customer_name}`
-                                    : `${orderTypeLabels[order.order_type]}`}
+                                    ? `${t(orderTypeLabelKeys[order.order_type])} - ${order.customer_name}`
+                                    : `${t(orderTypeLabelKeys[order.order_type])}`}
                                 </span>
                               </div>
                               {/* Chevron e indicatore items */}
@@ -1145,7 +1147,7 @@ export function Orders() {
             <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-3 sm:gap-4">
               <div className="grid grid-cols-2 gap-2 sm:contents">
                 <div>
-                  <label className="label text-xs sm:text-sm">Da</label>
+                  <label className="label text-xs sm:text-sm">{t('common.from')}</label>
                   <input
                     type="date"
                     value={historyStartDate}
@@ -1154,7 +1156,7 @@ export function Orders() {
                   />
                 </div>
                 <div>
-                  <label className="label text-xs sm:text-sm">A</label>
+                  <label className="label text-xs sm:text-sm">{t('common.to')}</label>
                   <input
                     type="date"
                     value={historyEndDate}
@@ -1165,29 +1167,29 @@ export function Orders() {
               </div>
               <div className="grid grid-cols-2 sm:contents gap-2">
                 <div>
-                  <label className="label text-xs sm:text-sm">Stato</label>
+                  <label className="label text-xs sm:text-sm">{t('common.status')}</label>
                   <select
                     value={historyStatusFilter}
                     onChange={(e) => setHistoryStatusFilter(e.target.value)}
                     className="select text-sm"
                   >
-                    <option value="all">Tutti</option>
-                    <option value="pending">In Attesa</option>
-                    <option value="preparing">In Preparazione</option>
-                    <option value="ready">Pronto</option>
-                    <option value="delivered">Consegnato</option>
-                    <option value="cancelled">Annullato</option>
+                    <option value="all">{t('common.all')}</option>
+                    <option value="pending">{t('orders.pending')}</option>
+                    <option value="preparing">{t('orders.preparing')}</option>
+                    <option value="ready">{t('orders.ready')}</option>
+                    <option value="delivered">{t('orders.completed')}</option>
+                    <option value="cancelled">{t('orders.cancelled')}</option>
                   </select>
                 </div>
                 <div className="flex items-end sm:hidden">
                   <button onClick={loadHistoryOrders} className="btn-primary w-full">
                     <Filter className="w-4 h-4" />
-                    <span>Filtra</span>
+                    <span>{t('common.search')}</span>
                   </button>
                 </div>
               </div>
               <div className="flex-1 min-w-0 sm:min-w-[200px]">
-                <label className="label text-xs sm:text-sm">Cerca</label>
+                <label className="label text-xs sm:text-sm">{t('common.search')}</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
                   <input
@@ -1328,11 +1330,11 @@ export function Orders() {
                                   {new Date(entry.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}
                                 </span>
                                 <span>•</span>
-                                <span>{orderTypeLabels[firstOrder.order_type]}</span>
+                                <span>{t(orderTypeLabelKeys[firstOrder.order_type])}</span>
                                 {entry.tableName && !isSession && <span>• {entry.tableName}</span>}
                               </div>
                               <span className={`text-xs px-1.5 py-0.5 rounded ${statusConfig[firstOrder.status]?.color || 'badge-secondary'}`}>
-                                {isSession ? (entry.sessionStatus === 'open' ? 'Aperto' : 'Chiuso') : statusConfig[firstOrder.status]?.label}
+                                {isSession ? (entry.sessionStatus === 'open' ? 'Aperto' : 'Chiuso') : t(statusConfig[firstOrder.status]?.labelKey)}
                               </span>
                             </div>
                           </div>
@@ -1374,7 +1376,7 @@ export function Orders() {
                                 <span className="text-xs text-dark-500">C{order.order_number || 1}</span>
                                 <span className="ml-auto text-xs text-dark-300">€{order.total.toFixed(2)}</span>
                                 <span className={`${statusConfig[order.status]?.color || 'badge-secondary'} text-[10px]`}>
-                                  {statusConfig[order.status]?.label}
+                                  {t(statusConfig[order.status]?.labelKey)}
                                 </span>
                               </div>
                             </div>
@@ -1462,7 +1464,7 @@ export function Orders() {
                                 </div>
                               </td>
                               <td>
-                                <span className="text-dark-300">{orderTypeLabels[order.order_type]}</span>
+                                <span className="text-dark-300">{t(orderTypeLabelKeys[order.order_type])}</span>
                               </td>
                               <td>
                                 <div>
@@ -1479,7 +1481,7 @@ export function Orders() {
                               </td>
                               <td>
                                 <span className={statusConfig[order.status]?.color || 'badge-secondary'}>
-                                  {statusConfig[order.status]?.label || order.status}
+                                  {t(statusConfig[order.status]?.labelKey) || order.status}
                                 </span>
                               </td>
                               <td>
@@ -1603,7 +1605,7 @@ export function Orders() {
                                     }, {} as Record<string, number>)
                                   ).map(([status, count]) => (
                                     <span key={status} className={`${statusConfig[status as keyof typeof statusConfig]?.color || 'badge-secondary'} text-xs`}>
-                                      {count}x {statusConfig[status as keyof typeof statusConfig]?.label || status}
+                                      {count}x {t(statusConfig[status as keyof typeof statusConfig]?.labelKey) || status}
                                     </span>
                                   ))}
                                 </div>
@@ -1668,7 +1670,7 @@ export function Orders() {
                                 </td>
                                 <td>
                                   <span className={`${statusConfig[order.status]?.color || 'badge-secondary'} text-xs`}>
-                                    {statusConfig[order.status]?.label || order.status}
+                                    {t(statusConfig[order.status]?.labelKey) || order.status}
                                   </span>
                                 </td>
                                 <td>
@@ -1737,15 +1739,15 @@ export function Orders() {
             {/* Order Info */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-dark-400">Tipo</p>
+                <p className="text-sm text-dark-400">{t('common.type')}</p>
                 <p className="font-medium text-white">
-                  {orderTypeLabels[selectedOrder.order_type]}
+                  {t(orderTypeLabelKeys[selectedOrder.order_type])}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-dark-400">Stato</p>
+                <p className="text-sm text-dark-400">{t('common.status')}</p>
                 <span className={statusConfig[selectedOrder.status].color}>
-                  {statusConfig[selectedOrder.status].label}
+                  {t(statusConfig[selectedOrder.status].labelKey)}
                 </span>
               </div>
               {selectedOrder.table_name && (
@@ -1799,7 +1801,7 @@ export function Orders() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={statusConfig[order.status]?.color || 'badge-secondary'}>
-                          {statusConfig[order.status]?.label || order.status}
+                          {t(statusConfig[order.status]?.labelKey) || order.status}
                         </span>
                         <span className="font-bold text-primary-400">
                           €{order.total.toFixed(2)}
@@ -1957,7 +1959,7 @@ export function Orders() {
                       : 'border-dark-600 hover:border-dark-500 text-dark-300'
                   }`}
                 >
-                  {orderTypeLabels[type]}
+                  {t(orderTypeLabelKeys[type])}
                 </button>
               ))}
             </div>

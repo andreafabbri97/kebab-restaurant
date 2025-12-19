@@ -16,6 +16,7 @@ import {
   CheckCircle,
   Clock,
   PieChart,
+  Percent,
 } from 'lucide-react';
 import {
   getTopProducts,
@@ -29,7 +30,9 @@ import {
   updateInvoice,
   deleteInvoice,
   getStatsForPeriod,
+  getSettings,
 } from '../lib/database';
+import { useLanguage } from '../context/LanguageContext';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import type { Expense, Invoice } from '../types';
@@ -74,6 +77,7 @@ interface OrderTypeStat {
 const CHART_COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export function Reports() {
+  const { t } = useLanguage();
   const [periodChartData, setPeriodChartData] = useState<PeriodStat[]>([]);
   const [paymentMethodStats, setPaymentMethodStats] = useState<PaymentMethodStat[]>([]);
   const [orderTypeStats, setOrderTypeStats] = useState<OrderTypeStat[]>([]);
@@ -86,6 +90,14 @@ export function Reports() {
     profit: 0,
   });
   const [loading, setLoading] = useState(true);
+
+  // IVA as cost settings
+  const [applyVatAsCost, setApplyVatAsCost] = useState(() => {
+    const saved = localStorage.getItem('reports_apply_vat_as_cost');
+    return saved === 'true';
+  });
+  const [ivaRate, setIvaRate] = useState(17);
+  const [ivaIncluded, setIvaIncluded] = useState(true);
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -136,16 +148,26 @@ export function Reports() {
     loadData();
   }, [startDate, endDate]);
 
+  // Save applyVatAsCost to localStorage
+  useEffect(() => {
+    localStorage.setItem('reports_apply_vat_as_cost', applyVatAsCost.toString());
+  }, [applyVatAsCost]);
+
   async function loadData() {
     setLoading(true);
     try {
-      const [top, orders, expensesList, invoicesList, periodData] = await Promise.all([
+      const [top, orders, expensesList, invoicesList, periodData, settings] = await Promise.all([
         getTopProducts(10),
         getOrders(),
         getExpenses(startDate, endDate),
         getInvoices(startDate, endDate),
         getStatsForPeriod(startDate, endDate),
+        getSettings(),
       ]);
+
+      // Load IVA settings
+      setIvaRate(settings.iva_rate || 17);
+      setIvaIncluded(settings.iva_included !== false);
 
       setTopProducts(top);
       setExpenses(expensesList);
@@ -173,11 +195,21 @@ export function Reports() {
       });
     } catch (error) {
       console.error('Error loading data:', error);
-      showToast('Errore nel caricamento dati', 'error');
+      showToast(t('common.error'), 'error');
     } finally {
       setLoading(false);
     }
   }
+
+  // Calculate VAT amount from revenue (only if IVA is included in prices)
+  const vatFromRevenue = ivaIncluded
+    ? periodStats.totalRevenue - (periodStats.totalRevenue / (1 + ivaRate / 100))
+    : 0;
+
+  // Calculate adjusted profit when VAT is applied as cost
+  const adjustedProfit = applyVatAsCost
+    ? periodStats.profit - vatFromRevenue
+    : periodStats.profit;
 
   function openExpenseModal(expense?: Expense) {
     if (expense) {
@@ -419,17 +451,17 @@ export function Reports() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Report & Amministrazione</h1>
-          <p className="text-dark-400 mt-1 text-sm sm:text-base">Analisi vendite, spese e fatture</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">{t('reports.title')}</h1>
+          <p className="text-dark-400 mt-1 text-sm sm:text-base">{t('reports.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => openExpenseModal()} className="btn-secondary flex-1 sm:flex-none">
             <Plus className="w-4 h-4" />
-            <span>Spesa</span>
+            <span>{t('reports.expense')}</span>
           </button>
           <button onClick={() => openInvoiceModal()} className="btn-primary flex-1 sm:flex-none">
             <Receipt className="w-4 h-4" />
-            <span>Fattura</span>
+            <span>{t('reports.invoice')}</span>
           </button>
         </div>
       </div>
@@ -452,43 +484,62 @@ export function Reports() {
             className="input w-auto flex-1 sm:flex-none text-sm"
           />
         </div>
-        <div className="flex items-center bg-dark-800 rounded-lg p-1 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-              activeTab === 'overview' ? 'bg-primary-500 text-dark-900' : 'text-dark-400 hover:text-white'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4 inline mr-1 sm:mr-2" />
-            <span>Panoramica</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('expenses')}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-              activeTab === 'expenses' ? 'bg-primary-500 text-dark-900' : 'text-dark-400 hover:text-white'
-            }`}
-          >
-            <FileText className="w-4 h-4 inline mr-1 sm:mr-2" />
-            <span>Spese</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('invoices')}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-              activeTab === 'invoices' ? 'bg-primary-500 text-dark-900' : 'text-dark-400 hover:text-white'
-            }`}
-          >
-            <Receipt className="w-4 h-4 inline mr-1 sm:mr-2" />
-            <span>Fatture</span>
-          </button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center bg-dark-800 rounded-lg p-1 overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === 'overview' ? 'bg-primary-500 text-dark-900' : 'text-dark-400 hover:text-white'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 inline mr-1 sm:mr-2" />
+              <span>{t('reports.overview')}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('expenses')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === 'expenses' ? 'bg-primary-500 text-dark-900' : 'text-dark-400 hover:text-white'
+              }`}
+            >
+              <FileText className="w-4 h-4 inline mr-1 sm:mr-2" />
+              <span>{t('reports.expenses')}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('invoices')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === 'invoices' ? 'bg-primary-500 text-dark-900' : 'text-dark-400 hover:text-white'
+              }`}
+            >
+              <Receipt className="w-4 h-4 inline mr-1 sm:mr-2" />
+              <span>{t('reports.invoices')}</span>
+            </button>
+          </div>
+
+          {/* VAT as Cost Toggle - only shown if IVA is included in prices */}
+          {ivaIncluded && (
+            <label
+              className="flex items-center gap-2 px-3 py-2 bg-dark-800 rounded-lg cursor-pointer hover:bg-dark-700 transition-colors"
+              title={t('reports.applyVatAsCostDesc')}
+            >
+              <input
+                type="checkbox"
+                checked={applyVatAsCost}
+                onChange={(e) => setApplyVatAsCost(e.target.checked)}
+                className="w-4 h-4 rounded border-dark-600 bg-dark-900 text-primary-500 focus:ring-primary-500"
+              />
+              <Percent className="w-4 h-4 text-amber-400" />
+              <span className="text-xs sm:text-sm text-dark-300">{t('reports.applyVatAsCost')}</span>
+            </label>
+          )}
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
+      <div className={`grid grid-cols-2 sm:grid-cols-3 ${applyVatAsCost && ivaIncluded ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-2 sm:gap-4`}>
         <div className="stat-card glow-sm">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
-              <p className="stat-label text-xs sm:text-sm">Incasso</p>
+              <p className="stat-label text-xs sm:text-sm">{t('reports.revenue')}</p>
               <p className="stat-value text-lg sm:text-2xl">€{periodStats.totalRevenue.toFixed(2)}</p>
             </div>
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
@@ -500,7 +551,7 @@ export function Reports() {
         <div className="stat-card">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
-              <p className="stat-label text-xs sm:text-sm">Ordini</p>
+              <p className="stat-label text-xs sm:text-sm">{t('reports.orders')}</p>
               <p className="stat-value text-lg sm:text-2xl">{periodStats.totalOrders}</p>
             </div>
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
@@ -512,7 +563,7 @@ export function Reports() {
         <div className="stat-card">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
-              <p className="stat-label text-xs sm:text-sm">Spese</p>
+              <p className="stat-label text-xs sm:text-sm">{t('reports.expenses')}</p>
               <p className="stat-value text-lg sm:text-2xl">€{periodStats.totalExpenses.toFixed(2)}</p>
             </div>
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0">
@@ -524,7 +575,7 @@ export function Reports() {
         <div className="stat-card">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
-              <p className="stat-label text-xs sm:text-sm">Fatture</p>
+              <p className="stat-label text-xs sm:text-sm">{t('reports.invoices')}</p>
               <p className="stat-value text-lg sm:text-2xl">€{periodStats.totalInvoices.toFixed(2)}</p>
             </div>
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-500/20 flex items-center justify-center flex-shrink-0">
@@ -533,16 +584,34 @@ export function Reports() {
           </div>
         </div>
 
-        <div className="stat-card col-span-2 sm:col-span-1">
+        {/* IVA Card - only shown when applyVatAsCost is enabled */}
+        {applyVatAsCost && ivaIncluded && (
+          <div className="stat-card">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="stat-label text-xs sm:text-sm">{t('reports.vatAmount')} ({ivaRate}%)</p>
+                <p className="stat-value text-lg sm:text-2xl text-amber-400">€{vatFromRevenue.toFixed(2)}</p>
+              </div>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <Percent className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className={`stat-card ${applyVatAsCost && ivaIncluded ? '' : 'col-span-2 sm:col-span-1'}`}>
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
-              <p className="stat-label text-xs sm:text-sm">Profitto</p>
-              <p className={`stat-value text-lg sm:text-2xl ${periodStats.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                €{periodStats.profit.toFixed(2)}
+              <p className="stat-label text-xs sm:text-sm">{t('reports.profit')}</p>
+              <p className={`stat-value text-lg sm:text-2xl ${adjustedProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                €{adjustedProfit.toFixed(2)}
               </p>
+              {applyVatAsCost && ivaIncluded && (
+                <p className="text-[10px] text-dark-500 mt-0.5">{t('reports.netRevenue')}</p>
+              )}
             </div>
-            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${periodStats.profit >= 0 ? 'bg-emerald-500/20' : 'bg-red-500/20'}`}>
-              <DollarSign className={`w-5 h-5 sm:w-6 sm:h-6 ${periodStats.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`} />
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${adjustedProfit >= 0 ? 'bg-emerald-500/20' : 'bg-red-500/20'}`}>
+              <DollarSign className={`w-5 h-5 sm:w-6 sm:h-6 ${adjustedProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`} />
             </div>
           </div>
         </div>
