@@ -103,6 +103,8 @@ export function Orders() {
     notes: '',
     smac_passed: false,
     status: 'pending' as Order['status'],
+    total: 0, // Per modifiche manuali al totale (sconti/arrotondamenti)
+    originalTotal: 0, // Per mostrare il totale originale
   });
 
   // Storico tab state
@@ -293,6 +295,8 @@ export function Orders() {
       notes: order.notes || '',
       smac_passed: order.smac_passed,
       status: order.status,
+      total: order.total,
+      originalTotal: order.total,
     });
 
     // Carica tavoli se non già caricati
@@ -321,6 +325,7 @@ export function Orders() {
         notes: editForm.notes || undefined,
         smac_passed: editForm.smac_passed,
         status: editForm.status,
+        total: editForm.total, // Salva il totale modificato (sconto/arrotondamento)
       });
 
       showToast('Ordine modificato con successo', 'success');
@@ -2057,6 +2062,40 @@ export function Orders() {
             <label htmlFor="smac_edit" className="text-white cursor-pointer">
               SMAC Passata
             </label>
+          </div>
+
+          {/* Totale / Sconto */}
+          <div className="bg-dark-900 rounded-xl p-4">
+            <label className="label mb-2">Totale Ordine</label>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-400">€</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editForm.total}
+                    onChange={(e) => setEditForm({ ...editForm, total: parseFloat(e.target.value) || 0 })}
+                    className="input pl-8 text-lg font-semibold"
+                  />
+                </div>
+              </div>
+              {editForm.total !== editForm.originalTotal && (
+                <div className="text-right">
+                  <p className="text-xs text-dark-400">Originale: €{editForm.originalTotal.toFixed(2)}</p>
+                  <p className={`text-sm font-medium ${editForm.total < editForm.originalTotal ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {editForm.total < editForm.originalTotal
+                      ? `Sconto: -€${(editForm.originalTotal - editForm.total).toFixed(2)}`
+                      : `+€${(editForm.total - editForm.originalTotal).toFixed(2)}`
+                    }
+                  </p>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-dark-500 mt-2">
+              Modifica il totale per applicare sconti o arrotondamenti
+            </p>
           </div>
 
           {/* Note */}
