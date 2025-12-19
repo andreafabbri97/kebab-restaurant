@@ -52,7 +52,6 @@ interface CartContentProps {
   // Props per sessione (conto aperto)
   isSessionOrder?: boolean;
   sessionTableName?: string;
-  orderNumber?: number;
 }
 
 export function CartContent({
@@ -89,7 +88,6 @@ export function CartContent({
   submitOrder,
   isSessionOrder = false,
   sessionTableName,
-  orderNumber,
 }: CartContentProps) {
   return (
     <div className={`flex flex-col ${isMobile ? 'h-full' : ''}`}>
@@ -98,8 +96,8 @@ export function CartContent({
         <div className="p-3 bg-primary-500/10 border-b border-primary-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-primary-400 font-medium">Comanda #{orderNumber}</p>
               <p className="text-lg font-bold text-white">{sessionTableName}</p>
+              <p className="text-sm text-primary-400">Aggiungi al conto</p>
             </div>
             <div className="px-3 py-1 bg-primary-500/20 rounded-lg">
               <span className="text-sm font-medium text-primary-400">Conto Aperto</span>
@@ -407,7 +405,7 @@ export function CartContent({
               ) : isSessionOrder ? (
                 <>
                   <Check className="w-5 h-5" />
-                  Invia Comanda #{orderNumber} - €{cartTotal.toFixed(2)}
+                  Invia Comanda - €{cartTotal.toFixed(2)}
                 </>
               ) : (
                 <>

@@ -8,11 +8,11 @@ import {
   createOrder,
   getSettings,
   getTableSession,
-  getNextOrderNumber,
   updateSessionTotal,
   getActiveSessionForTable,
-  getSessionOrders,
+  getSessionOrder,
   createTableSession,
+  addItemsToOrder,
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { CartContent } from '../components/order/CartContent';
@@ -33,7 +33,6 @@ export function NewOrder() {
 
   // Session state (conto aperto)
   const [activeSession, setActiveSession] = useState<TableSession | null>(null);
-  const [nextOrderNumber, setNextOrderNumber] = useState<number>(1);
 
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -97,8 +96,6 @@ export function NewOrder() {
           setActiveSession(session);
           setSelectedTable(session.table_id);
           setOrderType('dine_in');
-          const orderNum = await getNextOrderNumber(sessionId);
-          setNextOrderNumber(orderNum);
           // Precompila cliente se presente nella sessione
           if (session.customer_name) setCustomerName(session.customer_name);
           if (session.customer_phone) setCustomerPhone(session.customer_phone);
@@ -178,10 +175,10 @@ export function NewOrder() {
     const existingSession = await getActiveSessionForTable(tableId);
 
     if (existingSession) {
-      // Carica gli ordini della sessione per mostrare i dettagli
-      const orders = await getSessionOrders(existingSession.id);
+      // Carica l'ordine della sessione per mostrare i dettagli
+      const order = await getSessionOrder(existingSession.id);
       setDetectedSession(existingSession);
-      setDetectedSessionOrders(orders);
+      setDetectedSessionOrders(order ? [order] : []);
       setPendingTableId(tableId);
       setShowSessionDetectedModal(true);
     } else {
@@ -198,8 +195,6 @@ export function NewOrder() {
     setActiveSession(detectedSession);
     setSelectedTable(pendingTableId);
     setOrderType('dine_in');
-    const orderNum = await getNextOrderNumber(detectedSession.id);
-    setNextOrderNumber(orderNum);
 
     // Precompila cliente se presente nella sessione
     if (detectedSession.customer_name) setCustomerName(detectedSession.customer_name);
@@ -273,9 +268,30 @@ export function NewOrder() {
     setIsSubmitting(true);
 
     try {
-      // Per sessioni attive, il totale non include IVA separata (già inclusa nel prezzo)
-      // e non serve metodo pagamento (si fa alla chiusura conto)
+      const items = cart.map((item) => ({
+        menu_item_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+        notes: item.notes,
+      }));
+
+      // Se c'è una sessione attiva, controlla se esiste già un ordine
+      if (activeSession) {
+        const existingOrder = await getSessionOrder(activeSession.id);
+
+        if (existingOrder) {
+          // AGGIUNGI items all'ordine esistente (comanda aggiuntiva)
+          await addItemsToOrder(existingOrder.id, items, cartTotal);
+          await updateSessionTotal(activeSession.id);
+          showToast('Comanda aggiunta al conto!', 'success');
+          navigate('/tables');
+          return;
+        }
+      }
+
+      // Crea nuovo ordine (prima comanda o ordine singolo)
       const isSessionOrder = activeSession || openSession;
+      const currentSessionId = activeSession?.id || sessionId;
 
       const order = {
         date: new Date().toISOString().split('T')[0],
@@ -288,24 +304,15 @@ export function NewOrder() {
         smac_passed: isSessionOrder ? false : smacPassed,
         customer_name: customerName || undefined,
         customer_phone: customerPhone || undefined,
-        // Campi sessione
-        session_id: activeSession?.id || sessionId,
-        order_number: isSessionOrder ? (activeSession ? nextOrderNumber : 1) : undefined,
+        session_id: currentSessionId,
       };
-
-      const items = cart.map((item) => ({
-        menu_item_id: item.id,
-        quantity: item.quantity,
-        price: item.price,
-        notes: item.notes,
-      }));
 
       await createOrder(order, items);
 
       // Se c'è una sessione (esistente o appena creata), aggiorna il totale
       if (activeSession) {
         await updateSessionTotal(activeSession.id);
-        showToast(`Comanda #${nextOrderNumber} inviata!`, 'success');
+        showToast('Prima comanda inviata!', 'success');
         navigate('/tables');
       } else if (sessionId) {
         await updateSessionTotal(sessionId);
@@ -407,7 +414,6 @@ export function NewOrder() {
     // Props per sessione
     isSessionOrder,
     sessionTableName: activeSession?.table_name,
-    orderNumber: nextOrderNumber,
   };
 
   return (

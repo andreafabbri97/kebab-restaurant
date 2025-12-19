@@ -19,8 +19,9 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
+  Receipt,
 } from 'lucide-react';
-import { getOrders, getOrderItems, updateOrderStatus, deleteOrder, updateOrder, getTables, getOrdersByDateRange, updateOrderStatusBulk, deleteOrdersBulk } from '../lib/database';
+import { getOrders, getOrderItems, updateOrderStatus, deleteOrder, updateOrder, getTables, getOrdersByDateRange, updateOrderStatusBulk, deleteOrdersBulk, closeTableSession } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -235,6 +236,30 @@ export function Orders() {
     } catch (error) {
       console.error('Error updating order:', error);
       showToast('Errore nella modifica', 'error');
+    }
+  }
+
+  // Chiude il conto aperto associato all'ordine
+  async function handleCloseSession() {
+    if (!selectedOrder?.session_id) return;
+
+    try {
+      await closeTableSession(
+        selectedOrder.session_id,
+        editForm.payment_method,
+        editForm.smac_passed
+      );
+
+      // Aggiorna lo stato dell'ordine a consegnato
+      await updateOrderStatus(selectedOrder.id, 'delivered');
+
+      showToast('Conto chiuso con successo', 'success');
+      setShowEditModal(false);
+      loadOrdersCallback();
+      if (activeTab === 'history') loadHistoryOrders();
+    } catch (error) {
+      console.error('Error closing session:', error);
+      showToast('Errore nella chiusura del conto', 'error');
     }
   }
 
@@ -1129,6 +1154,27 @@ export function Orders() {
               placeholder="Note aggiuntive..."
             />
           </div>
+
+          {/* Chiudi Conto - Solo per ordini con sessione aperta */}
+          {selectedOrder?.session_id && selectedOrder?.session_status === 'open' && (
+            <div className="bg-primary-500/10 border border-primary-500/30 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-white">Conto Aperto</p>
+                  <p className="text-sm text-dark-400">
+                    Totale: €{selectedOrder.total.toFixed(2)}
+                  </p>
+                </div>
+                <button
+                  onClick={handleCloseSession}
+                  className="btn-primary bg-emerald-600 hover:bg-emerald-700 flex items-center gap-2"
+                >
+                  <Receipt className="w-4 h-4" />
+                  Chiudi Conto
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex items-center gap-3 pt-4">

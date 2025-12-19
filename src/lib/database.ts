@@ -589,6 +589,79 @@ export async function deleteOrder(id: number): Promise<void> {
   setLocalData('order_items', orderItems.filter(i => i.order_id !== id));
 }
 
+// Ottieni l'ordine singolo di una sessione (per aggiungere comande)
+export async function getSessionOrder(sessionId: number): Promise<Order | null> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*, tables(name)')
+      .eq('session_id', sessionId)
+      .limit(1)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+    return data ? { ...data, table_name: data.tables?.name } : null;
+  }
+  const orders = getLocalData<Order[]>('orders', []);
+  const tables = getLocalData<Table[]>('tables', []);
+  const order = orders.find(o => o.session_id === sessionId);
+  if (!order) return null;
+  return { ...order, table_name: tables.find(t => t.id === order.table_id)?.name };
+}
+
+// Aggiungi items a un ordine esistente (per comande aggiuntive in sessione)
+export async function addItemsToOrder(
+  orderId: number,
+  items: Omit<OrderItem, 'id' | 'order_id'>[],
+  additionalTotal: number
+): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    // Aggiungi items
+    const orderItems = items.map(item => ({ ...item, order_id: orderId }));
+    const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
+    if (itemsError) throw itemsError;
+
+    // Aggiorna totale ordine
+    const { data: currentOrder } = await supabase
+      .from('orders')
+      .select('total')
+      .eq('id', orderId)
+      .single();
+
+    if (currentOrder) {
+      await supabase
+        .from('orders')
+        .update({ total: currentOrder.total + additionalTotal })
+        .eq('id', orderId);
+    }
+
+    // Scala inventario
+    await consumeIngredientsForOrderInternal(items, orderId);
+    return;
+  }
+
+  // LocalStorage
+  const orders = getLocalData<Order[]>('orders', []);
+  const orderItems = getLocalData<OrderItem[]>('order_items', []);
+
+  // Aggiungi items
+  const newItems = items.map((item, index) => ({
+    ...item,
+    id: Date.now() + index + 1,
+    order_id: orderId,
+  }));
+  setLocalData('order_items', [...orderItems, ...newItems]);
+
+  // Aggiorna totale ordine
+  const orderIndex = orders.findIndex(o => o.id === orderId);
+  if (orderIndex !== -1) {
+    orders[orderIndex].total += additionalTotal;
+    setLocalData('orders', orders);
+  }
+
+  // Scala inventario
+  await consumeIngredientsForOrderInternal(items, orderId);
+}
+
 export async function getOrderItems(orderId: number): Promise<OrderItem[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
