@@ -13,8 +13,13 @@ import {
   Wifi,
   WifiOff,
   Edit2,
+  History,
+  Calendar,
+  CheckSquare,
+  Square,
+  Filter,
 } from 'lucide-react';
-import { getOrders, getOrderItems, updateOrderStatus, deleteOrder, updateOrder, getTables } from '../lib/database';
+import { getOrders, getOrderItems, updateOrderStatus, deleteOrder, updateOrder, getTables, getOrdersByDateRange, updateOrderStatusBulk, deleteOrdersBulk } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -58,6 +63,20 @@ export function Orders() {
     smac_passed: false,
     status: 'pending' as Order['status'],
   });
+
+  // Storico tab state
+  const [activeTab, setActiveTab] = useState<'today' | 'history'>('today');
+  const [historyOrders, setHistoryOrders] = useState<Order[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyStartDate, setHistoryStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
+  });
+  const [historyEndDate, setHistoryEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<string>('all');
+  const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
+  const [bulkAction, setBulkAction] = useState<string>('');
 
   const loadOrdersCallback = useCallback(async () => {
     setLoading(true);
@@ -190,11 +209,89 @@ export function Orders() {
       showToast('Ordine modificato con successo', 'success');
       setShowEditModal(false);
       loadOrdersCallback();
+      if (activeTab === 'history') loadHistoryOrders();
     } catch (error) {
       console.error('Error updating order:', error);
       showToast('Errore nella modifica', 'error');
     }
   }
+
+  // ========== STORICO ORDINI ==========
+  async function loadHistoryOrders() {
+    setHistoryLoading(true);
+    try {
+      const data = await getOrdersByDateRange(historyStartDate, historyEndDate);
+      setHistoryOrders(data);
+      setSelectedOrderIds([]);
+    } catch (error) {
+      console.error('Error loading history:', error);
+      showToast('Errore nel caricamento storico', 'error');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  function toggleOrderSelection(orderId: number) {
+    setSelectedOrderIds(prev =>
+      prev.includes(orderId)
+        ? prev.filter(id => id !== orderId)
+        : [...prev, orderId]
+    );
+  }
+
+  function toggleSelectAll() {
+    const filteredIds = filteredHistoryOrders.map(o => o.id);
+    const allSelected = filteredIds.every(id => selectedOrderIds.includes(id));
+    if (allSelected) {
+      setSelectedOrderIds(prev => prev.filter(id => !filteredIds.includes(id)));
+    } else {
+      setSelectedOrderIds(prev => [...new Set([...prev, ...filteredIds])]);
+    }
+  }
+
+  async function handleBulkAction() {
+    if (selectedOrderIds.length === 0) {
+      showToast('Seleziona almeno un ordine', 'warning');
+      return;
+    }
+
+    if (bulkAction === 'delete') {
+      if (!confirm(`Sei sicuro di voler eliminare ${selectedOrderIds.length} ordini?`)) return;
+      try {
+        await deleteOrdersBulk(selectedOrderIds);
+        showToast(`${selectedOrderIds.length} ordini eliminati`, 'success');
+        setSelectedOrderIds([]);
+        loadHistoryOrders();
+      } catch (error) {
+        console.error('Error deleting orders:', error);
+        showToast('Errore nell\'eliminazione', 'error');
+      }
+    } else if (bulkAction) {
+      try {
+        await updateOrderStatusBulk(selectedOrderIds, bulkAction as Order['status']);
+        showToast(`${selectedOrderIds.length} ordini aggiornati a "${statusConfig[bulkAction as keyof typeof statusConfig]?.label || bulkAction}"`, 'success');
+        setSelectedOrderIds([]);
+        loadHistoryOrders();
+      } catch (error) {
+        console.error('Error updating orders:', error);
+        showToast('Errore nell\'aggiornamento', 'error');
+      }
+    }
+    setBulkAction('');
+  }
+
+  const filteredHistoryOrders = historyOrders.filter(order => {
+    if (historyStatusFilter !== 'all' && order.status !== historyStatusFilter) return false;
+    if (searchQuery) {
+      const search = searchQuery.toLowerCase();
+      return (
+        order.id.toString().includes(search) ||
+        order.customer_name?.toLowerCase().includes(search) ||
+        order.table_name?.toLowerCase().includes(search)
+      );
+    }
+    return true;
+  });
 
   const filteredOrders = orders.filter((order) => {
     if (statusFilter !== 'all' && order.status !== statusFilter) return false;
@@ -255,6 +352,37 @@ export function Orders() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-dark-700 pb-2">
+        <button
+          onClick={() => setActiveTab('today')}
+          className={`px-4 py-2 rounded-t-lg font-medium transition-all flex items-center gap-2 ${
+            activeTab === 'today'
+              ? 'bg-dark-800 text-primary-400 border-b-2 border-primary-500'
+              : 'text-dark-400 hover:text-white'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          Oggi
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('history');
+            if (historyOrders.length === 0) loadHistoryOrders();
+          }}
+          className={`px-4 py-2 rounded-t-lg font-medium transition-all flex items-center gap-2 ${
+            activeTab === 'history'
+              ? 'bg-dark-800 text-primary-400 border-b-2 border-primary-500'
+              : 'text-dark-400 hover:text-white'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          Storico
+        </button>
+      </div>
+
+      {activeTab === 'today' && (
+        <>
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="relative flex-1 max-w-xs">
@@ -402,6 +530,245 @@ export function Orders() {
               </div>
             );
           })}
+        </div>
+      )}
+        </>
+      )}
+
+      {/* STORICO TAB */}
+      {activeTab === 'history' && (
+        <div className="space-y-4">
+          {/* History Filters */}
+          <div className="card p-4">
+            <div className="flex flex-wrap items-end gap-4">
+              <div>
+                <label className="label">Da</label>
+                <input
+                  type="date"
+                  value={historyStartDate}
+                  onChange={(e) => setHistoryStartDate(e.target.value)}
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="label">A</label>
+                <input
+                  type="date"
+                  value={historyEndDate}
+                  onChange={(e) => setHistoryEndDate(e.target.value)}
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="label">Stato</label>
+                <select
+                  value={historyStatusFilter}
+                  onChange={(e) => setHistoryStatusFilter(e.target.value)}
+                  className="select"
+                >
+                  <option value="all">Tutti</option>
+                  <option value="pending">In Attesa</option>
+                  <option value="preparing">In Preparazione</option>
+                  <option value="ready">Pronto</option>
+                  <option value="delivered">Consegnato</option>
+                  <option value="cancelled">Annullato</option>
+                </select>
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <label className="label">Cerca</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
+                  <input
+                    type="text"
+                    placeholder="ID, cliente, tavolo..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="input pl-10"
+                  />
+                </div>
+              </div>
+              <button onClick={loadHistoryOrders} className="btn-primary">
+                <Filter className="w-4 h-4" />
+                Filtra
+              </button>
+            </div>
+          </div>
+
+          {/* Bulk Actions */}
+          {selectedOrderIds.length > 0 && (
+            <div className="card p-4 bg-primary-500/10 border border-primary-500/30">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <p className="text-primary-400 font-medium">
+                  {selectedOrderIds.length} ordini selezionati
+                </p>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={bulkAction}
+                    onChange={(e) => setBulkAction(e.target.value)}
+                    className="select w-auto"
+                  >
+                    <option value="">Seleziona azione...</option>
+                    <option value="pending">Imposta In Attesa</option>
+                    <option value="preparing">Imposta In Preparazione</option>
+                    <option value="ready">Imposta Pronto</option>
+                    <option value="delivered">Imposta Consegnato</option>
+                    <option value="cancelled">Imposta Annullato</option>
+                    <option value="delete">🗑️ Elimina</option>
+                  </select>
+                  <button
+                    onClick={handleBulkAction}
+                    disabled={!bulkAction}
+                    className="btn-primary disabled:opacity-50"
+                  >
+                    Applica
+                  </button>
+                  <button
+                    onClick={() => setSelectedOrderIds([])}
+                    className="btn-secondary"
+                  >
+                    Deseleziona
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* History Table */}
+          {historyLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+            </div>
+          ) : (
+            <div className="card">
+              <div className="card-header flex items-center justify-between">
+                <span className="font-semibold text-white">
+                  {filteredHistoryOrders.length} ordini trovati
+                </span>
+                <button
+                  onClick={toggleSelectAll}
+                  className="text-sm text-primary-400 hover:text-primary-300"
+                >
+                  {filteredHistoryOrders.every(o => selectedOrderIds.includes(o.id))
+                    ? 'Deseleziona tutti'
+                    : 'Seleziona tutti'}
+                </button>
+              </div>
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th className="w-10"></th>
+                      <th>ID</th>
+                      <th>Data</th>
+                      <th>Tipo</th>
+                      <th>Tavolo/Cliente</th>
+                      <th>Totale</th>
+                      <th>Stato</th>
+                      <th>Azioni</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHistoryOrders.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="text-center py-8 text-dark-400">
+                          Nessun ordine trovato per il periodo selezionato
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredHistoryOrders.map((order) => (
+                        <tr key={order.id} className={selectedOrderIds.includes(order.id) ? 'bg-primary-500/10' : ''}>
+                          <td>
+                            <button
+                              onClick={() => toggleOrderSelection(order.id)}
+                              className="p-1"
+                            >
+                              {selectedOrderIds.includes(order.id) ? (
+                                <CheckSquare className="w-5 h-5 text-primary-400" />
+                              ) : (
+                                <Square className="w-5 h-5 text-dark-400" />
+                              )}
+                            </button>
+                          </td>
+                          <td>
+                            <span className="font-mono text-white">#{order.id}</span>
+                          </td>
+                          <td>
+                            <div>
+                              <p className="text-white">
+                                {new Date(order.date).toLocaleDateString('it-IT', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                })}
+                              </p>
+                              <p className="text-xs text-dark-400">
+                                {new Date(order.created_at).toLocaleTimeString('it-IT', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="text-dark-300">{orderTypeLabels[order.order_type]}</span>
+                          </td>
+                          <td>
+                            <div>
+                              {order.table_name && <p className="text-white">{order.table_name}</p>}
+                              {order.customer_name && (
+                                <p className="text-sm text-dark-400">{order.customer_name}</p>
+                              )}
+                              {order.session_id && (
+                                <p className={`text-xs ${
+                                  order.session_status === 'open' ? 'text-primary-400' : 'text-emerald-400'
+                                }`}>
+                                  {order.session_status === 'open' ? 'Conto Aperto' : 'Conto Chiuso'}
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <span className="font-semibold text-primary-400">
+                              €{order.total.toFixed(2)}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={statusConfig[order.status]?.color || 'badge-secondary'}>
+                              {statusConfig[order.status]?.label || order.status}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => viewOrderDetails(order)}
+                                className="btn-ghost btn-sm"
+                                title="Dettagli"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => openEditModal(order)}
+                                className="btn-ghost btn-sm"
+                                title="Modifica"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(order.id)}
+                                className="btn-ghost btn-sm text-red-400 hover:text-red-300"
+                                title="Elimina"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -348,6 +348,76 @@ export async function getTodayOrders(): Promise<Order[]> {
   return getOrders(today);
 }
 
+// Ottieni ordini per range di date
+export async function getOrdersByDateRange(startDate: string, endDate: string): Promise<Order[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*, tables(name), table_sessions(status)')
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(order => ({
+      ...order,
+      table_name: order.tables?.name,
+      session_status: order.table_sessions?.status,
+    }));
+  }
+  const orders = getLocalData<Order[]>('orders', []);
+  const tables = getLocalData<Table[]>('tables', []);
+  const sessions = getLocalData<TableSession[]>('table_sessions', []);
+  return orders
+    .filter(o => o.date >= startDate && o.date <= endDate)
+    .map(order => ({
+      ...order,
+      table_name: tables.find(t => t.id === order.table_id)?.name,
+      session_status: order.session_id ? sessions.find(s => s.id === order.session_id)?.status : undefined,
+    }))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+}
+
+// Aggiorna stato di più ordini in massa
+export async function updateOrderStatusBulk(orderIds: number[], status: Order['status']): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from('orders')
+      .update({ status })
+      .in('id', orderIds);
+    if (error) throw error;
+    return;
+  }
+  const orders = getLocalData<Order[]>('orders', []);
+  const updatedOrders = orders.map(order =>
+    orderIds.includes(order.id) ? { ...order, status } : order
+  );
+  setLocalData('orders', updatedOrders);
+}
+
+// Elimina più ordini in massa
+export async function deleteOrdersBulk(orderIds: number[]): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    // Prima elimina gli order_items
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .delete()
+      .in('order_id', orderIds);
+    if (itemsError) throw itemsError;
+
+    // Poi elimina gli ordini
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .in('id', orderIds);
+    if (error) throw error;
+    return;
+  }
+  const orders = getLocalData<Order[]>('orders', []);
+  const orderItems = getLocalData<OrderItem[]>('order_items', []);
+  setLocalData('orders', orders.filter(o => !orderIds.includes(o.id)));
+  setLocalData('order_items', orderItems.filter(i => !orderIds.includes(i.order_id)));
+}
+
 export async function createOrder(order: Omit<Order, 'id' | 'created_at'>, items: Omit<OrderItem, 'id' | 'order_id'>[]): Promise<Order> {
   if (isSupabaseConfigured && supabase) {
     const { data: orderData, error: orderError } = await supabase.from('orders').insert(order).select().single();
@@ -646,7 +716,7 @@ export async function updateInventoryQuantity(ingredientId: number, quantity: nu
   if (isSupabaseConfigured && supabase) {
     const { error } = await supabase
       .from('inventory')
-      .update({ quantity, updated_at: new Date().toISOString() })
+      .update({ quantity })
       .eq('ingredient_id', ingredientId);
     if (error) throw error;
     return;
@@ -767,14 +837,12 @@ export async function getReservations(date?: string): Promise<Reservation[]> {
     });
   }
   let reservations = getLocalData<Reservation[]>('reservations', []);
-  console.log('Raw reservations from localStorage:', reservations);
   if (date) reservations = reservations.filter(r => r.date === date);
   const tables = getLocalData<Table[]>('tables', []);
   const result = reservations.map(res => {
     // Supporto multi-tavoli - assicura che table_ids sia sempre un array valido
     const tableIds = res.table_ids && res.table_ids.length > 0 ? res.table_ids : [res.table_id];
     const tableNames = tableIds.map(id => tables.find(t => t.id === id)?.name || '').filter(Boolean);
-    console.log('Reservation', res.id, 'table_ids:', res.table_ids, '-> resolved tableIds:', tableIds);
     return {
       ...res,
       table_ids: tableIds, // Assicura che table_ids sia sempre presente nel risultato
