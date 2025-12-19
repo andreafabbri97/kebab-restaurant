@@ -468,14 +468,14 @@ export function Orders() {
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
         </div>
       ) : (
-        /* Kanban View */
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        /* Kanban View - items-start per evitare che le colonne si allineino in altezza */
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
           {(['pending', 'preparing', 'ready', 'delivered'] as const).map((status) => {
             const config = statusConfig[status];
             const statusOrders = ordersByStatus[status];
 
             return (
-              <div key={status} className="card">
+              <div key={status} className="card self-start">
                 <div className="card-header flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <config.icon className="w-5 h-5" />
@@ -508,11 +508,22 @@ export function Orders() {
                             onClick={toggleExpand}
                             className="p-3 cursor-pointer hover:bg-dark-800 transition-colors"
                           >
-                            <div className="flex items-start justify-between gap-2">
-                              {/* ID sempre visibile */}
-                              <span className="text-xs font-mono bg-dark-700 px-2 py-1 rounded text-dark-300 flex-shrink-0">
-                                #{order.id}
-                              </span>
+                            <div className="flex items-center justify-between gap-2">
+                              {/* ID + Titolo + Cliente su una riga */}
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className="text-xs font-mono bg-dark-700 px-2 py-1 rounded text-dark-300 flex-shrink-0">
+                                  #{order.id}
+                                </span>
+                                <span className="font-medium text-white text-sm truncate">
+                                  {order.session_id
+                                    ? `${order.table_name}`
+                                    : order.table_name
+                                    ? `${orderTypeLabels[order.order_type]} - ${order.table_name}`
+                                    : order.customer_name
+                                    ? `${orderTypeLabels[order.order_type]} - ${order.customer_name}`
+                                    : `${orderTypeLabels[order.order_type]}`}
+                                </span>
+                              </div>
                               {/* Chevron e indicatore items */}
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 {allOrderItems[order.id] && (
@@ -527,20 +538,6 @@ export function Orders() {
                                 )}
                               </div>
                             </div>
-                            {/* Titolo ordine - su riga separata, non troncato */}
-                            <p className="font-medium text-white text-sm mt-2 leading-tight">
-                              {order.session_id
-                                ? `${order.table_name} - Comanda #${order.order_number || 1}`
-                                : order.table_name
-                                ? `${orderTypeLabels[order.order_type]} - ${order.table_name}`
-                                : `${orderTypeLabels[order.order_type]}`}
-                            </p>
-                            {/* Cliente se presente */}
-                            {order.customer_name && (
-                              <p className="text-xs text-dark-400 mt-1">
-                                {order.customer_name}
-                              </p>
-                            )}
                           </div>
 
                           {/* Contenuto espanso con animazione */}

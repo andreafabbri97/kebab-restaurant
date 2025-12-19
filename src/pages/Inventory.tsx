@@ -21,6 +21,7 @@ import {
   getInventory,
   createIngredient,
   updateInventoryQuantity,
+  updateIngredientCost,
   getLowStockItems,
   calculateEOQ,
   getIngredients,
@@ -99,6 +100,11 @@ export function Inventory() {
   });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
+  // Modifica costo unitario
+  const [showCostModal, setShowCostModal] = useState(false);
+  const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
+  const [newCost, setNewCost] = useState('');
+
   useEffect(() => {
     loadData();
   }, []);
@@ -165,6 +171,37 @@ export function Inventory() {
     setUpdateQuantity('');
     setUpdateMode('add');
     setShowUpdateModal(true);
+  }
+
+  function openCostModal(item: InventoryItem) {
+    const ingredient = ingredients.find(i => i.id === item.ingredient_id);
+    if (ingredient) {
+      setSelectedIngredient(ingredient);
+      setNewCost(ingredient.cost.toString());
+      setShowCostModal(true);
+    }
+  }
+
+  async function handleUpdateCost() {
+    if (!selectedIngredient || !newCost) return;
+
+    const cost = parseFloat(newCost);
+    if (isNaN(cost) || cost < 0) {
+      showToast('Inserisci un costo valido', 'warning');
+      return;
+    }
+
+    try {
+      await updateIngredientCost(selectedIngredient.id, cost);
+      showToast('Costo aggiornato con successo', 'success');
+      setShowCostModal(false);
+      setSelectedIngredient(null);
+      setNewCost('');
+      loadData();
+    } catch (error) {
+      console.error('Error updating cost:', error);
+      showToast('Errore nell\'aggiornamento del costo', 'error');
+    }
   }
 
   async function handleAddIngredient() {
@@ -508,13 +545,23 @@ export function Inventory() {
                           </span>
                         </td>
                         <td>
-                          <button
-                            onClick={() => openUpdateModal(item)}
-                            className="btn-secondary btn-sm"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                            Aggiorna
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openUpdateModal(item)}
+                              className="btn-secondary btn-sm"
+                              title="Aggiorna quantità"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                              Qtà
+                            </button>
+                            <button
+                              onClick={() => openCostModal(item)}
+                              className="btn-ghost btn-sm"
+                              title="Modifica costo unitario"
+                            >
+                              <DollarSign className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1340,6 +1387,58 @@ export function Inventory() {
               Salva Impostazioni
             </button>
             <button onClick={() => setShowSettingsModal(false)} className="btn-secondary">
+              Annulla
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Cost Update Modal */}
+      <Modal
+        isOpen={showCostModal}
+        onClose={() => setShowCostModal(false)}
+        title={`Modifica Costo - ${selectedIngredient?.name}`}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="bg-dark-900 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-dark-400">Costo attuale:</span>
+              <span className="text-white font-semibold">
+                €{selectedIngredient?.cost.toFixed(2)}/{selectedIngredient?.unit}
+              </span>
+            </div>
+            <div>
+              <label className="label">Nuovo Costo Unitario (€/{selectedIngredient?.unit})</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={newCost}
+                onChange={(e) => setNewCost(e.target.value)}
+                className="input"
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+            <p className="text-sm text-amber-400">
+              <strong>Attenzione:</strong> Questa modifica influenzerà il calcolo del costo dei piatti che utilizzano questo ingrediente.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 pt-4 border-t border-dark-700">
+            <button
+              onClick={handleUpdateCost}
+              className="btn-primary flex-1"
+            >
+              Conferma Modifica
+            </button>
+            <button
+              onClick={() => setShowCostModal(false)}
+              className="btn-secondary"
+            >
               Annulla
             </button>
           </div>

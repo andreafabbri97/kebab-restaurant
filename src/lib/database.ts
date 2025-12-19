@@ -786,6 +786,23 @@ export async function createIngredient(ingredient: Omit<Ingredient, 'id'>): Prom
   return newIngredient;
 }
 
+export async function updateIngredientCost(ingredientId: number, cost: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from('ingredients')
+      .update({ cost })
+      .eq('id', ingredientId);
+    if (error) throw error;
+    return;
+  }
+  const ingredients = getLocalData<Ingredient[]>('ingredients', []);
+  const index = ingredients.findIndex(i => i.id === ingredientId);
+  if (index !== -1) {
+    ingredients[index] = { ...ingredients[index], cost };
+    setLocalData('ingredients', ingredients);
+  }
+}
+
 export async function updateInventoryQuantity(ingredientId: number, quantity: number): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     const { error } = await supabase
