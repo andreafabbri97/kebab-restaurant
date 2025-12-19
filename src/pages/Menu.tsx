@@ -7,7 +7,9 @@ import {
   FolderPlus,
   ToggleLeft,
   ToggleRight,
+  FileDown,
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 import {
   getCategories,
   getMenuItems,
@@ -191,6 +193,154 @@ export function Menu() {
     }
   }
 
+  function exportMenuToPDF() {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    let y = margin;
+
+    // Helper function to add new page if needed
+    function checkPageBreak(height: number) {
+      if (y + height > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+        return true;
+      }
+      return false;
+    }
+
+    // Decorative top border
+    doc.setFillColor(245, 158, 11);
+    doc.rect(0, 0, pageWidth, 8, 'F');
+
+    // Restaurant name header
+    y = 30;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(32);
+    doc.setTextColor(31, 41, 55);
+    doc.text('KEBAB HOUSE', pageWidth / 2, y, { align: 'center' });
+
+    // Subtitle
+    y += 12;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    doc.setTextColor(107, 114, 128);
+    doc.text('Autentica cucina mediterranea', pageWidth / 2, y, { align: 'center' });
+
+    // Decorative line
+    y += 10;
+    doc.setDrawColor(245, 158, 11);
+    doc.setLineWidth(0.5);
+    doc.line(margin + 40, y, pageWidth - margin - 40, y);
+
+    y += 15;
+
+    // Group items by category (only available items)
+    const availableItems = menuItems.filter(item => item.available);
+    const itemsByCategory = new Map<number, MenuItem[]>();
+
+    categories.forEach(cat => {
+      const catItems = availableItems.filter(item => item.category_id === cat.id);
+      if (catItems.length > 0) {
+        itemsByCategory.set(cat.id, catItems);
+      }
+    });
+
+    // Render each category
+    categories.forEach(category => {
+      const catItems = itemsByCategory.get(category.id);
+      if (!catItems || catItems.length === 0) return;
+
+      // Check if we need a new page for the category header
+      checkPageBreak(30);
+
+      // Category header with decorative elements
+      doc.setFillColor(254, 243, 199); // Light amber background
+      doc.roundedRect(margin, y - 5, pageWidth - margin * 2, 14, 3, 3, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(180, 83, 9); // Darker amber
+      doc.text(category.name.toUpperCase(), pageWidth / 2, y + 5, { align: 'center' });
+
+      y += 18;
+
+      // Menu items
+      catItems.forEach((item) => {
+        checkPageBreak(25);
+
+        // Item name and price on same line with dots
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(31, 41, 55);
+
+        const nameWidth = doc.getTextWidth(item.name);
+        const priceText = `€${item.price.toFixed(2)}`;
+        const priceWidth = doc.getTextWidth(priceText);
+
+        // Draw item name
+        doc.text(item.name, margin, y);
+
+        // Draw price (right-aligned)
+        doc.setTextColor(180, 83, 9);
+        doc.text(priceText, pageWidth - margin, y, { align: 'right' });
+
+        // Draw dotted line between name and price
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineDashPattern([1, 2], 0);
+        const dotsStart = margin + nameWidth + 5;
+        const dotsEnd = pageWidth - margin - priceWidth - 5;
+        if (dotsEnd > dotsStart) {
+          doc.line(dotsStart, y - 2, dotsEnd, y - 2);
+        }
+        doc.setLineDashPattern([], 0);
+
+        // Description (if exists)
+        if (item.description) {
+          y += 5;
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(9);
+          doc.setTextColor(107, 114, 128);
+
+          // Word wrap for long descriptions
+          const maxWidth = pageWidth - margin * 2 - 20;
+          const lines = doc.splitTextToSize(item.description, maxWidth);
+          lines.forEach((line: string) => {
+            checkPageBreak(5);
+            doc.text(line, margin + 5, y);
+            y += 4;
+          });
+          y += 3;
+        } else {
+          y += 10;
+        }
+      });
+
+      y += 8; // Space after category
+    });
+
+    // Footer on last page
+    const footerY = pageHeight - 15;
+    doc.setDrawColor(245, 158, 11);
+    doc.setLineWidth(0.5);
+    doc.line(margin, footerY - 10, pageWidth - margin, footerY - 10);
+
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(107, 114, 128);
+    doc.text('Tutti i prezzi sono IVA inclusa', pageWidth / 2, footerY - 3, { align: 'center' });
+    doc.text('Buon appetito!', pageWidth / 2, footerY + 3, { align: 'center' });
+
+    // Decorative bottom border
+    doc.setFillColor(245, 158, 11);
+    doc.rect(0, pageHeight - 5, pageWidth, 5, 'F');
+
+    // Save the PDF
+    doc.save('menu-kebab-house.pdf');
+    showToast('Menu esportato in PDF', 'success');
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -208,6 +358,13 @@ export function Menu() {
           <p className="text-dark-400 mt-1">Gestisci il menu del ristorante</p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={exportMenuToPDF}
+            className="btn-secondary"
+          >
+            <FileDown className="w-5 h-5" />
+            Esporta PDF
+          </button>
           <button
             onClick={() => setShowCategoryModal(true)}
             className="btn-secondary"
