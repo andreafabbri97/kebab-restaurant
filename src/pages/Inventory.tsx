@@ -32,6 +32,7 @@ import {
   getSupplyStats,
   getInventorySettings,
   updateInventorySettings,
+  createInvoice,
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
@@ -87,6 +88,7 @@ export function Inventory() {
     date: new Date().toISOString().split('T')[0],
     supplier_name: '',
     notes: '',
+    createAsInvoice: false, // Toggle per creare automaticamente fattura
   });
   const [supplyItems, setSupplyItems] = useState<TempSupplyItem[]>([]);
   const [newSupplyItem, setNewSupplyItem] = useState({
@@ -310,12 +312,39 @@ export function Inventory() {
         }))
       );
 
-      showToast('Fornitura registrata con successo', 'success');
+      // Se l'utente ha scelto di creare automaticamente la fattura
+      if (supplyForm.createAsInvoice) {
+        const totalAmount = supplyItems.reduce((sum, item) => sum + item.unit_cost, 0);
+        const description = supplyItems.map(item => `${item.ingredient_name} (${item.quantity} ${item.unit})`).join(', ');
+
+        // Genera numero fattura automatico
+        const today = new Date();
+        const invoiceNumber = `FORN-${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}-${Date.now().toString().slice(-4)}`;
+
+        await createInvoice({
+          date: supplyForm.date,
+          invoice_number: invoiceNumber,
+          supplier_name: supplyForm.supplier_name || 'Fornitore',
+          description: description.length > 200 ? description.substring(0, 197) + '...' : description,
+          amount: totalAmount,
+          vat_amount: 0, // L'IVA può essere modificata successivamente in Reports
+          total: totalAmount,
+          category: 'supplies',
+          paid: false,
+          notes: supplyForm.notes || 'Fattura generata automaticamente da fornitura inventario',
+        });
+
+        showToast('Fornitura registrata e fattura creata', 'success');
+      } else {
+        showToast('Fornitura registrata con successo', 'success');
+      }
+
       setShowSupplyModal(false);
       setSupplyForm({
         date: new Date().toISOString().split('T')[0],
         supplier_name: '',
         notes: '',
+        createAsInvoice: false,
       });
       setSupplyItems([]);
       loadData();
@@ -1125,7 +1154,7 @@ export function Inventory() {
         onClose={() => {
           setShowSupplyModal(false);
           setSupplyItems([]);
-          setSupplyForm({ date: new Date().toISOString().split('T')[0], supplier_name: '', notes: '' });
+          setSupplyForm({ date: new Date().toISOString().split('T')[0], supplier_name: '', notes: '', createAsInvoice: false });
         }}
         title="Nuova Fornitura"
         size="full"
@@ -1285,7 +1314,7 @@ export function Inventory() {
               onClick={() => {
                 setShowSupplyModal(false);
                 setSupplyItems([]);
-                setSupplyForm({ date: new Date().toISOString().split('T')[0], supplier_name: '', notes: '' });
+                setSupplyForm({ date: new Date().toISOString().split('T')[0], supplier_name: '', notes: '', createAsInvoice: false });
               }}
               className="btn-secondary"
             >
@@ -1293,11 +1322,34 @@ export function Inventory() {
             </button>
           </div>
 
+          {/* Toggle Crea Fattura */}
+          <div className="bg-dark-900 rounded-xl p-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={supplyForm.createAsInvoice}
+                onChange={(e) => setSupplyForm({ ...supplyForm, createAsInvoice: e.target.checked })}
+                className="w-5 h-5 rounded border-dark-600 bg-dark-800 text-primary-500 focus:ring-primary-500"
+              />
+              <div>
+                <span className="font-medium text-white">Crea fattura automaticamente</span>
+                <p className="text-xs text-dark-400 mt-0.5">
+                  Aggiunge questa fornitura come fattura nella sezione Ammin. & Report
+                </p>
+              </div>
+            </label>
+          </div>
+
           {/* Info Box */}
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3">
             <p className="text-sm text-blue-400">
               <strong>Nota:</strong> Quando registri una fornitura, le quantità vengono automaticamente
               aggiunte all'inventario e i costi degli ingredienti vengono aggiornati.
+              {supplyForm.createAsInvoice && (
+                <span className="block mt-1">
+                  Una fattura con categoria "Forniture" verrà creata automaticamente. Potrai modificare l'IVA e altri dettagli in seguito.
+                </span>
+              )}
             </p>
           </div>
         </div>
