@@ -14,7 +14,6 @@ import {
   WifiOff,
   Edit2,
   History,
-  Calendar,
   CheckSquare,
   Square,
   Filter,
