@@ -10,21 +10,22 @@ export interface User {
   active: boolean;
   created_at: string;
   last_login?: string;
+  employee_id?: number; // Collegamento al dipendente (per staff)
 }
 
 // Permessi per ruolo
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   superadmin: [
     'dashboard', 'orders', 'orders.new', 'menu', 'tables',
-    'inventory', 'recipes', 'staff', 'reports', 'smac',
+    'inventory', 'recipes', 'staff', 'staff.full', 'reports', 'smac',
     'settings', 'users', 'cash-register', 'dish-costs', 'guide'
   ],
   admin: [
     'dashboard', 'orders', 'orders.new', 'menu', 'tables',
-    'inventory', 'recipes', 'staff', 'cash-register', 'dish-costs', 'guide'
+    'inventory', 'recipes', 'staff', 'staff.full', 'cash-register', 'dish-costs', 'guide'
   ],
   staff: [
-    'orders.new', 'orders', 'tables', 'guide'
+    'orders.new', 'orders', 'tables', 'staff', 'guide'
   ],
 };
 

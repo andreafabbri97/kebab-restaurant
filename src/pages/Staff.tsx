@@ -8,6 +8,11 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Calculator,
+  Clock,
+  Euro,
+  CalendarDays,
+  User,
 } from 'lucide-react';
 import {
   getEmployees,
@@ -19,9 +24,13 @@ import {
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
+import { useAuth } from '../context/AuthContext';
 import type { Employee, WorkShift } from '../types';
 
 export function Staff() {
+  const { user, hasPermission } = useAuth();
+  const canFullAccess = hasPermission('staff.full');
+
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [shifts, setShifts] = useState<WorkShift[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +39,17 @@ export function Staff() {
   // Modal states
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [showShiftModal, setShowShiftModal] = useState(false);
+  const [showPayCalculator, setShowPayCalculator] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+
+  // Pay calculator state
+  const [payCalcEmployee, setPayCalcEmployee] = useState<number | null>(null);
+  const [payCalcMonth, setPayCalcMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [monthShifts, setMonthShifts] = useState<WorkShift[]>([]);
+  const [loadingPayCalc, setLoadingPayCalc] = useState(false);
 
   // Form states
   const [employeeForm, setEmployeeForm] = useState({
@@ -68,6 +87,11 @@ export function Staff() {
     newDate.setDate(newDate.getDate() + delta * 7);
     setCurrentWeek(getWeekDates(newDate));
   }
+
+  // Per staff: trova il proprio dipendente collegato
+  const myEmployee = !canFullAccess && user?.employee_id
+    ? employees.find(e => e.id === user.employee_id)
+    : null;
 
   useEffect(() => {
     loadData();
@@ -124,6 +148,59 @@ export function Staff() {
       notes: '',
     });
     setShowShiftModal(true);
+  }
+
+  async function openPayCalculator(employeeId?: number) {
+    // Se staff, forza il proprio employee_id
+    const targetEmployeeId = canFullAccess
+      ? (employeeId || employees[0]?.id || null)
+      : user?.employee_id || null;
+
+    setPayCalcEmployee(targetEmployeeId);
+    setShowPayCalculator(true);
+
+    if (targetEmployeeId) {
+      await loadMonthShifts(targetEmployeeId, payCalcMonth);
+    }
+  }
+
+  async function loadMonthShifts(employeeId: number, month: string) {
+    setLoadingPayCalc(true);
+    try {
+      const [year, monthNum] = month.split('-').map(Number);
+      const startDate = `${year}-${String(monthNum).padStart(2, '0')}-01`;
+      const endDate = new Date(year, monthNum, 0).toISOString().split('T')[0];
+
+      const allShifts = await getWorkShifts(startDate, endDate);
+      const empShifts = allShifts.filter(s => s.employee_id === employeeId);
+      setMonthShifts(empShifts);
+    } catch (error) {
+      console.error('Error loading month shifts:', error);
+      showToast('Errore nel caricamento turni', 'error');
+    } finally {
+      setLoadingPayCalc(false);
+    }
+  }
+
+  // Calcolo paga
+  function calculatePay(employeeId: number, shiftsData: WorkShift[]) {
+    const emp = employees.find(e => e.id === employeeId);
+    if (!emp) return { totalHours: 0, totalPay: 0, workedDays: 0, sickDays: 0, vacationDays: 0 };
+
+    const workedShifts = shiftsData.filter(s => s.shift_type === 'worked' && s.status !== 'absent');
+    const sickShifts = shiftsData.filter(s => s.shift_type === 'sick');
+    const vacationShifts = shiftsData.filter(s => s.shift_type === 'vacation');
+
+    const totalHours = workedShifts.reduce((sum, s) => sum + s.hours_worked, 0);
+    const totalPay = totalHours * emp.hourly_rate;
+
+    return {
+      totalHours,
+      totalPay,
+      workedDays: workedShifts.length,
+      sickDays: sickShifts.length,
+      vacationDays: vacationShifts.length,
+    };
   }
 
   async function handleSaveEmployee() {
@@ -218,22 +295,225 @@ export function Staff() {
     );
   }
 
+  // Vista Staff (limitata)
+  if (!canFullAccess) {
+    if (!myEmployee) {
+      return (
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+              <User className="w-8 h-8 text-primary-400" />
+              I Miei Turni
+            </h1>
+            <p className="text-dark-400 mt-1">Visualizza i tuoi turni e calcola la paga</p>
+          </div>
+
+          <div className="card p-8 text-center">
+            <User className="w-16 h-16 mx-auto text-dark-500 mb-4" />
+            <h2 className="text-xl font-semibold text-white mb-2">Account non collegato</h2>
+            <p className="text-dark-400">
+              Il tuo account non è collegato a nessun dipendente.<br />
+              Contatta un amministratore per collegare il tuo profilo.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // Filtra solo i turni del dipendente corrente
+    const myShifts = shifts.filter(s => s.employee_id === myEmployee.id);
+
+    return (
+      <div className="space-y-6">
+        {/* Header Staff */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2">
+              <User className="w-7 h-7 text-primary-400" />
+              I Miei Turni
+            </h1>
+            <p className="text-dark-400 mt-1">Ciao {myEmployee.name}!</p>
+          </div>
+          <button
+            onClick={() => openPayCalculator(myEmployee.id)}
+            className="btn-primary"
+          >
+            <Calculator className="w-5 h-5" />
+            Calcola Paga
+          </button>
+        </div>
+
+        {/* Info dipendente */}
+        <div className="card">
+          <div className="card-body">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-primary-500/20 flex items-center justify-center">
+                <User className="w-8 h-8 text-primary-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-white">{myEmployee.name}</h2>
+                <p className="text-primary-400">{myEmployee.role}</p>
+                <div className="flex items-center gap-1 mt-1 text-sm text-dark-400">
+                  <Euro className="w-4 h-4" />
+                  {myEmployee.hourly_rate.toFixed(2)}/ora
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Calendario Turni Staff */}
+        <div className="card">
+          <div className="card-header flex items-center justify-between">
+            <h2 className="font-semibold text-white flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              I Miei Turni
+            </h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => changeWeek(-1)}
+                className="p-2 hover:bg-dark-700 rounded-lg transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <span className="text-sm text-dark-300 min-w-[140px] text-center">
+                {new Date(currentWeek[0]).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
+                {' - '}
+                {new Date(currentWeek[6]).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
+              </span>
+              <button
+                onClick={() => changeWeek(1)}
+                className="p-2 hover:bg-dark-700 rounded-lg transition-colors"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          <div className="card-body">
+            <div className="grid grid-cols-7 gap-2">
+              {currentWeek.map((date, index) => {
+                const shift = getShiftForDay(myEmployee.id, date);
+                const isToday = date === new Date().toISOString().split('T')[0];
+
+                return (
+                  <div
+                    key={date}
+                    className={`p-3 rounded-xl text-center ${
+                      isToday ? 'ring-2 ring-primary-500' : ''
+                    } ${shift ? 'bg-dark-900' : 'bg-dark-800'}`}
+                  >
+                    <div className="text-xs text-dark-400 font-medium">{weekDays[index]}</div>
+                    <div className={`text-lg font-bold ${isToday ? 'text-primary-400' : 'text-white'}`}>
+                      {new Date(date).getDate()}
+                    </div>
+                    {shift ? (
+                      <div
+                        className={`mt-2 p-2 rounded-lg text-xs ${
+                          shift.shift_type === 'worked'
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : shift.shift_type === 'sick'
+                            ? 'bg-red-500/20 text-red-400'
+                            : shift.shift_type === 'vacation'
+                            ? 'bg-blue-500/20 text-blue-400'
+                            : 'bg-amber-500/20 text-amber-400'
+                        }`}
+                      >
+                        <div className="font-medium">
+                          {shift.start_time} - {shift.end_time}
+                        </div>
+                        <div className="text-[10px] opacity-75 mt-0.5">
+                          {shift.hours_worked}h
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-2 p-2 text-xs text-dark-500">
+                        Riposo
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Riepilogo settimana */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="card p-4 text-center">
+            <Clock className="w-6 h-6 mx-auto text-primary-400 mb-2" />
+            <div className="text-2xl font-bold text-white">
+              {myShifts.filter(s => s.shift_type === 'worked').reduce((sum, s) => sum + s.hours_worked, 0)}h
+            </div>
+            <div className="text-xs text-dark-400">Ore questa settimana</div>
+          </div>
+          <div className="card p-4 text-center">
+            <CalendarDays className="w-6 h-6 mx-auto text-emerald-400 mb-2" />
+            <div className="text-2xl font-bold text-white">
+              {myShifts.filter(s => s.shift_type === 'worked').length}
+            </div>
+            <div className="text-xs text-dark-400">Giorni lavorativi</div>
+          </div>
+          <div className="card p-4 text-center">
+            <Calendar className="w-6 h-6 mx-auto text-blue-400 mb-2" />
+            <div className="text-2xl font-bold text-white">
+              {myShifts.filter(s => s.shift_type === 'vacation').length}
+            </div>
+            <div className="text-xs text-dark-400">Ferie</div>
+          </div>
+          <div className="card p-4 text-center">
+            <Euro className="w-6 h-6 mx-auto text-amber-400 mb-2" />
+            <div className="text-2xl font-bold text-white">
+              {(myShifts.filter(s => s.shift_type === 'worked').reduce((sum, s) => sum + s.hours_worked, 0) * myEmployee.hourly_rate).toFixed(0)}
+            </div>
+            <div className="text-xs text-dark-400">Paga settimana</div>
+          </div>
+        </div>
+
+        {/* Pay Calculator Modal (Staff) */}
+        <PayCalculatorModal
+          isOpen={showPayCalculator}
+          onClose={() => setShowPayCalculator(false)}
+          employees={[myEmployee]}
+          selectedEmployee={myEmployee.id}
+          onEmployeeChange={() => {}}
+          month={payCalcMonth}
+          onMonthChange={async (m) => {
+            setPayCalcMonth(m);
+            await loadMonthShifts(myEmployee.id, m);
+          }}
+          shifts={monthShifts}
+          loading={loadingPayCalc}
+          calculatePay={calculatePay}
+          canSelectEmployee={false}
+        />
+      </div>
+    );
+  }
+
+  // Vista Admin/Superadmin (completa)
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Personale</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Personale</h1>
           <p className="text-dark-400 mt-1">Gestisci dipendenti e turni</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <button
+            onClick={() => openPayCalculator()}
+            className="btn-secondary"
+          >
+            <Calculator className="w-5 h-5" />
+            <span className="hidden sm:inline">Calcola Paga</span>
+          </button>
           <button onClick={() => openShiftModal()} className="btn-secondary">
             <Calendar className="w-5 h-5" />
-            Nuovo Turno
+            <span className="hidden sm:inline">Nuovo Turno</span>
           </button>
           <button onClick={() => openEmployeeModal()} className="btn-primary">
             <Plus className="w-5 h-5" />
-            Nuovo Dipendente
+            <span className="hidden sm:inline">Nuovo Dipendente</span>
           </button>
         </div>
       </div>
@@ -243,7 +523,7 @@ export function Staff() {
         <div className="card-header">
           <h2 className="font-semibold text-white flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Dipendenti
+            Dipendenti ({employees.length})
           </h2>
         </div>
         <div className="card-body">
@@ -254,8 +534,8 @@ export function Staff() {
                 className={`bg-dark-900 rounded-xl p-4 ${!emp.active ? 'opacity-50' : ''}`}
               >
                 <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold text-white">{emp.name}</h3>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-white truncate">{emp.name}</h3>
                     <p className="text-sm text-primary-400">{emp.role}</p>
                     <div className="flex items-center gap-1 mt-2 text-sm text-dark-400">
                       <DollarSign className="w-4 h-4" />
@@ -263,6 +543,13 @@ export function Staff() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openPayCalculator(emp.id)}
+                      className="p-2 hover:bg-dark-700 rounded-lg transition-colors"
+                      title="Calcola paga"
+                    >
+                      <Calculator className="w-4 h-4 text-dark-400" />
+                    </button>
                     <button
                       onClick={() => openEmployeeModal(emp)}
                       className="p-2 hover:bg-dark-700 rounded-lg transition-colors"
@@ -288,7 +575,7 @@ export function Staff() {
 
       {/* Weekly Schedule */}
       <div className="card">
-        <div className="card-header flex items-center justify-between">
+        <div className="card-header flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h2 className="font-semibold text-white flex items-center gap-2">
             <Calendar className="w-5 h-5" />
             Turni Settimanali
@@ -300,7 +587,7 @@ export function Staff() {
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <span className="text-sm text-dark-300">
+            <span className="text-sm text-dark-300 min-w-[140px] text-center">
               {new Date(currentWeek[0]).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
               {' - '}
               {new Date(currentWeek[6]).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
@@ -323,7 +610,7 @@ export function Staff() {
                 {currentWeek.map((date, index) => (
                   <th
                     key={date}
-                    className="px-4 py-3 text-center text-xs font-semibold text-dark-300 uppercase tracking-wider bg-dark-900"
+                    className="px-4 py-3 text-center text-xs font-semibold text-dark-300 uppercase tracking-wider bg-dark-900 min-w-[90px]"
                   >
                     <div>{weekDays[index]}</div>
                     <div className="text-dark-500 font-normal">
@@ -563,6 +850,220 @@ export function Staff() {
           </div>
         </div>
       </Modal>
+
+      {/* Pay Calculator Modal */}
+      <PayCalculatorModal
+        isOpen={showPayCalculator}
+        onClose={() => setShowPayCalculator(false)}
+        employees={employees.filter(e => e.active)}
+        selectedEmployee={payCalcEmployee}
+        onEmployeeChange={async (id) => {
+          setPayCalcEmployee(id);
+          if (id) await loadMonthShifts(id, payCalcMonth);
+        }}
+        month={payCalcMonth}
+        onMonthChange={async (m) => {
+          setPayCalcMonth(m);
+          if (payCalcEmployee) await loadMonthShifts(payCalcEmployee, m);
+        }}
+        shifts={monthShifts}
+        loading={loadingPayCalc}
+        calculatePay={calculatePay}
+        canSelectEmployee={true}
+      />
     </div>
+  );
+}
+
+// Componente Modal Calcolatore Paga
+interface PayCalculatorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  employees: Employee[];
+  selectedEmployee: number | null;
+  onEmployeeChange: (id: number) => void;
+  month: string;
+  onMonthChange: (month: string) => void;
+  shifts: WorkShift[];
+  loading: boolean;
+  calculatePay: (employeeId: number, shifts: WorkShift[]) => {
+    totalHours: number;
+    totalPay: number;
+    workedDays: number;
+    sickDays: number;
+    vacationDays: number;
+  };
+  canSelectEmployee: boolean;
+}
+
+function PayCalculatorModal({
+  isOpen,
+  onClose,
+  employees,
+  selectedEmployee,
+  onEmployeeChange,
+  month,
+  onMonthChange,
+  shifts,
+  loading,
+  calculatePay,
+  canSelectEmployee,
+}: PayCalculatorModalProps) {
+  const selectedEmp = employees.find(e => e.id === selectedEmployee);
+  const payData = selectedEmployee ? calculatePay(selectedEmployee, shifts) : null;
+
+  const monthNames = [
+    'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+    'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
+  ];
+
+  const [year, monthNum] = month.split('-').map(Number);
+  const monthLabel = `${monthNames[monthNum - 1]} ${year}`;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Calcola Paga"
+      size="lg"
+    >
+      <div className="space-y-6">
+        {/* Selettori */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {canSelectEmployee && (
+            <div>
+              <label className="label">Dipendente</label>
+              <select
+                value={selectedEmployee || ''}
+                onChange={(e) => onEmployeeChange(parseInt(e.target.value))}
+                className="select"
+              >
+                <option value="">Seleziona...</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name} - {emp.role}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className={canSelectEmployee ? '' : 'sm:col-span-2'}>
+            <label className="label">Mese</label>
+            <input
+              type="month"
+              value={month}
+              onChange={(e) => onMonthChange(e.target.value)}
+              className="input"
+            />
+          </div>
+        </div>
+
+        {/* Risultati */}
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
+          </div>
+        ) : selectedEmp && payData ? (
+          <>
+            {/* Info dipendente */}
+            <div className="bg-dark-900 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-primary-500/20 flex items-center justify-center">
+                  <User className="w-6 h-6 text-primary-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">{selectedEmp.name}</h3>
+                  <p className="text-sm text-dark-400">{selectedEmp.role} - €{selectedEmp.hourly_rate.toFixed(2)}/ora</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Statistiche mese */}
+            <div>
+              <h3 className="text-sm font-medium text-dark-300 mb-3">{monthLabel}</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-dark-900 rounded-xl p-4 text-center">
+                  <Clock className="w-5 h-5 mx-auto text-primary-400 mb-2" />
+                  <div className="text-xl font-bold text-white">{payData.totalHours.toFixed(1)}</div>
+                  <div className="text-xs text-dark-400">Ore lavorate</div>
+                </div>
+                <div className="bg-dark-900 rounded-xl p-4 text-center">
+                  <CalendarDays className="w-5 h-5 mx-auto text-emerald-400 mb-2" />
+                  <div className="text-xl font-bold text-white">{payData.workedDays}</div>
+                  <div className="text-xs text-dark-400">Giorni lavoro</div>
+                </div>
+                <div className="bg-dark-900 rounded-xl p-4 text-center">
+                  <Calendar className="w-5 h-5 mx-auto text-blue-400 mb-2" />
+                  <div className="text-xl font-bold text-white">{payData.vacationDays}</div>
+                  <div className="text-xs text-dark-400">Giorni ferie</div>
+                </div>
+                <div className="bg-dark-900 rounded-xl p-4 text-center">
+                  <Calendar className="w-5 h-5 mx-auto text-red-400 mb-2" />
+                  <div className="text-xl font-bold text-white">{payData.sickDays}</div>
+                  <div className="text-xs text-dark-400">Giorni malattia</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Calcolo paga */}
+            <div className="bg-gradient-to-br from-primary-500/20 to-primary-600/10 rounded-xl p-6 border border-primary-500/30">
+              <h3 className="text-sm font-medium text-primary-300 mb-4">Calcolo Paga Lorda</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-dark-300">
+                  <span>Ore lavorate</span>
+                  <span className="text-white">{payData.totalHours.toFixed(1)} h</span>
+                </div>
+                <div className="flex justify-between text-dark-300">
+                  <span>Tariffa oraria</span>
+                  <span className="text-white">€ {selectedEmp.hourly_rate.toFixed(2)}</span>
+                </div>
+                <div className="border-t border-primary-500/30 my-3"></div>
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-medium text-white">Totale Lordo</span>
+                  <span className="text-2xl font-bold text-primary-400">€ {payData.totalPay.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Dettaglio turni */}
+            {shifts.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-dark-300 mb-3">Dettaglio Turni ({shifts.length})</h3>
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {shifts.sort((a, b) => a.date.localeCompare(b.date)).map((shift) => (
+                    <div
+                      key={shift.id}
+                      className="flex items-center justify-between p-3 bg-dark-900 rounded-lg text-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full ${
+                          shift.shift_type === 'worked' ? 'bg-emerald-500' :
+                          shift.shift_type === 'sick' ? 'bg-red-500' :
+                          shift.shift_type === 'vacation' ? 'bg-blue-500' : 'bg-amber-500'
+                        }`} />
+                        <span className="text-dark-400">
+                          {new Date(shift.date).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric' })}
+                        </span>
+                        <span className="text-white">{shift.start_time} - {shift.end_time}</span>
+                      </div>
+                      <span className="text-dark-300">{shift.hours_worked}h</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-8 text-dark-400">
+            <Calculator className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p>Seleziona un dipendente e un mese per calcolare la paga</p>
+          </div>
+        )}
+
+        <button onClick={onClose} className="btn-primary w-full">
+          Chiudi
+        </button>
+      </div>
+    </Modal>
   );
 }

@@ -10,16 +10,19 @@ import {
   ShieldAlert,
   Search,
   RefreshCw,
+  Link2,
 } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { showToast } from '../components/ui/Toast';
 import { useAuth } from '../context/AuthContext';
-import type { User, UserRole } from '../types';
+import type { User, UserRole, Employee } from '../types';
 import { ROLE_LABELS } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { getEmployees } from '../lib/database';
 
 export function Users() {
   const [users, setUsers] = useState<User[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -32,17 +35,19 @@ export function Users() {
     password: '',
     name: '',
     role: 'staff' as UserRole,
+    employee_id: null as number | null,
   });
 
   const { user: currentUser } = useAuth();
 
   useEffect(() => {
-    loadUsers();
+    loadData();
   }, []);
 
-  async function loadUsers() {
+  async function loadData() {
     setLoading(true);
     try {
+      // Carica utenti
       if (isSupabaseConfigured && supabase) {
         const { data, error } = await supabase
           .from('users')
@@ -54,11 +59,29 @@ export function Users() {
         const storedUsers = JSON.parse(localStorage.getItem('kebab_users') || '[]');
         setUsers(storedUsers);
       }
+
+      // Carica dipendenti
+      const emps = await getEmployees();
+      setEmployees(emps);
     } catch (err) {
-      console.error('Errore caricamento utenti:', err);
-      showToast('Errore nel caricamento utenti', 'error');
+      console.error('Errore caricamento dati:', err);
+      showToast('Errore nel caricamento dati', 'error');
     }
     setLoading(false);
+  }
+
+  // Dipendenti non ancora collegati a un utente
+  const availableEmployees = employees.filter(emp => {
+    // Escludi dipendenti già collegati a un altro utente
+    const linkedUser = users.find(u => u.employee_id === emp.id && u.id !== editingUser?.id);
+    return !linkedUser;
+  });
+
+  // Trova dipendente collegato a un utente
+  function getLinkedEmployee(userId: number): Employee | undefined {
+    const user = users.find(u => u.id === userId);
+    if (!user?.employee_id) return undefined;
+    return employees.find(e => e.id === user.employee_id);
   }
 
   const filteredUsers = users.filter(
@@ -69,7 +92,7 @@ export function Users() {
 
   function openAddModal() {
     setEditingUser(null);
-    setFormData({ username: '', password: '', name: '', role: 'staff' });
+    setFormData({ username: '', password: '', name: '', role: 'staff', employee_id: null });
     setShowModal(true);
   }
 
@@ -80,6 +103,7 @@ export function Users() {
       password: '', // Non mostrare password esistente
       name: user.name,
       role: user.role,
+      employee_id: user.employee_id || null,
     });
     setShowModal(true);
   }
@@ -114,6 +138,7 @@ export function Users() {
             username: formData.username,
             name: formData.name,
             role: formData.role,
+            employee_id: formData.employee_id || undefined,
           };
           if (formData.password) {
             updateData.password = formData.password;
@@ -132,12 +157,13 @@ export function Users() {
             password: formData.password,
             name: formData.name,
             role: formData.role,
+            employee_id: formData.employee_id || null,
             active: true,
           });
           if (error) throw error;
           showToast('Utente creato con successo', 'success');
         }
-        await loadUsers();
+        await loadData();
       } else {
         // Fallback localStorage
         let updatedUsers: User[];
@@ -150,6 +176,7 @@ export function Users() {
                 username: formData.username,
                 name: formData.name,
                 role: formData.role,
+                employee_id: formData.employee_id || undefined,
                 ...(formData.password && { password: formData.password }),
               };
             }
@@ -163,6 +190,7 @@ export function Users() {
             password: formData.password,
             name: formData.name,
             role: formData.role,
+            employee_id: formData.employee_id || undefined,
             active: true,
             created_at: new Date().toISOString(),
           };
@@ -197,7 +225,7 @@ export function Users() {
           .update({ active: !userToToggle.active })
           .eq('id', userId);
         if (error) throw error;
-        await loadUsers();
+        await loadData();
       } else {
         const updatedUsers = users.map((u) => {
           if (u.id === userId) {
@@ -226,7 +254,7 @@ export function Users() {
       if (isSupabaseConfigured && supabase) {
         const { error } = await supabase.from('users').delete().eq('id', userId);
         if (error) throw error;
-        await loadUsers();
+        await loadData();
       } else {
         const updatedUsers = users.filter((u) => u.id !== userId);
         localStorage.setItem('kebab_users', JSON.stringify(updatedUsers));
@@ -281,7 +309,7 @@ export function Users() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={loadUsers} className="btn-secondary btn-sm">
+          <button onClick={loadData} className="btn-secondary btn-sm">
             <RefreshCw className="w-4 h-4" />
           </button>
           <button onClick={openAddModal} className="btn-primary btn-sm">
@@ -369,6 +397,7 @@ export function Users() {
                 <th>Utente</th>
                 <th>Username</th>
                 <th>Ruolo</th>
+                <th>Dipendente</th>
                 <th>Stato</th>
                 <th>Ultimo Accesso</th>
                 <th>Azioni</th>
@@ -404,6 +433,19 @@ export function Users() {
                       {getRoleIcon(user.role)}
                       {ROLE_LABELS[user.role]}
                     </span>
+                  </td>
+                  <td>
+                    {(() => {
+                      const linkedEmp = getLinkedEmployee(user.id);
+                      return linkedEmp ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-primary-500/20 text-primary-400">
+                          <Link2 className="w-3 h-3" />
+                          {linkedEmp.name}
+                        </span>
+                      ) : (
+                        <span className="text-dark-500 text-sm">-</span>
+                      );
+                    })()}
                   </td>
                   <td>
                     <span
@@ -505,7 +547,7 @@ export function Users() {
               <span className="font-medium text-blue-400">Staff</span>
             </div>
             <p className="text-xs text-dark-400">
-              Solo servizio: Nuovo Ordine, Ordini, Tavoli
+              Servizio: Nuovo Ordine, Ordini, Tavoli, I Miei Turni (solo propri turni e paga)
             </p>
           </div>
         </div>
@@ -575,6 +617,36 @@ export function Users() {
               <option value="admin">Admin - Operativo</option>
               <option value="superadmin">Super Admin - Accesso completo</option>
             </select>
+          </div>
+
+          {/* Collegamento Dipendente - utile per Staff */}
+          <div>
+            <label className="block text-sm font-medium text-dark-300 mb-1">
+              Collega a Dipendente
+            </label>
+            <select
+              value={formData.employee_id || ''}
+              onChange={(e) =>
+                setFormData({ ...formData, employee_id: e.target.value ? parseInt(e.target.value) : null })
+              }
+              className="input"
+            >
+              <option value="">Nessun collegamento</option>
+              {/* Mostra dipendente corrente se in modifica */}
+              {editingUser?.employee_id && !availableEmployees.find(e => e.id === editingUser.employee_id) && (
+                <option value={editingUser.employee_id}>
+                  {employees.find(e => e.id === editingUser.employee_id)?.name} (collegato)
+                </option>
+              )}
+              {availableEmployees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.name} - {emp.role}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-dark-400 mt-1">
+              Collega l'utente a un dipendente per permettere di vedere turni e paga personali
+            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
