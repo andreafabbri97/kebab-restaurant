@@ -37,6 +37,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSmac } from '../../context/SmacContext';
+import { usePlanFeatures } from '../../hooks/usePlanFeatures';
 import { ROLE_LABELS } from '../../types';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import { getSettings } from '../../lib/database';
@@ -85,6 +86,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useTheme();
   const { t } = useLanguage();
   const { smacEnabled } = useSmac();
+  const { canAccessFeature } = usePlanFeatures();
   const [shopName, setShopName] = useState('Il Mio Ristorante');
 
   // Carica il nome del ristorante dalle settings
@@ -112,10 +114,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     };
   }, []);
 
-  // Filtra navigazione in base ai permessi e impostazioni SMAC
+  // Filtra navigazione in base ai permessi, piano licenza e impostazioni SMAC
   const filteredNavigation = navigation.filter((item) => {
-    // Nascondi SMAC se disabilitato
+    // Nascondi SMAC se disabilitato nelle impostazioni
     if (item.href === '/smac' && !smacEnabled) return false;
+    // Nascondi se il piano non include questa funzionalità
+    if (!canAccessFeature(item.permission)) return false;
+    // Controlla i permessi dell'utente
     return hasPermission(item.permission);
   });
 

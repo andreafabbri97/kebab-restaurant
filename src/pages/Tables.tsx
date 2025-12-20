@@ -55,11 +55,13 @@ import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import { useLanguage } from '../context/LanguageContext';
 import { useSmac } from '../context/SmacContext';
+import { useDemoGuard } from '../hooks/useDemoGuard';
 import type { Table, Reservation, TableSession, Order, SessionPayment, SessionPaymentItem, OrderItem, Receipt as ReceiptType } from '../types';
 
 export function Tables() {
   useLanguage(); // Ready for translations
   const { smacEnabled } = useSmac();
+  const { checkCanWrite } = useDemoGuard();
   const navigate = useNavigate();
   const [tables, setTables] = useState<Table[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -250,6 +252,9 @@ export function Tables() {
   }
 
   async function handleSaveTable() {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!tableForm.name.trim()) {
       showToast('Inserisci un nome per il tavolo', 'warning');
       return;
@@ -278,6 +283,9 @@ export function Tables() {
   }
 
   async function handleDeleteTable(id: number) {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!confirm('Sei sicuro di voler eliminare questo tavolo?')) return;
 
     try {
@@ -291,6 +299,9 @@ export function Tables() {
   }
 
   async function handleSaveReservation() {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!reservationForm.customer_name.trim()) {
       showToast('Inserisci il nome del cliente', 'warning');
       return;
@@ -334,6 +345,9 @@ export function Tables() {
   }
 
   async function handleCancelReservation(id: number) {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!confirm('Annullare questa prenotazione?')) return;
 
     try {
@@ -371,6 +385,9 @@ export function Tables() {
 
   // Salva modifica prenotazione
   async function handleUpdateReservation() {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!editingReservation) return;
 
     if (!reservationForm.customer_name.trim()) {
@@ -490,6 +507,9 @@ export function Tables() {
   }
 
   async function handleOpenSession() {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!selectedTableId) return;
 
     try {
@@ -514,6 +534,9 @@ export function Tables() {
   }
 
   async function handleCloseSession() {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!selectedSession) return;
 
     // Se il totale è 0, chiedi conferma diretta senza aprire il modal di pagamento
@@ -539,6 +562,9 @@ export function Tables() {
   }
 
   async function confirmCloseSession() {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!selectedSession) return;
 
     try {
@@ -559,6 +585,9 @@ export function Tables() {
   }
 
   async function confirmTransfer(newTableId: number) {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!selectedSession) return;
 
     try {
@@ -740,6 +769,9 @@ export function Tables() {
   }
 
   async function addSplitPayment() {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!selectedSession) {
       showToast('Sessione non trovata', 'error');
       return;

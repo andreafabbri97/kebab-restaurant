@@ -31,6 +31,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSmac } from '../context/SmacContext';
+import { usePlanFeatures } from '../hooks/usePlanFeatures';
 
 interface FAQItem {
   question: string;
@@ -43,12 +44,14 @@ interface GuideSection {
   icon: React.ReactNode;
   content: string[];
   tips?: string[];
+  premium?: boolean;
 }
 
 export function GuideFAQ() {
   useLanguage(); // Ready for translations
   const { isSuperAdmin, isAdmin } = useAuth();
   const { smacEnabled } = useSmac();
+  const { isPremium } = usePlanFeatures();
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'welcome' | 'guide' | 'faq'>('welcome');
@@ -209,6 +212,7 @@ export function GuideFAQ() {
         'Se un piatto mostra "0 ingredienti" vai su Ricette per collegarlo',
         'Ordina per "Margine" per vedere subito quali piatti rendono di più',
       ],
+      premium: true,
     },
     {
       title: 'Inventario',
@@ -226,6 +230,7 @@ export function GuideFAQ() {
         'Fai il carico appena arriva la merce, non rimandare',
         'Se l\'inventario non torna, fai uno scarico manuale per allineare i dati',
       ],
+      premium: true,
     },
     {
       title: 'Ricette',
@@ -242,6 +247,7 @@ export function GuideFAQ() {
         'Inserisci le quantità esatte per porzione, non approssimative',
         'Aggiorna le ricette se cambi le porzioni dei piatti',
       ],
+      premium: true,
     },
     {
       title: 'Personale',
@@ -256,6 +262,7 @@ export function GuideFAQ() {
         'Fai timbrare entrata/uscita subito, non a fine giornata',
         'Se qualcuno dimentica di timbrare, correggi manualmente lo stesso giorno',
       ],
+      premium: true,
     },
     {
       title: 'Chiusura Cassa',
@@ -272,6 +279,7 @@ export function GuideFAQ() {
         'Se c\'è un ammanco, annotalo subito con una nota esplicativa',
         'Fai la chiusura cassa ogni sera, non accumulare giorni',
       ],
+      premium: true,
     },
   ];
 
@@ -308,6 +316,7 @@ export function GuideFAQ() {
         'Genera il report settimanale ogni lunedì per analizzare la settimana precedente',
         'Confronta i report mese su mese per identificare trend stagionali',
       ],
+      premium: true,
     },
     {
       title: 'Gestione SMAC',
@@ -323,6 +332,7 @@ export function GuideFAQ() {
         'Controlla i clienti più frequenti per fidelizzarli ulteriormente',
         'Verifica che lo staff registri sempre le tessere SMAC agli ordini',
       ],
+      premium: true,
     },
     {
       title: 'Impostazioni',
@@ -1228,6 +1238,11 @@ export function GuideFAQ() {
                   {section.icon}
                 </div>
                 <h2 className="text-lg font-semibold text-white">{section.title}</h2>
+                {section.premium && !isPremium && (
+                  <span className="px-2 py-0.5 text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/50 rounded-full">
+                    Premium
+                  </span>
+                )}
               </div>
               <div className="card-body space-y-4">
                 <ol className="space-y-2">

@@ -20,6 +20,7 @@ import { Modal } from '../components/ui/Modal';
 import { useLanguage } from '../context/LanguageContext';
 import { useCurrency } from '../hooks/useCurrency';
 import { useSmac } from '../context/SmacContext';
+import { useDemoGuard } from '../hooks/useDemoGuard';
 import type { Category, MenuItem, Table, CartItem, Settings, TableSession, Order } from '../types';
 
 type OrderType = 'dine_in' | 'takeaway' | 'delivery';
@@ -29,6 +30,7 @@ export function NewOrder() {
   useLanguage(); // Ready for translations
   const { formatPrice } = useCurrency();
   const { smacEnabled } = useSmac();
+  const { checkCanWrite } = useDemoGuard();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -241,6 +243,9 @@ export function NewOrder() {
   }
 
   async function submitOrder() {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (cart.length === 0) {
       showToast('Aggiungi almeno un prodotto', 'warning');
       return;

@@ -23,10 +23,12 @@ import {
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import { useLanguage } from '../context/LanguageContext';
+import { useDemoGuard } from '../hooks/useDemoGuard';
 import type { Category, MenuItem, Settings } from '../types';
 
 export function Menu() {
   useLanguage(); // Ready for translations
+  const { checkCanWrite } = useDemoGuard();
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -107,6 +109,9 @@ export function Menu() {
   }
 
   async function handleSaveItem() {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!itemForm.name || !itemForm.price || !itemForm.category_id) {
       showToast('Compila tutti i campi obbligatori', 'warning');
       return;
@@ -144,6 +149,9 @@ export function Menu() {
   }
 
   async function handleDeleteItem(id: number) {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!confirm('Sei sicuro di voler eliminare questo articolo?')) return;
 
     try {
@@ -157,6 +165,9 @@ export function Menu() {
   }
 
   async function handleToggleAvailable(item: MenuItem) {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     try {
       await updateMenuItem(item.id, { available: !item.available });
       showToast(
@@ -171,6 +182,9 @@ export function Menu() {
   }
 
   async function handleSaveCategory() {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!categoryName.trim()) {
       showToast('Inserisci un nome per la categoria', 'warning');
       return;
@@ -189,6 +203,9 @@ export function Menu() {
   }
 
   async function handleDeleteCategory(id: number) {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     const hasItems = menuItems.some((item) => item.category_id === id);
     if (hasItems) {
       showToast('Impossibile eliminare: la categoria contiene articoli', 'warning');

@@ -11,11 +11,14 @@ import {
   Search,
   RefreshCw,
   Link2,
+  Lock,
 } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { showToast } from '../components/ui/Toast';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { usePlanFeatures } from '../hooks/usePlanFeatures';
+import { useDemoGuard } from '../hooks/useDemoGuard';
 import type { User, UserRole, Employee } from '../types';
 import { ROLE_LABELS } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -23,6 +26,8 @@ import { getEmployees } from '../lib/database';
 
 export function Users() {
   useLanguage(); // Ready for translations
+  const { isPremium } = usePlanFeatures();
+  const { checkCanWrite } = useDemoGuard();
   const [users, setUsers] = useState<User[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +116,15 @@ export function Users() {
   }
 
   async function handleSave() {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
+    // Blocca creazione nuovi utenti se non premium
+    if (!editingUser && !isPremium) {
+      showToast('La creazione di nuovi utenti richiede il piano Premium', 'warning');
+      return;
+    }
+
     if (!formData.username || !formData.name) {
       showToast('Username e nome sono obbligatori', 'warning');
       return;
@@ -213,6 +227,9 @@ export function Users() {
   }
 
   async function toggleUserStatus(userId: number) {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     // Non permettere di disattivare se stesso
     if (userId === currentUser?.id) {
       showToast('Non puoi disattivare il tuo account', 'error');
@@ -248,6 +265,9 @@ export function Users() {
   }
 
   async function deleteUser(userId: number) {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     // Non permettere di eliminare se stesso
     if (userId === currentUser?.id) {
       showToast('Non puoi eliminare il tuo account', 'error');
@@ -316,8 +336,12 @@ export function Users() {
           <button onClick={loadData} className="btn-secondary btn-sm">
             <RefreshCw className="w-4 h-4" />
           </button>
-          <button onClick={openAddModal} className="btn-primary btn-sm flex-1 sm:flex-none justify-center">
-            <Plus className="w-4 h-4" />
+          <button
+            onClick={isPremium ? openAddModal : () => showToast('La creazione di nuovi utenti richiede il piano Premium', 'warning')}
+            className={`btn-sm flex-1 sm:flex-none justify-center ${isPremium ? 'btn-primary' : 'btn-secondary opacity-70'}`}
+            title={!isPremium ? 'Richiede piano Premium' : ''}
+          >
+            {isPremium ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
             Nuovo Utente
           </button>
         </div>

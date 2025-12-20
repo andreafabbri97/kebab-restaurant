@@ -59,6 +59,7 @@ import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useSmac } from '../context/SmacContext';
+import { useDemoGuard } from '../hooks/useDemoGuard';
 import type { Order, OrderItem, Table, SessionPayment, SessionPaymentItem, Receipt as ReceiptType } from '../types';
 
 const statusConfig = {
@@ -78,6 +79,7 @@ const orderTypeLabelKeys = {
 export function Orders() {
   const { t } = useLanguage();
   const { formatPrice } = useCurrency();
+  const { checkCanWrite } = useDemoGuard();
   const { smacEnabled } = useSmac();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -232,6 +234,9 @@ export function Orders() {
   }, [loadOrdersCallback]);
 
   async function handleStatusChange(order: Order) {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     const config = statusConfig[order.status];
     if (!config.next) return;
 
@@ -246,6 +251,9 @@ export function Orders() {
   }
 
   async function handleDelete(orderId: number, sessionId?: number) {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!confirm('Sei sicuro di voler eliminare questo ordine?')) return;
 
     try {
@@ -823,6 +831,9 @@ export function Orders() {
   }
 
   async function handleBulkAction() {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (selectedOrderIds.length === 0) {
       showToast('Seleziona almeno un ordine', 'warning');
       return;

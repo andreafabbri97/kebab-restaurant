@@ -3,9 +3,11 @@
  *
  * Verifica la validità della licenza del software.
  * La licenza viene controllata dal server centrale (Supabase di Andrea Fabbri).
+ *
+ * Gestisce anche i piani licenza (demo, standard, premium) e le relative restrizioni.
  */
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 
 // Configurazione del server licenze (Supabase di Andrea Fabbri)
 const LICENSE_SERVER_URL = 'https://jhyidrhckhoavlmmmlwq.supabase.co';
@@ -13,6 +15,16 @@ const LICENSE_SERVER_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 
 // ID del client - viene configurato durante il setup del fork
 const CLIENT_ID = import.meta.env.VITE_CLIENT_ID || 'kebab-san-marino';
+
+// Tipi di piano licenza
+export type PlanType = 'demo' | 'standard' | 'premium';
+
+// Funzionalità disponibili per ogni piano
+const PLAN_FEATURES: Record<PlanType, string[]> = {
+  demo: ['dashboard', 'orders', 'orders.new', 'tables', 'menu', 'guide', 'settings'],
+  standard: ['dashboard', 'orders', 'orders.new', 'tables', 'menu', 'guide', 'settings', 'users'],
+  premium: ['dashboard', 'orders', 'orders.new', 'tables', 'menu', 'guide', 'settings', 'users', 'inventory', 'recipes', 'staff', 'dish-costs', 'cash-register', 'reports', 'smac']
+};
 
 interface LicenseStatus {
   valid: boolean;
@@ -35,6 +47,11 @@ interface LicenseContextType {
   adminSettings: AdminSettings | null;
   isInitializing: boolean; // Solo per il primo check all'avvio
   recheckLicense: () => Promise<void>;
+  // Piano licenza
+  planType: PlanType;
+  isDemo: boolean;
+  canWrite: boolean; // false per demo (solo lettura)
+  canAccessFeature: (feature: string) => boolean;
 }
 
 const LicenseContext = createContext<LicenseContextType | null>(null);
@@ -160,13 +177,35 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   // Funzione pubblica per ricontrollare (sempre silenzioso)
   const recheckLicense = useCallback(() => checkLicense(false), [checkLicense]);
 
+  // Estrai il piano dalla risposta del server (default: demo per sicurezza)
+  const planType: PlanType = useMemo(() => {
+    const plan = licenseStatus?.plan?.toLowerCase();
+    if (plan === 'premium' || plan === 'standard' || plan === 'demo') {
+      return plan;
+    }
+    return 'demo'; // Fallback sicuro
+  }, [licenseStatus?.plan]);
+
+  // Flag per modalità demo (solo lettura)
+  const isDemo = planType === 'demo';
+  const canWrite = !isDemo;
+
+  // Funzione per verificare se una feature è accessibile con il piano corrente
+  const canAccessFeature = useCallback((feature: string) => {
+    return PLAN_FEATURES[planType].includes(feature);
+  }, [planType]);
+
   return (
     <LicenseContext.Provider value={{
       isLicenseValid,
       licenseStatus,
       adminSettings,
       isInitializing,
-      recheckLicense
+      recheckLicense,
+      planType,
+      isDemo,
+      canWrite,
+      canAccessFeature
     }}>
       {children}
     </LicenseContext.Provider>

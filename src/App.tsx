@@ -23,8 +23,11 @@ import { PrivateRoute } from './components/auth/PrivateRoute';
 import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/ui/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { DemoWatermark } from './components/DemoWatermark';
 import { Login } from './pages/Login';
 import { LicenseBlocked } from './pages/LicenseBlocked';
+import { UpgradeRequired } from './pages/UpgradeRequired';
+import { usePlanFeatures } from './hooks/usePlanFeatures';
 
 // Lazy load delle pagine per ottimizzare il bundle
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -86,7 +89,32 @@ function LicenseGate({ children }: { children: React.ReactNode }) {
     return <LicenseBlocked />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <DemoWatermark />
+      {children}
+    </>
+  );
+}
+
+// Componente per route che richiedono un piano specifico
+function PlanRestrictedRoute({
+  children,
+  permission,
+  requiredPlan
+}: {
+  children: React.ReactNode;
+  permission: string;
+  requiredPlan: 'standard' | 'premium';
+}) {
+  const { canAccessFeature } = usePlanFeatures();
+
+  // Se il piano non include questa funzionalità, mostra la pagina di upgrade
+  if (!canAccessFeature(permission)) {
+    return <UpgradeRequired requiredPlan={requiredPlan} feature={permission} />;
+  }
+
+  return <PrivateRoute permission={permission}>{children}</PrivateRoute>;
 }
 
 function App() {
@@ -172,63 +200,63 @@ function App() {
               }
             />
 
-            {/* Inventario - admin e superadmin */}
+            {/* Inventario - premium */}
             <Route
               path="inventory"
               element={
-                <PrivateRoute permission="inventory">
+                <PlanRestrictedRoute permission="inventory" requiredPlan="premium">
                   <Suspense fallback={<PageLoader />}>
                     <Inventory />
                   </Suspense>
-                </PrivateRoute>
+                </PlanRestrictedRoute>
               }
             />
 
-            {/* Ricette - admin e superadmin */}
+            {/* Ricette - premium */}
             <Route
               path="recipes"
               element={
-                <PrivateRoute permission="recipes">
+                <PlanRestrictedRoute permission="recipes" requiredPlan="premium">
                   <Suspense fallback={<PageLoader />}>
                     <Recipes />
                   </Suspense>
-                </PrivateRoute>
+                </PlanRestrictedRoute>
               }
             />
 
-            {/* Personale - admin e superadmin */}
+            {/* Personale - premium */}
             <Route
               path="staff"
               element={
-                <PrivateRoute permission="staff">
+                <PlanRestrictedRoute permission="staff" requiredPlan="premium">
                   <Suspense fallback={<PageLoader />}>
                     <Staff />
                   </Suspense>
-                </PrivateRoute>
+                </PlanRestrictedRoute>
               }
             />
 
-            {/* Report - solo superadmin */}
+            {/* Report - premium */}
             <Route
               path="reports"
               element={
-                <PrivateRoute permission="reports">
+                <PlanRestrictedRoute permission="reports" requiredPlan="premium">
                   <Suspense fallback={<PageLoader />}>
                     <Reports />
                   </Suspense>
-                </PrivateRoute>
+                </PlanRestrictedRoute>
               }
             />
 
-            {/* SMAC - solo superadmin */}
+            {/* SMAC - premium */}
             <Route
               path="smac"
               element={
-                <PrivateRoute permission="smac">
+                <PlanRestrictedRoute permission="smac" requiredPlan="premium">
                   <Suspense fallback={<PageLoader />}>
                     <Smac />
                   </Suspense>
-                </PrivateRoute>
+                </PlanRestrictedRoute>
               }
             />
 
@@ -244,39 +272,39 @@ function App() {
               }
             />
 
-            {/* Gestione Utenti - solo superadmin */}
+            {/* Gestione Utenti - standard (modifica) / premium (creazione) */}
             <Route
               path="users"
               element={
-                <PrivateRoute permission="users">
+                <PlanRestrictedRoute permission="users" requiredPlan="standard">
                   <Suspense fallback={<PageLoader />}>
                     <Users />
                   </Suspense>
-                </PrivateRoute>
+                </PlanRestrictedRoute>
               }
             />
 
-            {/* Chiusura Cassa - admin e superadmin */}
+            {/* Chiusura Cassa - premium */}
             <Route
               path="cash-register"
               element={
-                <PrivateRoute permission="cash-register">
+                <PlanRestrictedRoute permission="cash-register" requiredPlan="premium">
                   <Suspense fallback={<PageLoader />}>
                     <CashRegister />
                   </Suspense>
-                </PrivateRoute>
+                </PlanRestrictedRoute>
               }
             />
 
-            {/* Costo Piatti - admin e superadmin */}
+            {/* Costo Piatti - premium */}
             <Route
               path="dish-costs"
               element={
-                <PrivateRoute permission="dish-costs">
+                <PlanRestrictedRoute permission="dish-costs" requiredPlan="premium">
                   <Suspense fallback={<PageLoader />}>
                     <DishCosts />
                   </Suspense>
-                </PrivateRoute>
+                </PlanRestrictedRoute>
               }
             />
 

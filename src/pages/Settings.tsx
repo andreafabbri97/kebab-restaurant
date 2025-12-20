@@ -11,6 +11,9 @@ import {
   Check,
   ExternalLink,
   CreditCard,
+  Crown,
+  Phone,
+  Mail,
 } from 'lucide-react';
 import { getSettings, updateSettings } from '../lib/database';
 import { isSupabaseConfigured } from '../lib/supabase';
@@ -18,11 +21,17 @@ import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import { useLanguage } from '../context/LanguageContext';
 import { useSmac } from '../context/SmacContext';
+import { useLicense } from '../context/LicenseContext';
+import { usePlanFeatures } from '../hooks/usePlanFeatures';
+import { useDemoGuard } from '../hooks/useDemoGuard';
 import type { Settings as SettingsType } from '../types';
 
 export function Settings() {
   const { t, language, setLanguage } = useLanguage();
   const { smacEnabled, setSmacEnabled } = useSmac();
+  const { licenseStatus, adminSettings } = useLicense();
+  const { planType, isPremium } = usePlanFeatures();
+  const { checkCanWrite } = useDemoGuard();
   const [settings, setSettings] = useState<SettingsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,6 +54,9 @@ export function Settings() {
   }
 
   async function handleSave() {
+    // Blocca in modalità demo
+    if (!checkCanWrite()) return;
+
     if (!settings) return;
 
     setSaving(true);
@@ -402,6 +414,127 @@ export function Settings() {
               {t('settings.exportBackup')}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Piano Licenza */}
+      <div className="card">
+        <div className="card-header flex items-center gap-2">
+          <Crown className="w-4 h-4 sm:w-5 sm:h-5" />
+          <h2 className="font-semibold text-white text-sm sm:text-base">Piano Licenza</h2>
+        </div>
+        <div className="card-body space-y-4">
+          {/* Badge Piano */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-white text-sm sm:text-base">Piano attivo</p>
+              <p className="text-xs sm:text-sm text-dark-400">Il tuo piano licenza attuale</p>
+            </div>
+            <span className={`px-4 py-2 rounded-full text-sm font-bold ${
+              planType === 'premium'
+                ? 'bg-green-500/20 text-green-400 border border-green-500/50'
+                : planType === 'standard'
+                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                : 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
+            }`}>
+              {planType.toUpperCase()}
+            </span>
+          </div>
+
+          {/* Data scadenza */}
+          {licenseStatus?.expiryDate && (
+            <div className="flex items-center justify-between py-3 border-t border-dark-700">
+              <div>
+                <p className="font-medium text-white text-sm sm:text-base">Scadenza licenza</p>
+                <p className="text-xs sm:text-sm text-dark-400">Data di rinnovo</p>
+              </div>
+              <span className="text-white font-medium">{licenseStatus.expiryDate}</span>
+            </div>
+          )}
+
+          {/* Lista funzionalità */}
+          <div className="py-3 border-t border-dark-700">
+            <p className="font-medium text-white text-sm sm:text-base mb-3">Funzionalità incluse</p>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="flex items-center gap-2 text-dark-300">
+                <Check className="w-4 h-4 text-green-400" />
+                <span>Dashboard</span>
+              </div>
+              <div className="flex items-center gap-2 text-dark-300">
+                <Check className="w-4 h-4 text-green-400" />
+                <span>Gestione Ordini</span>
+              </div>
+              <div className="flex items-center gap-2 text-dark-300">
+                <Check className="w-4 h-4 text-green-400" />
+                <span>Gestione Tavoli</span>
+              </div>
+              <div className="flex items-center gap-2 text-dark-300">
+                <Check className="w-4 h-4 text-green-400" />
+                <span>Gestione Menu</span>
+              </div>
+              {planType !== 'demo' && (
+                <div className="flex items-center gap-2 text-dark-300">
+                  <Check className="w-4 h-4 text-green-400" />
+                  <span>Gestione Utenti</span>
+                </div>
+              )}
+              {isPremium && (
+                <>
+                  <div className="flex items-center gap-2 text-dark-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    <span>Report e Statistiche</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-dark-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    <span>Tessere Fidelity</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-dark-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    <span>Inventario</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-dark-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    <span>Ricette e Costi</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-dark-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    <span>Gestione Personale</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-dark-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    <span>Chiusura Cassa</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Contatti per upgrade (solo se non premium) */}
+          {!isPremium && (
+            <div className="py-3 border-t border-dark-700">
+              <p className="font-medium text-white text-sm sm:text-base mb-3">Vuoi fare l'upgrade?</p>
+              <div className="bg-dark-900 rounded-xl p-4 space-y-2">
+                {adminSettings?.blocked_contact_phone && (
+                  <a
+                    href={`tel:${adminSettings.blocked_contact_phone.replace(/\s/g, '')}`}
+                    className="flex items-center gap-2 text-primary-400 hover:text-primary-300 text-sm"
+                  >
+                    <Phone className="w-4 h-4" />
+                    <span>{adminSettings.blocked_contact_phone}</span>
+                  </a>
+                )}
+                {adminSettings?.blocked_contact_email && (
+                  <a
+                    href={`mailto:${adminSettings.blocked_contact_email}?subject=Richiesta upgrade piano`}
+                    className="flex items-center gap-2 text-primary-400 hover:text-primary-300 text-sm"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>{adminSettings.blocked_contact_email}</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
