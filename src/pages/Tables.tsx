@@ -515,6 +515,24 @@ export function Tables() {
 
   async function handleCloseSession() {
     if (!selectedSession) return;
+
+    // Se il totale è 0, chiedi conferma diretta senza aprire il modal di pagamento
+    if (selectedSession.total === 0) {
+      const confirmed = window.confirm('Vuoi chiudere questo conto a €0.00?');
+      if (confirmed) {
+        try {
+          await closeTableSession(selectedSession.id, 'cash', false);
+          showToast('Conto chiuso', 'success');
+          setShowSessionModal(false);
+          loadData();
+        } catch (error) {
+          console.error('Error closing session:', error);
+          showToast('Errore nella chiusura', 'error');
+        }
+      }
+      return;
+    }
+
     setPaymentForm({ method: 'cash', smac: false });
     setChangeCalculator({ customerGives: '', showChange: false });
     setShowPaymentModal(true);
