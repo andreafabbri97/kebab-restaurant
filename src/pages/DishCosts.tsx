@@ -13,8 +13,7 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import {
-  calculateAllDishCosts,
-  getDishCostSummary,
+  getDishCostsAndSummary,
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
@@ -45,10 +44,8 @@ export function DishCosts() {
   async function loadData() {
     setLoading(true);
     try {
-      const [costs, summaryData] = await Promise.all([
-        calculateAllDishCosts(),
-        getDishCostSummary(),
-      ]);
+      // Singola chiamata ottimizzata (3 query invece di 120+)
+      const { costs, summary: summaryData } = await getDishCostsAndSummary();
       setDishCosts(costs);
       setSummary(summaryData);
     } catch (error) {

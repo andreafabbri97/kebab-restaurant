@@ -1990,13 +1990,29 @@ export async function generateReceipt(orderId: number): Promise<Receipt | null> 
 }
 
 // ============== COSTO PIATTO DINAMICO ==============
+// Versione ottimizzata: carica dati una sola volta e calcola tutto in memoria
+
 export async function calculateDishCost(menuItemId: number): Promise<DishCost | null> {
-  const menuItems = await getMenuItems();
+  // Per singolo piatto, carichiamo i dati necessari
+  const [menuItems, allRecipes, ingredients] = await Promise.all([
+    getMenuItems(),
+    getMenuItemIngredients(menuItemId),
+    getIngredients(),
+  ]);
+
   const menuItem = menuItems.find(m => m.id === menuItemId);
   if (!menuItem) return null;
 
-  const recipe = await getMenuItemIngredients(menuItemId);
-  const ingredients = await getIngredients();
+  return calculateDishCostFromData(menuItem, allRecipes, ingredients);
+}
+
+// Funzione interna che calcola il costo usando dati già caricati
+function calculateDishCostFromData(
+  menuItem: MenuItem,
+  allRecipes: MenuItemIngredient[],
+  ingredients: Ingredient[]
+): DishCost {
+  const recipe = allRecipes.filter(r => r.menu_item_id === menuItem.id);
 
   let totalIngredientCost = 0;
   const ingredientCosts: DishIngredientCost[] = [];
@@ -2035,15 +2051,17 @@ export async function calculateDishCost(menuItemId: number): Promise<DishCost | 
 }
 
 export async function calculateAllDishCosts(): Promise<DishCost[]> {
-  const menuItems = await getMenuItems();
-  const costs: DishCost[] = [];
+  // Carica TUTTI i dati con 3 query parallele (invece di N*3 query sequenziali)
+  const [menuItems, allRecipes, ingredients] = await Promise.all([
+    getMenuItems(),
+    getMenuItemIngredients(), // Senza parametro = tutte le ricette
+    getIngredients(),
+  ]);
 
-  for (const menuItem of menuItems) {
-    const cost = await calculateDishCost(menuItem.id);
-    if (cost) {
-      costs.push(cost);
-    }
-  }
+  // Calcola tutti i costi in memoria (nessuna query aggiuntiva)
+  const costs: DishCost[] = menuItems.map(menuItem =>
+    calculateDishCostFromData(menuItem, allRecipes, ingredients)
+  );
 
   return costs.sort((a, b) => b.profit_margin_percent - a.profit_margin_percent);
 }
@@ -2055,8 +2073,7 @@ export async function getDishCostSummary(): Promise<{
   lowMarginDishes: DishCost[];
   dishesWithoutRecipe: MenuItem[];
 }> {
-  const menuItems = await getMenuItems();
-  const allCosts = await calculateAllDishCosts();
+  const { allCosts, menuItems } = await getAllDishCostsWithData();
 
   const dishesWithRecipe = allCosts.filter(c => c.ingredients.length > 0);
   const dishesWithoutRecipe = menuItems.filter(
@@ -2082,6 +2099,79 @@ export async function getDishCostSummary(): Promise<{
     lowMarginDishes,
     dishesWithoutRecipe,
   };
+}
+
+// Funzione combinata che ritorna sia i costi che il summary in una sola chiamata
+// Usata dalla pagina DishCosts per evitare doppia chiamata
+export async function getDishCostsAndSummary(): Promise<{
+  costs: DishCost[];
+  summary: {
+    totalDishes: number;
+    avgProfitMargin: number;
+    highMarginDishes: DishCost[];
+    lowMarginDishes: DishCost[];
+    dishesWithoutRecipe: MenuItem[];
+  };
+}> {
+  // Una sola volta: 3 query parallele
+  const [menuItems, allRecipes, ingredients] = await Promise.all([
+    getMenuItems(),
+    getMenuItemIngredients(),
+    getIngredients(),
+  ]);
+
+  // Calcola tutti i costi in memoria
+  const allCosts: DishCost[] = menuItems.map(menuItem =>
+    calculateDishCostFromData(menuItem, allRecipes, ingredients)
+  );
+
+  const sortedCosts = [...allCosts].sort((a, b) => b.profit_margin_percent - a.profit_margin_percent);
+
+  const dishesWithRecipe = allCosts.filter(c => c.ingredients.length > 0);
+  const dishesWithoutRecipe = menuItems.filter(
+    m => !allCosts.find(c => c.menu_item_id === m.id && c.ingredients.length > 0)
+  );
+
+  const avgProfitMargin = dishesWithRecipe.length > 0
+    ? dishesWithRecipe.reduce((sum, d) => sum + d.profit_margin_percent, 0) / dishesWithRecipe.length
+    : 0;
+
+  const highMarginDishes = dishesWithRecipe
+    .filter(d => d.profit_margin_percent >= 60)
+    .slice(0, 5);
+
+  const lowMarginDishes = dishesWithRecipe
+    .filter(d => d.profit_margin_percent < 40)
+    .slice(0, 5);
+
+  return {
+    costs: sortedCosts,
+    summary: {
+      totalDishes: menuItems.length,
+      avgProfitMargin: Math.round(avgProfitMargin * 10) / 10,
+      highMarginDishes,
+      lowMarginDishes,
+      dishesWithoutRecipe,
+    },
+  };
+}
+
+// Helper interno per riutilizzare i dati caricati
+async function getAllDishCostsWithData(): Promise<{
+  allCosts: DishCost[];
+  menuItems: MenuItem[];
+}> {
+  const [menuItems, allRecipes, ingredients] = await Promise.all([
+    getMenuItems(),
+    getMenuItemIngredients(),
+    getIngredients(),
+  ]);
+
+  const allCosts: DishCost[] = menuItems.map(menuItem =>
+    calculateDishCostFromData(menuItem, allRecipes, ingredients)
+  );
+
+  return { allCosts, menuItems };
 }
 
 // ============== FATTURE ==============

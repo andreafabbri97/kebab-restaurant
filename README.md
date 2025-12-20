@@ -1,6 +1,177 @@
-# Restaurant Manager - Guida Operativa
+# Restaurant Manager System
 
-Questo manuale spiega come usare l'app per gestire il ristorante. Scritto per chi lavora in sala, non servono competenze tecniche.
+Sistema completo di gestione ristorante sviluppato da Andrea Fabbri.
+
+---
+
+## Contesto per Sviluppatori / IA
+
+Questa sezione contiene tutto il contesto necessario per continuare lo sviluppo del progetto.
+
+### Informazioni Progetto
+
+| Campo | Valore |
+|-------|--------|
+| **Nome** | Restaurant Manager System |
+| **Versione** | 2.5 |
+| **Proprietario** | Andrea Fabbri |
+| **Repository** | https://github.com/andreafabbri97/restaurant-manager |
+| **Deploy** | https://andreafabbri97.github.io/restaurant-manager/ |
+| **Licenza** | Proprietaria (tutti i diritti riservati) |
+
+### Stack Tecnologico
+
+| Tecnologia | Versione | Uso |
+|------------|----------|-----|
+| React | 19.x | Frontend framework |
+| TypeScript | 5.9.x | Type safety |
+| Vite | 7.x | Build tool |
+| Tailwind CSS | 3.4.x | Styling |
+| Supabase | 2.88.x | Database PostgreSQL + Realtime |
+| React Router | 7.x | Routing (HashRouter per GitHub Pages) |
+| React Query | 5.x | Data fetching |
+| Lucide React | 0.561.x | Icone |
+| Recharts | 3.6.x | Grafici |
+| jsPDF | 3.x | Export PDF menu |
+| date-fns | 4.x | Date utilities |
+
+### Struttura Directory
+
+```
+kebab-restaurant-app/
+├── src/
+│   ├── components/
+│   │   ├── layout/          # Sidebar, Layout principale
+│   │   ├── order/           # CartContent, componenti ordini
+│   │   └── ui/              # Modal, Toast, componenti riutilizzabili
+│   ├── context/
+│   │   ├── AuthContext.tsx      # Autenticazione utenti
+│   │   ├── LanguageContext.tsx  # i18n (IT/EN)
+│   │   ├── ThemeContext.tsx     # Tema chiaro/scuro
+│   │   └── NotificationContext.tsx
+│   ├── hooks/
+│   │   └── useCurrency.ts   # Formattazione prezzi
+│   ├── lib/
+│   │   ├── database.ts      # Tutte le funzioni CRUD (Supabase + localStorage fallback)
+│   │   └── supabase.ts      # Client Supabase
+│   ├── locales/             # File traduzioni JSON (IT/EN) - DA COMPLETARE
+│   ├── pages/               # Tutte le pagine dell'app
+│   └── types/
+│       └── index.ts         # Tipi TypeScript + ROLE_PERMISSIONS
+├── public/
+│   └── icon.svg             # Icona app (forchetta + coltello)
+├── supabase-schema.sql      # Schema database completo
+├── supabase-rls-policies.sql # Politiche RLS per sicurezza
+├── CLIENT_SETUP.md          # Guida setup nuovi clienti
+└── vite.config.ts           # Configurazione Vite + PWA
+```
+
+### Database Schema
+
+Le tabelle principali in Supabase sono:
+
+| Tabella | Descrizione |
+|---------|-------------|
+| `categories` | Categorie menu (Kebab, Bevande, ecc.) |
+| `ingredients` | Ingredienti con costo unitario |
+| `menu_items` | Piatti del menu con prezzo |
+| `menu_item_ingredients` | Ricette: collegamento piatti-ingredienti |
+| `inventory` | Scorte magazzino con soglie |
+| `tables` | Tavoli del ristorante |
+| `orders` | Ordini (asporto, domicilio, tavolo) |
+| `order_items` | Prodotti di ogni ordine |
+| `table_sessions` | Sessioni "conto aperto" per tavoli |
+| `session_payments` | Pagamenti parziali (split bill) |
+| `employees` | Dipendenti |
+| `work_shifts` | Turni di lavoro |
+| `reservations` | Prenotazioni tavoli |
+| `expenses` | Spese generali |
+| `supplies` | Forniture ricevute |
+| `supply_items` | Dettaglio forniture |
+| `users` | Utenti sistema (login) |
+| `cash_closures` | Chiusure cassa giornaliere |
+| `settings` | Configurazione negozio |
+
+### Sistema di Autenticazione
+
+- **Tre ruoli**: `superadmin`, `admin`, `staff`
+- Permessi definiti in `src/types/index.ts` → `ROLE_PERMISSIONS`
+- Login custom (non Supabase Auth) - password in chiaro nel DB (da migliorare)
+- Credenziali default: `admin` / `admin123`
+- Sessione salvata in localStorage (`kebab_auth_user`)
+
+### Sistema Multilingua
+
+- Context: `src/context/LanguageContext.tsx`
+- Traduzioni: `src/locales/it.json` e `en.json` (DA COMPLETARE)
+- Hook: `useLanguage()` → `{ language, setLanguage, t }`
+- Persistenza: localStorage (`kebab_language`)
+
+### Modello di Business Multi-Cliente
+
+Il software è pensato per essere venduto a più ristoranti. Strategia di deployment:
+
+1. **Ogni cliente ha il proprio account GitHub + Supabase** (free tier)
+2. Il repo principale (`andreafabbri97/restaurant-manager`) è un **Template Repository**
+3. Per nuovo cliente: fork/template → modifica `supabase.ts` con sue credenziali → deploy
+4. Vedere `CLIENT_SETUP.md` per istruzioni complete
+
+**Limiti Free Tier**:
+- GitHub: repo pubblico per GitHub Pages (privato richiede Pro)
+- Supabase: 500MB database, 1GB storage per progetto
+
+### Problemi Noti / TODO
+
+1. **Performance "Costo Piatti"**: La pagina DishCosts.tsx è lenta perché:
+   - `calculateAllDishCosts()` fa query sequenziali per ogni piatto
+   - `getDishCostSummary()` richiama `calculateAllDishCosts()` di nuovo
+   - Soluzione: fare le query una sola volta e passare i dati
+
+2. **Traduzioni incomplete**: I file `src/locales/*.json` esistono ma non sono completi. La struttura del LanguageContext è pronta.
+
+3. **Password in chiaro**: Le password utente sono salvate in chiaro. Da implementare hashing.
+
+4. **localStorage keys**: Usano prefisso `kebab_` per retrocompatibilità (es. `kebab_auth_user`, `kebab_users`)
+
+### Convenzioni Codice
+
+- **Stile**: Tailwind CSS con classi custom in `index.css`
+- **Componenti**: Functional components con hooks
+- **State management**: React Context (no Redux)
+- **Data fetching**: Funzioni async in `database.ts`, chiamate con useEffect
+- **Lazy loading**: Pagine caricate con `React.lazy()` in App.tsx
+- **Tema scuro**: Default, con opzione chiaro
+
+### Comandi Utili
+
+```bash
+# Sviluppo
+npm run dev
+
+# Build produzione
+npm run build
+
+# Deploy su GitHub Pages
+npm run deploy
+
+# Lint
+npm run lint
+```
+
+### Credenziali Supabase (Produzione)
+
+```
+URL: https://jhyidrhckhoavlmmmlwq.supabase.co
+Anon Key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+(Hardcoded in `src/lib/supabase.ts` come fallback)
+
+---
+
+# Guida Operativa per Staff
+
+Questa sezione è per chi lavora in sala.
 
 ---
 
@@ -10,7 +181,7 @@ Questo manuale spiega come usare l'app per gestire il ristorante. Scritto per ch
 2. In alto, scegli **Asporto** o **Domicilio**
 3. Inserisci nome e telefono del cliente
 4. Clicca sui prodotti per aggiungerli al carrello
-5. Usa **+** e **-** per modificare le quantita
+5. Usa **+** e **-** per modificare le quantità
 6. Scegli il metodo di pagamento (Contanti, Carta, Online)
 7. Se il cliente ha la SMAC, spunta la casella
 8. Clicca **Invia Ordine**
@@ -32,7 +203,7 @@ Se il cliente ha prenotato, i dati si compilano automaticamente.
 
 ---
 
-## Come aggiungere una comanda a un tavolo gia aperto
+## Come aggiungere una comanda a un tavolo già aperto
 
 1. Vai su **Tavoli**
 2. Clicca sul tavolo rosso (occupato)
@@ -64,11 +235,11 @@ Il tavolo torna verde (disponibile).
 
 1. Clicca sul tavolo rosso
 2. Clicca **Dividi Conto**
-3. Scegli una delle 3 modalita:
+3. Scegli una delle 3 modalità:
 
 ### Manuale
 - Inserisci l'importo che la persona paga
-- Usa i pulsanti rapidi: Tutto, Meta, 1/N
+- Usa i pulsanti rapidi: Tutto, Metà, 1/N
 - Scegli Contanti o Carta
 - **IMPORTANTE: Spunta "SMAC passato" se il cliente passa la tessera per questo pagamento**
 - Se contanti: usa il calcolatore resto
@@ -84,68 +255,28 @@ Il tavolo torna verde (disponibile).
 ### Per Consumazione
 - Usa i pulsanti **+** e **-** per scegliere quanti pezzi di ogni prodotto pagare
 - Esempio: se ci sono 4 kebab, puoi pagarne solo 1 o 2
-- Il pulsante **Tutti** seleziona l'intera quantita di quel prodotto
+- Il pulsante **Tutti** seleziona l'intera quantità di quel prodotto
 - Il sistema somma automaticamente
 - Clicca **Applica Selezione**
 - Poi conferma con **Aggiungi Pagamento**
 
-**IMPORTANTE - Tracking Prodotti Pagati**: Quando paghi "Per Consumazione", i prodotti pagati vengono tracciati. Se torni a dividere il conto, vedrai solo i prodotti ancora da pagare. Esempio: hai 2 kebab e 3 bibite, paghi 1 kebab e 1 bibita - la prossima volta vedrai 1 kebab e 2 bibite.
+**IMPORTANTE - Tracking Prodotti Pagati**: Quando paghi "Per Consumazione", i prodotti pagati vengono tracciati. Se torni a dividere il conto, vedrai solo i prodotti ancora da pagare.
 
-**NOTA SMAC**: Ogni pagamento parziale puo avere la sua SMAC. Spunta la casella per chi passa la tessera, lasciala vuota per chi non la passa. Cosi a fine giornata sai esattamente quanto dichiarare.
+**NOTA SMAC**: Ogni pagamento parziale può avere la sua SMAC. Spunta la casella per chi passa la tessera, lasciala vuota per chi non la passa.
 
 Ripeti per ogni persona. Quando il rimanente arriva a zero, il conto si chiude automaticamente.
 
 ---
 
-## Come vedere lo stato del conto
+## Significato dei colori tavoli
 
-Per vedere cosa e stato gia pagato e cosa manca:
-
-1. Clicca sul tavolo rosso
-2. Clicca **Stato Conto**
-3. Vedi:
-   - Lista di tutti i pagamenti gia fatti
-   - Per ogni pagamento: importo, metodo (Contanti/Carta), SMAC si/no
-   - Prodotti pagati in ogni pagamento (se pagato per consumazione)
-   - Importo totale e importo rimanente
-
-### Stampare scontrino per singolo pagamento
-Nello stato conto, ogni pagamento ha un pulsante **Stampa Scontrino**. Utile per dare ricevuta separata a ogni persona che ha pagato.
-
----
-
-## Dividere conto dallo Storico Ordini
-
-Puoi dividere o chiudere conti anche dalla pagina **Ordini**:
-
-1. Vai su **Ordini**
-2. Trova l'ordine con "Conto Aperto" (badge arancione)
-3. Clicca sull'ordine per aprire i dettagli
-4. Usa i pulsanti:
-   - **Dividi Conto**: apre lo stesso split della pagina Tavoli
-   - **Stato Conto**: mostra pagamenti gia fatti
-   - **Chiudi Conto**: pagamento completo
-
-Utile quando non ricordi il tavolo ma conosci il nome del cliente.
-
----
-
-## Come usare il calcolatore resto
-
-Appare automaticamente quando paghi in contanti.
-
-1. Nella sezione verde "Calcolatore Resto"
-2. Clicca sul taglio che il cliente ti da: 5, 10, 20, 50, 100
-3. Oppure scrivi l'importo esatto
-4. Leggi in grande il **RESTO DA DARE**
-
-Se il cliente non ti ha dato abbastanza, appare un avviso arancione.
+- **Verde** = Disponibile, puoi aprire un conto
+- **Rosso** = Occupato, clienti stanno mangiando
+- **Arancione** = Prenotato per dopo
 
 ---
 
 ## Come trasferire un tavolo
-
-Se i clienti vogliono spostarsi a un altro tavolo:
 
 1. Clicca sul tavolo rosso attuale
 2. Clicca **Trasferisci**
@@ -162,172 +293,24 @@ Se i clienti vogliono spostarsi a un altro tavolo:
 3. Scegli data e ora
 4. Inserisci nome cliente e telefono
 5. Inserisci numero ospiti
-6. Seleziona uno o piu tavoli (per gruppi grandi)
+6. Seleziona uno o più tavoli (per gruppi grandi)
 7. Clicca **Crea Prenotazione**
-
-I tavoli prenotati diventano arancioni.
-
-### Modifica prenotazione
-1. Nella lista prenotazioni del giorno, clicca l'icona matita
-2. Modifica i dati
-3. Salva
 
 ### Quando arriva il cliente prenotato
 1. Clicca sul tavolo arancione
-2. I dati della prenotazione sono gia inseriti
+2. I dati della prenotazione sono già inseriti
 3. Clicca **Apri Conto**
-
----
-
-## Significato dei colori tavoli
-
-- **Verde** = Disponibile, puoi aprire un conto
-- **Rosso** = Occupato, clienti stanno mangiando
-- **Arancione** = Prenotato per dopo
-
----
-
-## Situazioni comuni (30 casistiche reali)
-
-### Ordini e Comande
-
-**1. Cliente ordina, poi vuole aggiungere altri prodotti**
-→ Clicca tavolo rosso → "Aggiungi Comanda". La nuova comanda si aggiunge allo stesso conto.
-
-**2. Cliente ordina asporto ma poi decide di sedersi**
-→ L'ordine asporto non puo diventare tavolo. Completalo come asporto o annulla e rifai come tavolo.
-
-**3. Il cliente cambia idea su un prodotto**
-→ Se non ancora in cucina: annulla l'ordine e rifallo. Se in cucina: comunica col cuoco.
-
-### Tavoli e Sessioni
-
-**4. Due tavoli vogliono unirsi a meta cena**
-→ Trasferisci un conto su tavolo piu grande (deve essere libero), oppure gestisci separati.
-
-**5. Un cliente del gruppo se ne va prima degli altri**
-→ "Dividi Conto" → "Per Consumazione" per far pagare solo il suo. Gli altri pagano dopo.
-
-**6. La prenotazione non si presenta**
-→ Dopo 15-20 min, clicca tavolo arancione e cancella prenotazione.
-
-**7. Prenotazione per 4 ma arrivano in 6**
-→ Modifica coperti all'apertura conto, o trova tavolo piu grande.
-
-### Pagamenti Semplici
-
-**8. Pagamento misto (contanti + carta)**
-→ "Dividi Conto" manuale: prima contanti (es. €30), poi carta per il resto.
-
-**9. Cliente paga con buono pasto/voucher**
-→ Registra come "Carta". Se parziale: Dividi Conto con €X carta + resto contanti.
-
-**10. POS non funziona**
-→ Registra come "Contanti" temporaneamente, avvisa admin per correzione.
-
-### Split Bill Complessi
-
-**11. 4 amici alla romana, ma uno ha solo una birra**
-→ Prima fai pagare la birra a lui (Per Consumazione), poi dividi il resto alla romana tra gli altri 3.
-
-**12. Coppia: ognuno paga il suo, ma patatine condivise**
-→ Per Consumazione: lui i suoi + meta patatine, lei i suoi + altra meta.
-
-**13. Gruppo di 8, ognuno vuole pagare il suo**
-→ Per Consumazione 8 volte. Il sistema scala automaticamente i prodotti pagati.
-
-**14. Conto €99.50 diviso in 3**
-→ €33.17 + €33.17 + €33.16, oppure arrotonda come preferisci.
-
-**15. Cliente paga e se ne va, altri continuano a ordinare**
-→ Dividi Conto per lui, poi aggiungi nuove comande. Gli altri pagano alla fine.
-
-**16. Cena aziendale: meta carta aziendale, meta personale**
-→ Prima tutti quelli con carta aziendale, poi gli altri con carta personale.
-
-**17. Cliente dice "pago io" ma poi cambia idea**
-→ Nessun problema finche non chiudi. Annulla e usa Dividi Conto.
-
-**18. Il cliente vuole lasciare mancia**
-→ Aggiungi al totale prima del pagamento, o pagamento separato con nota "mancia".
-
-### Errori e Correzioni
-
-**19. Ho chiuso il conto ma cliente non ha pagato!**
-→ Contatta admin. Il conto non puo essere riaperto.
-
-**20. Ho sbagliato tavolo**
-→ "Trasferisci" per spostare il conto.
-
-**21. Il totale sembra sbagliato**
-→ Controlla ordini annullati: devono essere in stato "Annullato".
-
-**22. Ho aggiunto prodotto sbagliato al carrello**
-→ Usa il "-" sulla card prodotto per rimuoverlo.
-
-### SMAC e Tessere
-
-**23. Solo alcuni al tavolo hanno la SMAC**
-→ Dividi Conto: spunta SMAC solo per chi la passa.
-
-**24. Cliente chiede se ha passato la SMAC**
-→ "Stato Conto" mostra SMAC si/no per ogni pagamento.
-
-### Ricevute e Scontrini
-
-**25. Ogni persona vuole scontrino separato**
-→ "Stato Conto" → "Stampa Scontrino" per ogni pagamento.
-
-**26. Cliente vuole ricevuta ma ho gia chiuso**
-→ Vai in Ordini → Storico, trova l'ordine e stampa lo scontrino.
-
-### Problemi Tecnici
-
-**27. L'app non risponde**
-→ Ricarica pagina (F5). Se persiste, controlla internet.
-
-**28. Gli ordini non si aggiornano**
-→ Icona sidebar: verde = ok, arancione = ricarica pagina.
-
-**29. Ho cliccato ma non succede niente**
-→ Aspetta 5 secondi, poi ricarica.
-
-**30. Su telefono non vedo bene**
-→ Ruota in orizzontale o usa tablet/PC.
-
----
-
-## Se qualcosa va storto
-
-### Il cliente vuole annullare un prodotto gia ordinato
-Vai su Ordini, trova la comanda, cambia stato in "Annullato". Il prodotto non viene contato nel totale.
-
-### Ho sbagliato tavolo
-Usa **Trasferisci** per spostare il conto sul tavolo giusto.
-
-### Il cliente dice che il totale e sbagliato
-Il totale si aggiorna automaticamente. Se hai annullato ordini, controlla che siano in stato "Annullato".
-
-### L'app non risponde
-Ricarica la pagina (F5 o tasto ricarica del browser).
 
 ---
 
 ## Come applicare sconti a un ordine
 
-Puoi modificare il totale di un ordine per applicare sconti o arrotondamenti:
-
 1. Vai su **Ordini** → **Storico**
 2. Clicca sull'icona **matita** dell'ordine da modificare
 3. Nel popup "Modifica Ordine", trovi la sezione **Totale Ordine**
 4. Modifica l'importo (es. da €30.30 a €30.00)
-5. Il sistema mostra lo sconto applicato (es. "Sconto: -€0.30")
+5. Il sistema mostra lo sconto applicato
 6. Clicca **Salva Modifiche**
-
-Utile per:
-- Arrotondare importi scomodi (€30.30 → €30)
-- Applicare sconti fissi concordati con il cliente
-- Correggere errori di prezzo
 
 ---
 
@@ -341,59 +324,58 @@ Utile per:
 | Rimuovi dal carrello | Clicca il pulsante **-** rosso sulla card prodotto |
 | Chiudi conto | Tavoli > tavolo rosso > Chiudi Conto |
 | Dividi conto | Tavoli > tavolo rosso > Dividi Conto |
-| Paga parte quantita | Nel dividi conto "Per Consumazione" usa +/- |
 | Resto contanti | Nel pagamento, usa Calcolatore Resto |
-| Stato conto | Tavoli > tavolo rosso > Stato Conto |
-| Scontrino parziale | Stato Conto > Stampa Scontrino su un pagamento |
-| Dividi da storico | Ordini > Storico > ordine > Dividi Conto |
-| Chiudi conto da storico | Ordini > Storico > Conto Aperto > Chiudi Conto |
 | Sconto ordine | Ordini > Storico > Modifica > Cambia totale |
 
 ---
 
-## Contatti supporto
+## Problemi Tecnici
 
-Per problemi tecnici contattare l'amministratore del sistema.
+| Problema | Soluzione |
+|----------|-----------|
+| L'app non risponde | Ricarica pagina (F5) |
+| Ordini non si aggiornano | Icona sidebar: verde = ok, arancione = ricarica |
+| Su telefono non vedo bene | Ruota in orizzontale o usa tablet/PC |
 
 ---
 
 ## Per Amministratori
 
-### Funzionalita del sistema
+### Funzionalità del sistema
 
 | Modulo | Descrizione |
 |--------|-------------|
 | Dashboard | Statistiche in tempo reale, ordini pendenti, incasso giornaliero |
 | Ordini | Gestione ordini con stati, filtri, storico ultimi 7 giorni |
 | Tavoli | Mappa tavoli, prenotazioni, sessioni, split bill |
-| Menu | CRUD prodotti, categorie, disponibilita, export PDF |
-| Inventario | Scorte, carichi/scarichi, soglie alert, EOQ, fatturazione automatica |
+| Menu | CRUD prodotti, categorie, disponibilità, export PDF |
+| Inventario | Scorte, carichi/scarichi, soglie alert, EOQ |
 | Ricette | Collegamento piatti-ingredienti per costo e scarico automatico |
 | Costo Piatti | Margini di profitto, analisi per piatto |
 | Personale | Turni, presenze, ore lavorate |
 | Chiusura Cassa | Riconciliazione giornaliera contanti/carte |
-| SMAC | Tracking tessere fedelta per ordine |
+| SMAC | Tracking tessere fedeltà per ordine |
 | Report | Analisi vendite, spese, profitto per periodo |
 | Utenti | Gestione account e ruoli (Staff/Admin/Superadmin) |
 | Impostazioni | Configurazione negozio, lingua, tema, backup dati |
-| Guida FAQ | Documentazione, guida descrittiva e FAQ integrate |
+| Guida FAQ | Documentazione e FAQ integrate |
 
 ### Caratteristiche Tecniche
 
-- **Multilingua**: Italiano e Inglese, ogni utente sceglie la sua lingua
-- **Tema**: Chiaro o Scuro, personalizzabile per utente
-- **Realtime**: Gli ordini si aggiornano automaticamente su tutti i dispositivi
-- **Multi-dispositivo**: Funziona su PC, tablet e smartphone
-- **Offline**: Fallback localStorage quando Supabase non è disponibile
+- **Multilingua**: Italiano e Inglese
+- **Tema**: Chiaro o Scuro
+- **Realtime**: Ordini si aggiornano automaticamente
+- **Multi-dispositivo**: PC, tablet e smartphone
+- **Offline**: Fallback localStorage quando Supabase non disponibile
+- **PWA**: Installabile come app
 
-### Sicurezza e Backup
+### Sicurezza
 
-- I dati sono salvati su Supabase (cloud) con fallback localStorage
-- Esporta backup JSON da Impostazioni
-- Ogni utente deve avere credenziali personali
+- RLS (Row Level Security) abilitato su Supabase
 - Tre livelli di accesso: Staff, Admin, Superadmin
-- Le sessioni non scadono automaticamente
+- Backup JSON esportabile da Impostazioni
 
 ---
 
 *Versione 2.5 - Restaurant Manager System*
+*Copyright (c) 2024-2025 Andrea Fabbri. Tutti i diritti riservati.*
