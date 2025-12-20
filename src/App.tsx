@@ -17,11 +17,13 @@ import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { LicenseProvider, useLicense } from './context/LicenseContext';
 import { PrivateRoute } from './components/auth/PrivateRoute';
 import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/ui/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Login } from './pages/Login';
+import { LicenseBlocked } from './pages/LicenseBlocked';
 
 // Lazy load delle pagine per ottimizzare il bundle
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -49,14 +51,40 @@ function PageLoader() {
   );
 }
 
+// Componente che controlla la licenza
+function LicenseGate({ children }: { children: React.ReactNode }) {
+  const { isLicenseValid, isChecking } = useLicense();
+
+  // Durante il check iniziale, mostra un loader
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-dark-400">Verifica licenza...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Se la licenza non è valida, mostra la pagina di blocco
+  if (!isLicenseValid) {
+    return <LicenseBlocked />;
+  }
+
+  return <>{children}</>;
+}
+
 function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <LanguageProvider>
-          <AuthProvider>
-            <NotificationProvider>
-              <HashRouter>
+          <LicenseProvider>
+            <LicenseGate>
+              <AuthProvider>
+                <NotificationProvider>
+                  <HashRouter>
         <Routes>
           {/* Route pubblica: Login */}
           <Route path="/login" element={<Login />} />
@@ -252,10 +280,12 @@ function App() {
           {/* Catch-all: redirect al login */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-              <ToastContainer />
-              </HashRouter>
-            </NotificationProvider>
-          </AuthProvider>
+                    <ToastContainer />
+                  </HashRouter>
+                </NotificationProvider>
+              </AuthProvider>
+            </LicenseGate>
+          </LicenseProvider>
         </LanguageProvider>
       </ThemeProvider>
     </ErrorBoundary>
