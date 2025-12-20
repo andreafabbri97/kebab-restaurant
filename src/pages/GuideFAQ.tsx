@@ -1149,8 +1149,8 @@ export function GuideFAQ() {
                   <span className="font-medium text-white">Multilingua</span>
                 </div>
                 <p className="text-sm text-dark-400">
-                  Disponibile in italiano e inglese. Ogni utente può scegliere
-                  la sua lingua preferita.
+                  Disponibile in italiano e inglese. Gli amministratori possono
+                  cambiare la lingua dalle Impostazioni.
                 </p>
               </div>
 
