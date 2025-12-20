@@ -448,7 +448,9 @@ export function Settings() {
                 <p className="font-medium text-white text-sm sm:text-base">Scadenza licenza</p>
                 <p className="text-xs sm:text-sm text-dark-400">Data di rinnovo</p>
               </div>
-              <span className="text-white font-medium">{licenseStatus.expiryDate}</span>
+              <span className="text-white font-medium">
+                {licenseStatus.expiryDate.split('-').reverse().join('/')}
+              </span>
             </div>
           )}
 
@@ -514,23 +516,31 @@ export function Settings() {
             <div className="py-3 border-t border-dark-700">
               <p className="font-medium text-white text-sm sm:text-base mb-3">Vuoi fare l'upgrade?</p>
               <div className="bg-dark-900 rounded-xl p-4 space-y-2">
-                {adminSettings?.blocked_contact_phone && (
-                  <a
-                    href={`tel:${adminSettings.blocked_contact_phone.replace(/\s/g, '')}`}
-                    className="flex items-center gap-2 text-primary-400 hover:text-primary-300 text-sm"
-                  >
-                    <Phone className="w-4 h-4" />
-                    <span>{adminSettings.blocked_contact_phone}</span>
-                  </a>
-                )}
-                {adminSettings?.blocked_contact_email && (
-                  <a
-                    href={`mailto:${adminSettings.blocked_contact_email}?subject=Richiesta upgrade piano`}
-                    className="flex items-center gap-2 text-primary-400 hover:text-primary-300 text-sm"
-                  >
-                    <Mail className="w-4 h-4" />
-                    <span>{adminSettings.blocked_contact_email}</span>
-                  </a>
+                {(adminSettings?.blocked_contact_phone || adminSettings?.blocked_contact_email) ? (
+                  <>
+                    {adminSettings?.blocked_contact_phone && (
+                      <a
+                        href={`tel:${adminSettings.blocked_contact_phone.replace(/\s/g, '')}`}
+                        className="flex items-center gap-2 text-primary-400 hover:text-primary-300 text-sm"
+                      >
+                        <Phone className="w-4 h-4" />
+                        <span>{adminSettings.blocked_contact_phone}</span>
+                      </a>
+                    )}
+                    {adminSettings?.blocked_contact_email && (
+                      <a
+                        href={`mailto:${adminSettings.blocked_contact_email}?subject=Richiesta upgrade piano`}
+                        className="flex items-center gap-2 text-primary-400 hover:text-primary-300 text-sm"
+                      >
+                        <Mail className="w-4 h-4" />
+                        <span>{adminSettings.blocked_contact_email}</span>
+                      </a>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-dark-400 text-sm">
+                    Contatta il fornitore del software per informazioni sull'upgrade.
+                  </p>
                 )}
               </div>
             </div>

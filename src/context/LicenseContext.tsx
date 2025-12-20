@@ -20,8 +20,9 @@ const CLIENT_ID = import.meta.env.VITE_CLIENT_ID || 'kebab-san-marino';
 export type PlanType = 'demo' | 'standard' | 'premium';
 
 // Funzionalità disponibili per ogni piano
+// NOTA: Demo ha accesso a TUTTE le sezioni (come premium) ma con blocco scrittura (solo esplorazione)
 const PLAN_FEATURES: Record<PlanType, string[]> = {
-  demo: ['dashboard', 'orders', 'orders.new', 'tables', 'menu', 'guide', 'settings'],
+  demo: ['dashboard', 'orders', 'orders.new', 'tables', 'menu', 'guide', 'settings', 'users', 'inventory', 'recipes', 'staff', 'dish-costs', 'cash-register', 'reports', 'smac'],
   standard: ['dashboard', 'orders', 'orders.new', 'tables', 'menu', 'guide', 'settings', 'users'],
   premium: ['dashboard', 'orders', 'orders.new', 'tables', 'menu', 'guide', 'settings', 'users', 'inventory', 'recipes', 'staff', 'dish-costs', 'cash-register', 'reports', 'smac']
 };
@@ -123,10 +124,8 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       const result = await response.json();
       setLicenseStatus(result);
 
-      // Se la licenza non è valida, carica le impostazioni admin
-      if (!result.valid) {
-        await fetchAdminSettings();
-      }
+      // Carica sempre le impostazioni admin (per contatti upgrade e blocco)
+      await fetchAdminSettings();
     } catch (error) {
       // In caso di errore di rete, permetti l'uso temporaneo
       console.warn('License check failed, using grace period:', error);

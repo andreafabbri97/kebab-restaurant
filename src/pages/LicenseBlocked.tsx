@@ -25,10 +25,13 @@ export function LicenseBlocked() {
     blocked_contact_phone: '+39 333 1234567',
   };
 
+  // Formatta la data da YYYY-MM-DD a DD/MM/YYYY
+  const formatDate = (dateStr: string) => dateStr.split('-').reverse().join('/');
+
   const getSubtitle = () => {
     switch (licenseStatus?.reason) {
       case 'expired':
-        return `La tua licenza è scaduta${licenseStatus.expiryDate ? ` il ${licenseStatus.expiryDate}` : ''}`;
+        return `La tua licenza è scaduta${licenseStatus.expiryDate ? ` il ${formatDate(licenseStatus.expiryDate)}` : ''}`;
       case 'suspended':
         return 'Il tuo account è stato temporaneamente sospeso';
       case 'cancelled':
