@@ -645,7 +645,7 @@ export function Users() {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingUser ? 'Modifica Utente' : 'Nuovo Utente'}
-        size="lg"
+        size="xl"
       >
         <div className="space-y-4">
           {/* Desktop: Nome e Username su stessa riga */}
