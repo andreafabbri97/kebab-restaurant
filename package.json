@@ -1,9 +1,9 @@
 {
-  "name": "kebab-restaurant-app",
+  "name": "restaurant-manager-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.5.0",
   "type": "module",
-  "homepage": "https://andreafabbri97.github.io/kebab-restaurant",
+  "homepage": "https://andreafabbri97.github.io/restaurant-manager",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

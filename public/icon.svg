@@ -7,19 +7,28 @@
   </defs>
   <!-- Background -->
   <rect width="512" height="512" rx="96" fill="url(#bg)"/>
-  <!-- Kebab/Fork Icon -->
-  <g transform="translate(256, 256)">
-    <!-- Main kebab stick -->
-    <rect x="-20" y="-180" width="40" height="360" rx="20" fill="#fff"/>
-    <!-- Meat pieces -->
-    <ellipse cx="0" cy="-100" rx="70" ry="35" fill="#7c2d12"/>
-    <ellipse cx="0" cy="-40" rx="80" ry="40" fill="#92400e"/>
-    <ellipse cx="0" cy="30" rx="75" ry="38" fill="#7c2d12"/>
-    <ellipse cx="0" cy="100" rx="70" ry="35" fill="#92400e"/>
-    <!-- Vegetables -->
-    <ellipse cx="-50" cy="-70" rx="25" ry="15" fill="#22c55e"/>
-    <ellipse cx="50" cy="-5" rx="25" ry="15" fill="#ef4444"/>
-    <ellipse cx="-45" cy="65" rx="25" ry="15" fill="#22c55e"/>
-    <ellipse cx="55" cy="130" rx="20" ry="12" fill="#eab308"/>
+  <!-- Fork -->
+  <g transform="translate(140, 80)">
+    <!-- Fork handle -->
+    <rect x="30" y="180" width="20" height="170" rx="10" fill="#fff"/>
+    <!-- Fork head -->
+    <rect x="30" y="60" width="20" height="130" rx="5" fill="#fff"/>
+    <!-- Fork tines -->
+    <rect x="5" y="60" width="8" height="90" rx="4" fill="#fff"/>
+    <rect x="36" y="60" width="8" height="90" rx="4" fill="#fff"/>
+    <rect x="67" y="60" width="8" height="90" rx="4" fill="#fff"/>
+    <!-- Fork tine connections -->
+    <rect x="5" y="140" width="70" height="20" rx="5" fill="#fff"/>
+  </g>
+  <!-- Knife -->
+  <g transform="translate(280, 80)">
+    <!-- Knife handle -->
+    <rect x="35" y="200" width="25" height="150" rx="12" fill="#fff"/>
+    <!-- Knife blade -->
+    <path d="M35 60 L60 60 L60 200 L35 200 Z" fill="#fff"/>
+    <!-- Knife edge (curved) -->
+    <path d="M60 60 Q90 130 60 200" fill="#fff"/>
+    <!-- Knife tip -->
+    <path d="M35 60 L60 60 L47 30 Z" fill="#fff"/>
   </g>
 </svg>

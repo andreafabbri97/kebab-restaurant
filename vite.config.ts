@@ -10,15 +10,15 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Kebab Restaurant Manager',
-        short_name: 'Kebab Manager',
-        description: 'Sistema gestionale completo per ristoranti e kebab',
+        name: 'Restaurant Manager',
+        short_name: 'Restaurant',
+        description: 'Sistema gestionale completo per ristoranti',
         theme_color: '#f97316',
         background_color: '#1a1a2e',
         display: 'standalone',
         orientation: 'any',
-        scope: '/kebab-restaurant/',
-        start_url: '/kebab-restaurant/',
+        scope: '/restaurant-manager/',
+        start_url: '/restaurant-manager/',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -60,5 +60,5 @@ export default defineConfig({
     })
   ],
   // Per GitHub Pages
-  base: '/kebab-restaurant/',
+  base: '/restaurant-manager/',
 })
