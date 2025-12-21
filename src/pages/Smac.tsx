@@ -10,7 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { getOrders, getSessionPayments } from '../lib/database';
+import { getOrders, getSessionPayments, updatePaymentSmac } from '../lib/database';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { showToast } from '../components/ui/Toast';
 import { useLanguage } from '../context/LanguageContext';
@@ -212,6 +212,22 @@ export function Smac() {
     }
   }
 
+  // Toggle SMAC per un singolo pagamento (nei conti divisi)
+  async function togglePaymentSmac(payment: SessionPayment) {
+    try {
+      const newSmacValue = !payment.smac_passed;
+      await updatePaymentSmac(payment.id, newSmacValue);
+      showToast(
+        newSmacValue ? 'SMAC registrata' : 'SMAC rimossa',
+        'success'
+      );
+      loadOrders();
+    } catch (error) {
+      console.error('Error updating payment SMAC:', error);
+      showToast('Errore nell\'aggiornamento', 'error');
+    }
+  }
+
   async function markAllAsPassed() {
     if (!confirm(`Segnare tutti i ${notPassedCount} ordini/conti come SMAC passata?`)) return;
 
@@ -299,7 +315,7 @@ export function Smac() {
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <p className="stat-label text-xs sm:text-sm">SMAC Passata</p>
-              <p className="stat-value text-emerald-400 text-lg sm:text-2xl">€{passedTotal.toFixed(0)}</p>
+              <p className="stat-value text-emerald-400 text-lg sm:text-2xl">€{passedTotal.toFixed(2)}</p>
               <p className="text-xs text-dark-500">{passedCount} conti</p>
             </div>
             <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
@@ -312,7 +328,7 @@ export function Smac() {
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <p className="stat-label text-xs sm:text-sm">Non Passata</p>
-              <p className="stat-value text-amber-400 text-lg sm:text-2xl">€{notPassedTotal.toFixed(0)}</p>
+              <p className="stat-value text-amber-400 text-lg sm:text-2xl">€{notPassedTotal.toFixed(2)}</p>
               <p className="text-xs text-dark-500">{notPassedCount} conti</p>
             </div>
             <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
@@ -325,7 +341,7 @@ export function Smac() {
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <p className="stat-label text-xs sm:text-sm">Incasso</p>
-              <p className="stat-value text-lg sm:text-2xl">€{(passedTotal + notPassedTotal).toFixed(0)}</p>
+              <p className="stat-value text-lg sm:text-2xl">€{(passedTotal + notPassedTotal).toFixed(2)}</p>
             </div>
             <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl bg-primary-500/20 flex items-center justify-center flex-shrink-0">
               <FileCheck className="w-4 h-4 sm:w-6 sm:h-6 text-primary-400" />
@@ -478,7 +494,7 @@ export function Smac() {
                           {entry.smacPassed === true
                             ? 'Passata'
                             : entry.smacPassed === 'partial'
-                            ? `Parziale (€${entry.smacAmount.toFixed(2)})`
+                            ? `Parziale (€${entry.smacAmount.toFixed(2)}) - Manc. €${(entry.total - entry.smacAmount).toFixed(2)}`
                             : 'Non Passata'}
                         </p>
                       </div>
@@ -532,13 +548,20 @@ export function Smac() {
                                 </p>
                               </div>
                             </div>
-                            <span className={`text-xs px-2 py-1 rounded ${
-                              payment.smac_passed
-                                ? 'bg-emerald-500/20 text-emerald-400'
-                                : 'bg-red-500/20 text-red-400'
-                            }`}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                togglePaymentSmac(payment);
+                              }}
+                              className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-all ${
+                                payment.smac_passed
+                                  ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/40'
+                                  : 'bg-red-500/20 text-red-400 hover:bg-red-500/40'
+                              }`}
+                              title={payment.smac_passed ? 'Rimuovi SMAC' : 'Segna come SMAC passata'}
+                            >
                               SMAC {payment.smac_passed ? '✓' : '✗'}
-                            </span>
+                            </button>
                           </div>
                         ))
                       ) : (

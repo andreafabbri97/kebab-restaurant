@@ -3062,6 +3062,24 @@ export async function deleteSessionPayment(paymentId: number): Promise<void> {
   setLocalData('session_payments', payments.filter(p => p.id !== paymentId));
 }
 
+// Aggiorna lo stato SMAC di un singolo pagamento
+export async function updatePaymentSmac(paymentId: number, smacPassed: boolean): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from('session_payments')
+      .update({ smac_passed: smacPassed })
+      .eq('id', paymentId);
+    if (error) throw error;
+    return;
+  }
+  const payments = getLocalData<SessionPayment[]>('session_payments', []);
+  const index = payments.findIndex(p => p.id === paymentId);
+  if (index !== -1) {
+    payments[index].smac_passed = smacPassed;
+    setLocalData('session_payments', payments);
+  }
+}
+
 // Ottieni la quantità già pagata per ogni item in una sessione
 export async function getSessionPaidQuantities(sessionId: number): Promise<Record<number, number>> {
   const payments = await getSessionPayments(sessionId);
