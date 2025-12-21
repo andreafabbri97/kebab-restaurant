@@ -16,7 +16,7 @@ interface UpgradeRequiredProps {
 // Mappa delle funzionalità con nomi leggibili
 const FEATURE_NAMES: Record<string, string> = {
   'reports': 'Report e Statistiche',
-  'smac': 'Tessere Fidelity (SMAC)',
+  'smac': 'SMAC Card',
   'inventory': 'Gestione Magazzino',
   'recipes': 'Ricette e Ingredienti',
   'staff': 'Gestione Personale',
@@ -96,7 +96,7 @@ export function UpgradeRequired({ feature, requiredPlan = 'premium' }: UpgradeRe
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />
-                  Tessere fidelity (SMAC)
+                  SMAC Card
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />

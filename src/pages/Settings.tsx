@@ -513,7 +513,7 @@ export function Settings() {
                   </div>
                   <div className="flex items-center gap-2 text-dark-300">
                     <Check className="w-4 h-4 text-green-400" />
-                    <span>Tessere Fidelity</span>
+                    <span>SMAC Card</span>
                   </div>
                   <div className="flex items-center gap-2 text-dark-300">
                     <Check className="w-4 h-4 text-green-400" />
