@@ -19,7 +19,7 @@ import {
   Square,
   Filter,
   ChevronDown,
-  ChevronUp,
+  ChevronRight,
   Receipt,
   Banknote,
   CreditCard,
@@ -1164,9 +1164,9 @@ export function Orders() {
                                   </span>
                                 )}
                                 {isExpanded ? (
-                                  <ChevronUp className="w-4 h-4 text-dark-400" />
+                                  <ChevronDown className="w-4 h-4 text-primary-400" />
                                 ) : (
-                                  <ChevronDown className="w-4 h-4 text-dark-400" />
+                                  <ChevronRight className="w-4 h-4 text-dark-400" />
                                 )}
                               </div>
                             </div>
@@ -1415,13 +1415,15 @@ export function Orders() {
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2 min-w-0">
                                 {isSession && (
-                                  isExpanded ? <ChevronUp className="w-4 h-4 text-dark-400 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-dark-400 flex-shrink-0" />
+                                  isExpanded ? <ChevronDown className="w-4 h-4 text-primary-400 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-dark-400 flex-shrink-0" />
                                 )}
                                 <span className="font-medium text-white text-sm truncate">
                                   {isSession ? `Conto - ${entry.tableName}` : `#${firstOrder.id}`}
                                 </span>
                                 {isSession && (
-                                  <span className="text-xs text-dark-400">({entry.orders.length}c)</span>
+                                  <span className="text-xs text-dark-400">
+                                    ({entry.orders.length} com. #{entry.orders.map(o => o.id).join(', #')})
+                                  </span>
                                 )}
                               </div>
                               <span className="font-semibold text-primary-400 flex-shrink-0">{formatPrice(entry.total)}</span>
@@ -1625,7 +1627,7 @@ export function Orders() {
                             {/* Riga principale della sessione */}
                             <tr
                               key={`session-${entry.sessionId}`}
-                              className={`cursor-pointer hover:bg-dark-800 ${allOrdersSelected ? 'bg-primary-500/10' : ''}`}
+                              className={`cursor-pointer hover:bg-dark-800/70 transition-colors ${allOrdersSelected ? 'bg-primary-500/10' : 'bg-dark-800/30'}`}
                               onClick={() => toggleSessionExpand(entry.sessionId!)}
                             >
                               <td>
@@ -1649,15 +1651,19 @@ export function Orders() {
                                 </button>
                               </td>
                               <td>
-                                <div className="flex items-center gap-2">
-                                  {isExpanded ? (
-                                    <ChevronUp className="w-4 h-4 text-dark-400" />
-                                  ) : (
-                                    <ChevronDown className="w-4 h-4 text-dark-400" />
-                                  )}
+                                <div className="flex items-center gap-3">
+                                  <div className="w-5 flex items-center justify-center">
+                                    {isExpanded ? (
+                                      <ChevronDown className="w-4 h-4 text-primary-400" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4 text-primary-400" />
+                                    )}
+                                  </div>
                                   <div>
-                                    <span className="font-mono text-white">Conto</span>
-                                    <p className="text-xs text-dark-400">{entry.orders.length} comande</p>
+                                    <span className="font-semibold text-white">Conto</span>
+                                    <p className="text-xs text-dark-400">
+                                      {entry.orders.length} comande (#{entry.orders.map(o => o.id).join(', #')})
+                                    </p>
                                   </div>
                                 </div>
                               </td>
@@ -1740,15 +1746,15 @@ export function Orders() {
                             </tr>
 
                             {/* Righe delle singole comande (espanse) */}
-                            {isExpanded && entry.orders.map((order) => (
+                            {isExpanded && entry.orders.map((order, idx) => (
                               <tr
                                 key={`order-${order.id}`}
-                                className={`bg-dark-900/50 ${selectedOrderIds.includes(order.id) ? 'bg-primary-500/10' : ''}`}
+                                className={`border-l-2 border-primary-500/30 ${selectedOrderIds.includes(order.id) ? 'bg-primary-500/10' : 'bg-dark-900/30'}`}
                               >
                                 <td>
                                   <button
                                     onClick={() => toggleOrderSelection(order.id)}
-                                    className="p-1 ml-4"
+                                    className="p-1 ml-6"
                                   >
                                     {selectedOrderIds.includes(order.id) ? (
                                       <CheckSquare className="w-4 h-4 text-primary-400" />
@@ -1758,16 +1764,18 @@ export function Orders() {
                                   </button>
                                 </td>
                                 <td>
-                                  <div className="pl-6 flex items-center gap-2">
-                                    <span className="text-dark-500">└</span>
-                                    <div>
-                                      <span className="font-mono text-dark-300 text-sm">#{order.id}</span>
-                                      <p className="text-xs text-dark-500">Comanda {order.order_number || 1}</p>
+                                  <div className="pl-8 flex items-center gap-3">
+                                    <span className="text-dark-600">{idx === entry.orders.length - 1 ? '└' : '├'}</span>
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-6 h-6 rounded bg-dark-700 flex items-center justify-center">
+                                        <span className="text-xs font-mono text-primary-400">#{order.id}</span>
+                                      </div>
+                                      <span className="text-sm text-dark-300">Comanda {order.order_number || 1}</span>
                                     </div>
                                   </div>
                                 </td>
                                 <td>
-                                  <p className="text-xs text-dark-400">
+                                  <p className="text-sm text-dark-400">
                                     {new Date(order.created_at).toLocaleTimeString('it-IT', {
                                       hour: '2-digit',
                                       minute: '2-digit',
@@ -1777,7 +1785,7 @@ export function Orders() {
                                 <td></td>
                                 <td></td>
                                 <td>
-                                  <span className="font-medium text-dark-300 text-sm">
+                                  <span className="font-medium text-dark-300">
                                     {formatPrice(order.total)}
                                   </span>
                                 </td>
@@ -1793,21 +1801,21 @@ export function Orders() {
                                       className="btn-ghost btn-sm"
                                       title="Visualizza comanda"
                                     >
-                                      <Eye className="w-3 h-3" />
+                                      <Eye className="w-4 h-4" />
                                     </button>
                                     <button
                                       onClick={() => openKanbanEditModal(order)}
                                       className="btn-ghost btn-sm"
                                       title="Modifica comanda"
                                     >
-                                      <Edit2 className="w-3 h-3" />
+                                      <Edit2 className="w-4 h-4" />
                                     </button>
                                     <button
                                       onClick={() => handleDelete(order.id, order.session_id)}
                                       className="btn-ghost btn-sm text-red-400 hover:text-red-300"
                                       title="Elimina"
                                     >
-                                      <Trash2 className="w-3 h-3" />
+                                      <Trash2 className="w-4 h-4" />
                                     </button>
                                   </div>
                                 </td>
