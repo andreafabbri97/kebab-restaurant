@@ -487,10 +487,10 @@ export function Smac() {
                         <div className="font-semibold text-white text-sm sm:text-base">
                           {isSession ? (
                             <>
-                              <span>Conto - {entry.tableName}</span>
+                              <span className="whitespace-nowrap">Conto - {entry.tableName}</span>
                               <span className="block sm:inline text-xs text-dark-400 sm:ml-2">
-                                {entry.payments.length > 0 && `(${entry.payments.length} pagamenti) `}
-                                ({entry.orders.length} comande)
+                                {entry.payments.length > 0 && `(${entry.payments.length} pag.) `}
+                                ({entry.orders.length} com.)
                               </span>
                             </>
                           ) : (
@@ -534,7 +534,12 @@ export function Smac() {
                           {entry.smacPassed === true
                             ? 'Passata'
                             : entry.smacPassed === 'partial'
-                            ? `Parziale (€${entry.smacAmount.toFixed(2)}) - Manc. €${(entry.total - entry.smacAmount).toFixed(2)}`
+                            ? (
+                              <>
+                                <span className="block">Parziale (€{entry.smacAmount.toFixed(2)})</span>
+                                <span className="block sm:inline">Manc. €{(entry.total - entry.smacAmount).toFixed(2)}</span>
+                              </>
+                            )
                             : 'Non Passata'}
                         </p>
                       </div>
