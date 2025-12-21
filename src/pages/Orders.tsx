@@ -1697,6 +1697,16 @@ export function Orders() {
                                   >
                                     <Eye className="w-4 h-4" />
                                   </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openEditModal(entry.orders[0]);
+                                    }}
+                                    className="btn-ghost btn-sm"
+                                    title="Modifica conto (sconti totale)"
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -1751,9 +1761,16 @@ export function Orders() {
                                 <td>
                                   <div className="flex items-center gap-1">
                                     <button
+                                      onClick={() => viewOrderDetails(order)}
+                                      className="btn-ghost btn-sm"
+                                      title="Visualizza comanda"
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                    </button>
+                                    <button
                                       onClick={() => openEditModal(order, true)}
                                       className="btn-ghost btn-sm"
-                                      title="Modifica"
+                                      title="Modifica comanda"
                                     >
                                       <Edit2 className="w-3 h-3" />
                                     </button>

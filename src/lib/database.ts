@@ -1326,6 +1326,7 @@ export async function getSettings(): Promise<Settings> {
         default_threshold: 10,
         language: 'it',
         smac_enabled: true, // Default: SMAC abilitato
+        cover_charge: 0, // Default: nessun coperto
       };
     }
     return {
@@ -1340,6 +1341,7 @@ export async function getSettings(): Promise<Settings> {
       phone: data?.phone,
       email: data?.email,
       smac_enabled: data?.smac_enabled ?? true, // Default: SMAC abilitato
+      cover_charge: data?.cover_charge ?? 0, // Default: nessun coperto
     };
   }
   // Carica settings da localStorage e unisce con i default per garantire che tutti i campi esistano
@@ -1352,6 +1354,7 @@ export async function getSettings(): Promise<Settings> {
     default_threshold: 10,
     language: 'it',
     smac_enabled: true, // Default: SMAC abilitato
+    cover_charge: 0, // Default: nessun coperto
   };
   const saved = getLocalData<Partial<Settings>>('settings', {});
   return { ...defaults, ...saved };
@@ -2840,9 +2843,31 @@ export async function getSessionOrders(sessionId: number): Promise<Order[]> {
 
 export async function updateSessionTotal(sessionId: number): Promise<void> {
   const orders = await getSessionOrders(sessionId);
-  const total = orders
+  const settings = await getSettings();
+
+  // Somma dei totali ordini
+  const ordersTotal = orders
     .filter(o => o.status !== 'cancelled')
     .reduce((sum, o) => sum + o.total, 0);
+
+  // Ottieni il numero di coperti dalla sessione
+  let covers = 1;
+  if (isSupabaseConfigured && supabase) {
+    const { data: sessionData } = await supabase
+      .from('table_sessions')
+      .select('covers')
+      .eq('id', sessionId)
+      .single();
+    covers = sessionData?.covers || 1;
+  } else {
+    const sessions = getLocalData<TableSession[]>('table_sessions', []);
+    const session = sessions.find(s => s.id === sessionId);
+    covers = session?.covers || 1;
+  }
+
+  // Calcola coperto (cover_charge * numero coperti)
+  const coverCharge = (settings.cover_charge || 0) * covers;
+  const total = ordersTotal + coverCharge;
 
   if (isSupabaseConfigured && supabase) {
     await supabase

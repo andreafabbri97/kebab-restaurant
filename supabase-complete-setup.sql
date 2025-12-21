@@ -233,7 +233,9 @@ CREATE TABLE IF NOT EXISTS settings (
   language VARCHAR(10) DEFAULT 'it',
   address TEXT,
   phone VARCHAR(30),
-  email VARCHAR(100)
+  email VARCHAR(100),
+  smac_enabled BOOLEAN DEFAULT true,
+  cover_charge DECIMAL(10, 2) DEFAULT 0
 );
 
 -- ============== USERS (per autenticazione app) ==============

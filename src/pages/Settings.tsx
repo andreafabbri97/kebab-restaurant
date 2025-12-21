@@ -386,6 +386,34 @@ export function Settings() {
               }
             </p>
           </div>
+
+          {/* Coperto */}
+          <div className="pt-3 border-t border-dark-700">
+            <label className="label text-xs sm:text-sm mb-2">Coperto (per persona)</label>
+            <div className="flex items-center gap-2">
+              <span className="text-dark-400">{settings?.currency || '€'}</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={settings?.cover_charge ?? 0}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                    setSettings(s => s ? { ...s, cover_charge: val === '' ? 0 : parseFloat(val) || 0 } : null);
+                  }
+                }}
+                className="input text-sm sm:text-base w-24"
+                placeholder="0.00"
+              />
+              <span className="text-dark-400 text-sm">a persona</span>
+            </div>
+            <p className="text-xs text-dark-500 mt-2">
+              {(settings?.cover_charge ?? 0) > 0
+                ? `Il coperto verrà aggiunto automaticamente agli ordini al tavolo in base al numero di ospiti.`
+                : `Imposta un valore maggiore di 0 per abilitare il coperto automatico per gli ordini al tavolo.`
+              }
+            </p>
+          </div>
         </div>
       </div>
 
