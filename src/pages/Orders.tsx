@@ -46,6 +46,8 @@ import {
   closeTableSession,
   getSessionOrders,
   updateSessionTotal,
+  getSettings,
+  getTableSession,
   getSessionPayments,
   addSessionPayment,
   getSessionRemainingAmount,
@@ -158,6 +160,13 @@ export function Orders() {
   const [changeCalculator, setChangeCalculator] = useState({
     customerGives: '',
   });
+
+  // Cover charge modal state (per conferma coperto prima del pagamento)
+  const [showCoverChargeModal, setShowCoverChargeModal] = useState(false);
+  const [coverChargeAmount, setCoverChargeAmount] = useState(0);
+  const [coverChargeCovers, setCoverChargeCovers] = useState(0);
+  const [coverChargeUnitPrice, setCoverChargeUnitPrice] = useState(0);
+  const [pendingIncludeCoverCharge, setPendingIncludeCoverCharge] = useState(true);
 
   // Split bill modal state (per dividere conti da storico)
   const [showSplitModal, setShowSplitModal] = useState(false);
@@ -470,14 +479,40 @@ export function Orders() {
       const sessionTotal = allSessionOrders.reduce((sum, o) => sum + o.total, 0);
 
       setSessionToClose({ id: selectedOrder.session_id, total: sessionTotal });
-      setPaymentForm({ method: 'cash', smac: false });
-      setChangeCalculator({ customerGives: '' });
-      setShowEditModal(false);
-      setShowPaymentModal(true);
+
+      // Controlla se c'è un coperto configurato
+      const settings = await getSettings();
+      const session = await getTableSession(selectedOrder.session_id);
+      const coverCharge = settings.cover_charge || 0;
+      const covers = session?.covers || 0;
+
+      if (coverCharge > 0 && covers > 0) {
+        // Calcola il totale coperto
+        const totalCoverCharge = coverCharge * covers;
+        setCoverChargeAmount(totalCoverCharge);
+        setCoverChargeCovers(covers);
+        setCoverChargeUnitPrice(coverCharge);
+        setPendingIncludeCoverCharge(true);
+        setShowEditModal(false);
+        setShowCoverChargeModal(true);
+      } else {
+        // Nessun coperto, procedi direttamente al pagamento
+        proceedToPayment(false);
+      }
     } catch (error) {
       console.error('Error loading session orders:', error);
       showToast('Errore nel caricamento del conto', 'error');
     }
+  }
+
+  // Procede al pagamento dopo la scelta sul coperto
+  function proceedToPayment(includeCover: boolean) {
+    setPendingIncludeCoverCharge(includeCover);
+    setShowCoverChargeModal(false);
+    setPaymentForm({ method: 'cash', smac: false });
+    setChangeCalculator({ customerGives: '' });
+    setShowEditModal(false);
+    setShowPaymentModal(true);
   }
 
   // Conferma la chiusura del conto con il metodo di pagamento selezionato
@@ -488,7 +523,8 @@ export function Orders() {
       await closeTableSession(
         sessionToClose.id,
         paymentForm.method,
-        paymentForm.smac
+        paymentForm.smac,
+        pendingIncludeCoverCharge
       );
 
       // Aggiorna lo stato di tutti gli ordini della sessione a consegnato
@@ -1768,7 +1804,7 @@ export function Orders() {
                                       <Eye className="w-3 h-3" />
                                     </button>
                                     <button
-                                      onClick={() => openEditModal(order, true)}
+                                      onClick={() => openKanbanEditModal(order)}
                                       className="btn-ghost btn-sm"
                                       title="Modifica comanda"
                                     >
@@ -2366,6 +2402,43 @@ export function Orders() {
             </button>
             <button onClick={() => setShowKanbanEditModal(false)} className="btn-secondary">
               Annulla
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Cover Charge Modal */}
+      <Modal
+        isOpen={showCoverChargeModal}
+        onClose={() => setShowCoverChargeModal(false)}
+        title="Coperto"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="text-center p-4 bg-dark-900 rounded-xl">
+            <p className="text-sm text-dark-400">Coperto da applicare</p>
+            <p className="text-2xl font-bold text-primary-400">{formatPrice(coverChargeAmount)}</p>
+            <p className="text-xs text-dark-500 mt-1">
+              ({coverChargeCovers} coperti × {formatPrice(coverChargeUnitPrice)})
+            </p>
+          </div>
+
+          <p className="text-center text-dark-300">
+            Vuoi applicare il coperto a questo conto?
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => proceedToPayment(true)}
+              className="btn-primary py-3"
+            >
+              Sì, applica
+            </button>
+            <button
+              onClick={() => proceedToPayment(false)}
+              className="btn-secondary py-3"
+            >
+              No, senza coperto
             </button>
           </div>
         </div>

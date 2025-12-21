@@ -2841,7 +2841,7 @@ export async function getSessionOrders(sessionId: number): Promise<Order[]> {
     .sort((a, b) => (a.order_number || 1) - (b.order_number || 1));
 }
 
-export async function updateSessionTotal(sessionId: number): Promise<void> {
+export async function updateSessionTotal(sessionId: number, includeCoverCharge: boolean = true): Promise<void> {
   const orders = await getSessionOrders(sessionId);
   const settings = await getSettings();
 
@@ -2850,24 +2850,29 @@ export async function updateSessionTotal(sessionId: number): Promise<void> {
     .filter(o => o.status !== 'cancelled')
     .reduce((sum, o) => sum + o.total, 0);
 
-  // Ottieni il numero di coperti dalla sessione
-  let covers = 1;
-  if (isSupabaseConfigured && supabase) {
-    const { data: sessionData } = await supabase
-      .from('table_sessions')
-      .select('covers')
-      .eq('id', sessionId)
-      .single();
-    covers = sessionData?.covers || 1;
-  } else {
-    const sessions = getLocalData<TableSession[]>('table_sessions', []);
-    const session = sessions.find(s => s.id === sessionId);
-    covers = session?.covers || 1;
-  }
+  let total = ordersTotal;
 
-  // Calcola coperto (cover_charge * numero coperti)
-  const coverCharge = (settings.cover_charge || 0) * covers;
-  const total = ordersTotal + coverCharge;
+  // Aggiungi coperto solo se richiesto e se c'è un costo coperto impostato
+  if (includeCoverCharge && (settings.cover_charge || 0) > 0) {
+    // Ottieni il numero di coperti dalla sessione
+    let covers = 1;
+    if (isSupabaseConfigured && supabase) {
+      const { data: sessionData } = await supabase
+        .from('table_sessions')
+        .select('covers')
+        .eq('id', sessionId)
+        .single();
+      covers = sessionData?.covers || 1;
+    } else {
+      const sessions = getLocalData<TableSession[]>('table_sessions', []);
+      const session = sessions.find(s => s.id === sessionId);
+      covers = session?.covers || 1;
+    }
+
+    // Calcola coperto (cover_charge * numero coperti)
+    const coverCharge = (settings.cover_charge || 0) * covers;
+    total = ordersTotal + coverCharge;
+  }
 
   if (isSupabaseConfigured && supabase) {
     await supabase
@@ -2887,10 +2892,11 @@ export async function updateSessionTotal(sessionId: number): Promise<void> {
 export async function closeTableSession(
   sessionId: number,
   paymentMethod: 'cash' | 'card' | 'online' | 'split',
-  smacPassed: boolean
+  smacPassed: boolean,
+  includeCoverCharge: boolean = true
 ): Promise<TableSession> {
-  // Aggiorna totale prima di chiudere
-  await updateSessionTotal(sessionId);
+  // Aggiorna totale prima di chiudere (con o senza coperto)
+  await updateSessionTotal(sessionId, includeCoverCharge);
 
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
