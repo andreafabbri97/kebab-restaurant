@@ -145,6 +145,9 @@ export function Orders() {
   // Per espandere le sessioni nello storico
   const [expandedSessions, setExpandedSessions] = useState<Set<number>>(new Set());
 
+  // Per sapere se stiamo modificando una comanda figlia (non il conto principale)
+  const [isEditingChildOrder, setIsEditingChildOrder] = useState(false);
+
   // Payment modal state (per chiudi conto da storico)
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [sessionToClose, setSessionToClose] = useState<{ id: number; total: number } | null>(null);
@@ -330,8 +333,9 @@ export function Orders() {
     }
   }
 
-  async function openEditModal(order: Order) {
+  async function openEditModal(order: Order, isChildOrder = false) {
     setSelectedOrder(order);
+    setIsEditingChildOrder(isChildOrder);
     setEditForm({
       order_type: order.order_type,
       table_id: order.table_id,
@@ -1746,7 +1750,7 @@ export function Orders() {
                                 <td>
                                   <div className="flex items-center gap-1">
                                     <button
-                                      onClick={() => openEditModal(order)}
+                                      onClick={() => openEditModal(order, true)}
                                       className="btn-ghost btn-sm"
                                       title="Modifica"
                                     >
@@ -2195,8 +2199,8 @@ export function Orders() {
             />
           </div>
 
-          {/* Chiudi Conto - Solo per ordini con sessione aperta */}
-          {selectedOrder?.session_id && selectedOrder?.session_status === 'open' && (
+          {/* Chiudi Conto - Solo per ordini con sessione aperta, non per singole comande */}
+          {selectedOrder?.session_id && selectedOrder?.session_status === 'open' && !isEditingChildOrder && (
             <div className="bg-primary-500/10 border border-primary-500/30 rounded-xl p-4">
               <div className="flex items-center justify-between">
                 <div>
