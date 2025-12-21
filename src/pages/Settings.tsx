@@ -317,7 +317,7 @@ export function Settings() {
               </div>
             </div>
             <div>
-              <label className="label text-xs sm:text-sm">{t('settings.stockThreshold')}</label>
+              <label className="label text-xs sm:text-sm">Soglia Scorta Default</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -332,7 +332,9 @@ export function Settings() {
                 className="input text-sm sm:text-base"
                 placeholder="10"
               />
-              <p className="text-xs text-dark-500 mt-1">Soglia usata per i nuovi ingredienti</p>
+              <p className="text-xs text-dark-500 mt-1">
+                Soglia iniziale assegnata ai nuovi ingredienti. Con l'uso, verrà ricalcolata automaticamente tramite EOQ.
+              </p>
             </div>
           </div>
 
