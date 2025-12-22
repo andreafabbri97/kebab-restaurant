@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -39,7 +39,6 @@ import {
   updateOrderStatus,
   deleteOrder,
   updateOrder,
-  getTables,
   getOrdersByDateRange,
   updateOrderStatusBulk,
   deleteOrdersBulk,
@@ -56,14 +55,12 @@ import {
   updateOrderItem,
   deleteOrderItem,
   recalculateOrderTotal,
-  transferTableSession,
   deleteTableSession,
   setSessionTotal,
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import SessionDetailsModal from '../components/session/SessionDetailsModal';
-import SplitModal from '../components/session/SplitModal';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useSmac } from '../context/SmacContext';
 import { useDemoGuard } from '../hooks/useDemoGuard';
@@ -96,12 +93,12 @@ export function Orders() {
   const [selectedDate] = useState(new Date().toISOString().split('T')[0]); // Sempre oggi per tab "Oggi"
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [, setOrderItems] = useState<OrderItem[]>([]);
+  
   const [showDetails, setShowDetails] = useState(false);
-  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+  const [isRealtimeConnected] = useState(false);
 
   // Mappa degli items per ogni ordine (per vista cucina)
-  const [allOrderItems, setAllOrderItems] = useState<Record<number, OrderItem[]>>({});
+  const [allOrderItems] = useState<Record<number, OrderItem[]>>({});
   // Card espanse per ogni colonna Kanban (multiple per colonna)
   const [expandedByColumn, setExpandedByColumn] = useState<Record<string, Set<number>>>({
     pending: new Set(),
@@ -115,7 +112,7 @@ export function Orders() {
   const [showEditSessionModal, setShowEditSessionModal] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
   const [editSessionTotal, setEditSessionTotal] = useState('');
-  const [tables, setTables] = useState<Table[]>([]);
+  const [tables] = useState<Table[]>([]);
   const [editForm, setEditForm] = useState({
     order_type: 'dine_in' as Order['order_type'],
     table_id: undefined as number | undefined,
@@ -136,7 +133,7 @@ export function Orders() {
   const [kanbanEditNotes, setKanbanEditNotes] = useState('');
 
   // Stato per animazioni fluide kanban
-  const [transitioningOrders, setTransitioningOrders] = useState<Set<number>>(new Set());
+  const [transitioningOrders] = useState<Set<number>>(new Set());
 
   // Lista Ordini tab state
   const [activeTab, setActiveTab] = useState<'today' | 'history'>('today');
@@ -152,17 +149,15 @@ export function Orders() {
   const [historyEndDate, setHistoryEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [historyStatusFilter, setHistoryStatusFilter] = useState<string>('all');
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
-  const [bulkAction, setBulkAction] = useState<string>('');
+  const [bulkAction, setBulkAction] = useState<Order['status'] | 'delete' | ''>('');
 
-  // Per mostrare le comande di una sessione nei dettagli
-  const [, setSessionOrders] = useState<Order[]>([]);
-  const [, setSessionOrdersItems] = useState<Record<number, OrderItem[]>>({});
+  // Per mostrare le comande di una sessione nei dettagli (stati gestiti nel modal)
 
   // Per espandere le sessioni nello storico
   const [expandedSessions, setExpandedSessions] = useState<Set<number>>(new Set());
 
   // Per sapere se stiamo modificando una comanda figlia (non il conto principale)
-  const [isEditingChildOrder, setIsEditingChildOrder] = useState(false);
+  const [isEditingChildOrder] = useState(false);
 
   // Payment modal state (per chiudi conto da storico)
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -215,6 +210,42 @@ export function Orders() {
       showToast('Errore nel caricamento ordini', 'error');
     } finally {
       setLoading(false);
+    }
+  }, [selectedDate]);
+
+  // ========== STORICO ORDINI ==========
+  async function loadHistoryOrders() {
+    setHistoryLoading(true);
+    try {
+      const data = await getOrdersByDateRange(historyStartDate, historyEndDate);
+      setHistoryOrders(data);
+      setSelectedOrderIds([]);
+      // Carica le sessioni (table_sessions) per il range richiesto
+      try {
+        if (isSupabaseConfigured && supabase) {
+          const { data: sessions } = await supabase
+            .from('table_sessions')
+            .select('*')
+            .gte('created_at', `${historyStartDate}T00:00:00`)
+            .lte('created_at', `${historyEndDate}T23:59:59`);
+          setHistorySessions(sessions || []);
+        } else {
+          const raw = localStorage.getItem('kebab_table_sessions') || '[]';
+          const sessions = JSON.parse(raw).filter((s: any) => {
+            const d = s.created_at || s.date || '';
+            return d && d.slice(0,10) >= historyStartDate && d.slice(0,10) <= historyEndDate;
+          });
+          setHistorySessions(sessions || []);
+        }
+      } catch (err) {
+        console.error('Error loading history sessions:', err);
+        setHistorySessions([]);
+      }
+    } catch (error) {
+      console.error('Error loading history:', error);
+      showToast('Errore nel caricamento storico', 'error');
+    } finally {
+      setHistoryLoading(false);
     }
   }
 
@@ -783,48 +814,96 @@ export function Orders() {
     }
   }
 
-  // ========== STORICO ORDINI ==========
-  async function loadHistoryOrders() {
-    setHistoryLoading(true);
-    try {
-      const data = await getOrdersByDateRange(historyStartDate, historyEndDate);
-      setHistoryOrders(data);
-      setSelectedOrderIds([]);
-      // Carica le sessioni (table_sessions) per il range richiesto
-      try {
-        if (isSupabaseConfigured && supabase) {
-          const { data: sessions } = await supabase
-            .from('table_sessions')
-            .select('*')
-            .gte('created_at', `${historyStartDate}T00:00:00`)
-            .lte('created_at', `${historyEndDate}T23:59:59`);
-          setHistorySessions(sessions || []);
-        } else {
-          const raw = localStorage.getItem('kebab_table_sessions') || '[]';
-          const sessions = JSON.parse(raw).filter((s: any) => {
-            const d = s.created_at || s.date || '';
-            return d && d.slice(0,10) >= historyStartDate && d.slice(0,10) <= historyEndDate;
-          });
-          setHistorySessions(sessions || []);
-        }
-      } catch (err) {
-        console.error('Error loading history sessions:', err);
-        setHistorySessions([]);
-      }
-    } catch (error) {
-      console.error('Error loading history:', error);
-      showToast('Errore nel caricamento storico', 'error');
-    } finally {
-      setHistoryLoading(false);
-    }
-  }
-
   function toggleOrderSelection(orderId: number) {
     setSelectedOrderIds(prev =>
       prev.includes(orderId)
         ? prev.filter(id => id !== orderId)
         : [...prev, orderId]
     );
+  }
+
+  // Helpers mancanti (implementazioni minime per la view Orders)
+  function viewOrderDetails(order: Order) {
+    setSelectedOrder(order);
+    setShowDetails(true);
+  }
+
+  function openEditModal(order: Order) {
+    setSelectedOrder(order);
+    setEditForm({
+      order_type: order.order_type,
+      table_id: order.table_id ?? undefined,
+      payment_method: order.payment_method ?? 'cash',
+      customer_name: order.customer_name ?? '',
+      customer_phone: order.customer_phone ?? '',
+      notes: order.notes ?? '',
+      smac_passed: order.smac_passed ?? false,
+      status: order.status,
+      total: order.total ?? 0,
+      originalTotal: order.total ?? 0,
+    });
+    setShowEditModal(true);
+  }
+
+  async function openEditSession(sessionId: number) {
+    setEditingSessionId(sessionId);
+    try {
+      const session = await getTableSession(sessionId);
+      setEditSessionTotal(String(session?.total ?? 0));
+    } catch (err) {
+      console.error('Error loading session for edit:', err);
+      setEditSessionTotal('0');
+    }
+    setShowEditSessionModal(true);
+  }
+
+  async function handleDelete(orderId: number, sessionId?: number | null) {
+    if (!confirm('Sei sicuro di eliminare questa comanda?')) return;
+    try {
+      await deleteOrder(orderId, user?.name);
+      showToast('Comanda eliminata', 'success');
+      loadOrdersCallback();
+      if (activeTab === 'history') loadHistoryOrders();
+    } catch (err) {
+      console.error('Error deleting order:', err);
+      showToast('Errore nell\'eliminazione', 'error');
+    }
+  }
+
+  async function handleDeleteSession(sessionId: number) {
+    if (!confirm('Sei sicuro di eliminare questo conto (sessione)?')) return;
+    try {
+      await deleteTableSession(sessionId);
+      showToast('Conto eliminato', 'success');
+      loadOrdersCallback();
+      if (activeTab === 'history') loadHistoryOrders();
+    } catch (err) {
+      console.error('Error deleting session:', err);
+      showToast('Errore nell\'eliminazione conto', 'error');
+    }
+  }
+
+  function handleAddOrder() {
+    navigate('/orders/new');
+  }
+
+  function handleTransfer() {
+    // Apri la vista Tavoli per gestire trasferimenti
+    navigate('/tables');
+  }
+
+  async function handleStatusChange(order: Order) {
+    const cfg = statusConfig[order.status as keyof typeof statusConfig];
+    const next = cfg?.next;
+    if (!next) return;
+    try {
+      await updateOrderStatus(order.id, next, user?.name);
+      showToast('Stato aggiornato', 'success');
+      loadOrdersCallback();
+    } catch (err) {
+      console.error('Error updating status:', err);
+      showToast('Errore nell\'aggiornamento stato', 'error');
+    }
   }
 
   function toggleSelectAll() {
