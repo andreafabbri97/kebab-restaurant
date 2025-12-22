@@ -1954,40 +1954,50 @@ export function Orders() {
               </div>
             )}
 
-            {/* Order Info */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Order Info: use 3 columns so Status + SMAC + Totale sit on same row */}
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="text-sm text-dark-400">{t('common.type')}</p>
                 <p className="font-medium text-white">
                   {t(orderTypeLabelKeys[selectedOrder.order_type])}
                 </p>
               </div>
+
+              {/* Status + SMAC inline */}
               <div>
                 <p className="text-sm text-dark-400">{t('common.status')}</p>
-                <span className={statusConfig[selectedOrder.status].color}>
-                  {t(statusConfig[selectedOrder.status].labelKey)}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className={statusConfig[selectedOrder.status].color}>
+                    {t(statusConfig[selectedOrder.status].labelKey)}
+                  </span>
+                  {smacEnabled && (
+                    <>
+                      <span className="text-sm text-dark-400">SMAC</span>
+                      <span className="font-medium text-white text-sm px-2 py-1 rounded bg-dark-800">
+                        {selectedOrder.session_id
+                          ? (() => {
+                              const smacPayments = sessionPayments.filter(p => p.smac_passed);
+                              if (smacPayments.length === 0) return 'No';
+                              const smacTotal = smacPayments.reduce((sum, p) => sum + p.amount, 0);
+                              const sessionTotal = sessionOrders.reduce((sum, o) => sum + o.total, 0);
+                              if (smacTotal >= sessionTotal) return 'Sì (Totale)';
+                              return `Sì (${formatPrice(smacTotal)})`;
+                            })()
+                          : (selectedOrder.smac_passed ? 'Sì' : 'No')}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
-              {/* SMAC column (shows next to Status as requested) */}
+
+              {/* Totale (session total if session, otherwise order total) */}
               <div>
-                {smacEnabled && (
-                  <>
-                    <p className="text-sm text-dark-400">SMAC</p>
-                    <p className="font-medium text-white text-sm px-2 py-1 rounded bg-dark-800">
-                      {selectedOrder.session_id
-                        ? (() => {
-                            const smacPayments = sessionPayments.filter(p => p.smac_passed);
-                            if (smacPayments.length === 0) return 'No';
-                            const smacTotal = smacPayments.reduce((sum, p) => sum + p.amount, 0);
-                            const sessionTotal = sessionOrders.reduce((sum, o) => sum + o.total, 0);
-                            if (smacTotal >= sessionTotal) return 'Sì (Totale)';
-                            return `Sì (${formatPrice(smacTotal)})`;
-                          })()
-                        : (selectedOrder.smac_passed ? 'Sì' : 'No')}
-                    </p>
-                  </>
-                )}
+                <p className="text-sm text-dark-400">Totale</p>
+                <p className="font-bold text-primary-400">
+                  {formatPrice(selectedOrder.session_id ? sessionOrders.reduce((s,o) => s + o.total, 0) : selectedOrder.total)}
+                </p>
               </div>
+
               {selectedOrder.table_name && (
                 <div>
                   <p className="text-sm text-dark-400">Tavolo</p>
@@ -2012,7 +2022,6 @@ export function Orders() {
                   </p>
                 </div>
               )}
-              {/* (SMAC info now shown inline next to Status/Payment) */}
             </div>
 
             {/* Items - Mostro tutte le comande se è una sessione con più ordini */}
