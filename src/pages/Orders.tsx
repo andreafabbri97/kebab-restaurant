@@ -1998,6 +1998,30 @@ export function Orders() {
                         </div>
                       ))}
                     </div>
+                    {/* Pulsanti per modificare la comanda */}
+                    <div className="flex items-center justify-end gap-2 mt-3 pt-2 border-t border-dark-700">
+                      <button
+                        onClick={() => viewOrderDetails(order)}
+                        className="btn-ghost btn-sm"
+                        title="Visualizza comanda"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => openKanbanEditModal(order)}
+                        className="btn-ghost btn-sm"
+                        title="Modifica comanda"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(order.id, order.session_id)}
+                        className="btn-ghost btn-sm text-red-400 hover:text-red-300"
+                        title="Elimina"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                     {order.notes && (
                       <p className="text-xs text-dark-400 mt-2 italic">📝 {order.notes}</p>
                     )}
