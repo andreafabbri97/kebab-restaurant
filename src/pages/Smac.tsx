@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { getOrders, getSessionPayments, updatePaymentSmac, getDailyCashSummary } from '../lib/database';
 import { useCurrency } from '../hooks/useCurrency';
-import { useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { showToast } from '../components/ui/Toast';
 import { useLanguage } from '../context/LanguageContext';
@@ -57,7 +56,6 @@ export function Smac() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [sessionPaymentsMap, setSessionPaymentsMap] = useState<Record<number, SessionPayment[]>>({});
   const { formatPrice } = useCurrency();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [smacAlerts, setSmacAlerts] = useState<{ date: string; non_smac_total: number }[]>([]);
