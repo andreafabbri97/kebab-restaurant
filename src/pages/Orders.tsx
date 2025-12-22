@@ -57,6 +57,8 @@ import {
   deleteOrderItem,
   recalculateOrderTotal,
   transferTableSession,
+  deleteTableSession,
+  setSessionTotal,
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
@@ -343,6 +345,31 @@ export function Orders() {
     }
   }
 
+  // Elimina interamente una sessione (conto) e tutte le comande associate
+  async function handleDeleteSession(sessionId?: number) {
+    if (!checkCanWrite()) return;
+    if (!sessionId) return;
+    const confirmed = window.confirm('Sei sicuro di voler eliminare questo conto e tutte le comande al suo interno? Questa operazione è IRREVERSIBILE.');
+    if (!confirmed) return;
+
+    try {
+      await deleteTableSession(sessionId);
+      showToast('Conto e comande eliminate', 'success');
+      // Refresh lists
+      loadOrdersCallback();
+      if (activeTab === 'history') loadHistoryOrders();
+      // also clear expanded sessions if any
+      setExpandedSessions(prev => {
+        const next = new Set(prev);
+        next.delete(sessionId);
+        return next;
+      });
+    } catch (err) {
+      console.error('Error deleting session:', err);
+      showToast('Errore nella cancellazione del conto', 'error');
+    }
+  }
+
   function handleAddOrder() {
     if (!selectedOrder?.session_id) return;
     navigate(`/orders/new?table=${selectedOrder.table_id}&session=${selectedOrder.session_id}`);
@@ -448,6 +475,40 @@ export function Orders() {
     }
 
     setShowEditModal(true);
+  }
+
+  // --- Edit session (manual total override) ---
+  const [showEditSessionModal, setShowEditSessionModal] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
+  const [editSessionTotal, setEditSessionTotal] = useState<string>('0.00');
+
+  async function openEditSession(sessionId: number) {
+    try {
+      const session = await getTableSession(sessionId);
+      setEditingSessionId(sessionId);
+      setEditSessionTotal((session?.total ?? 0).toFixed(2));
+      setShowEditSessionModal(true);
+    } catch (err) {
+      console.error('Error opening session edit modal:', err);
+      showToast('Errore nell\'apertura modifica conto', 'error');
+    }
+  }
+
+  async function handleSaveSessionTotal() {
+    if (!editingSessionId) return;
+    if (!checkCanWrite()) return;
+    const parsed = parseFloat(editSessionTotal.replace(',', '.')) || 0;
+    try {
+      await setSessionTotal(editingSessionId, parsed);
+      showToast('Totale conto aggiornato', 'success');
+      setShowEditSessionModal(false);
+      // refresh data
+      loadOrdersCallback();
+      if (activeTab === 'history') loadHistoryOrders();
+    } catch (err) {
+      console.error('Error saving session total:', err);
+      showToast('Errore nel salvataggio totale conto', 'error');
+    }
   }
 
   // Modal semplificato per cucina (solo stato e note)
@@ -1535,7 +1596,8 @@ export function Orders() {
                 </div>
               ) : (
                 groupedHistoryOrders.map((entry) => {
-                  const isSession = entry.type === 'session' && entry.orders.length > 1;
+                  // Treat any grouped session entry as a session row (even if it has 0/1 orders)
+                  const isSession = entry.type === 'session';
                   const firstOrder = entry.orders[0];
                   const isExpanded = isSession && expandedSessions.has(entry.sessionId!);
                   const allOrdersSelected = entry.orders.every(o => selectedOrderIds.includes(o.id));
@@ -1612,7 +1674,17 @@ export function Orders() {
                             <Edit2 className="w-3.5 h-3.5" />
                             Modifica
                           </button>
-                          <button onClick={(e) => { e.stopPropagation(); handleDelete(firstOrder.id, firstOrder.session_id); }} className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isSession && entry.sessionId) {
+                                handleDeleteSession(entry.sessionId);
+                              } else {
+                                handleDelete(firstOrder.id, firstOrder.session_id);
+                              }
+                            }}
+                            className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -1713,8 +1785,8 @@ export function Orders() {
                       </tr>
                     ) : (
                       groupedHistoryOrders.map((entry) => {
-                        // Ordine singolo o sessione con una sola comanda
-                        if (entry.type === 'single' || entry.orders.length === 1) {
+                        // Ordine singolo
+                        if (entry.type === 'single') {
                           const order = entry.orders[0];
                           return (
                             <tr key={`single-${order.id}`} className={selectedOrderIds.includes(order.id) ? 'bg-primary-500/10' : ''}>
@@ -1902,26 +1974,40 @@ export function Orders() {
                               </td>
                               <td>
                                 <div className="flex items-center gap-2">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      viewOrderDetails(entry.orders[0]);
-                                    }}
-                                    className="btn-ghost btn-sm px-2 py-1 md:px-3 md:py-2"
-                                    title="Dettagli conto"
-                                  >
-                                    <Eye className="w-5 h-5 md:w-6 md:h-6" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openEditModal(entry.orders[0]);
-                                    }}
-                                    className="btn-ghost btn-sm px-2 py-1 md:px-3 md:py-2"
-                                    title="Modifica conto (sconti totale)"
-                                  >
-                                    <Edit2 className="w-5 h-5 md:w-6 md:h-6" />
-                                  </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        viewOrderDetails(entry.orders[0]);
+                                      }}
+                                      className="btn-ghost btn-sm px-2 py-1 md:px-3 md:py-2"
+                                      title="Dettagli conto"
+                                    >
+                                      <Eye className="w-5 h-5 md:w-6 md:h-6" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (entry.sessionId) {
+                                          openEditSession(entry.sessionId);
+                                        } else {
+                                          openEditModal(entry.orders[0]);
+                                        }
+                                      }}
+                                      className="btn-ghost btn-sm px-2 py-1 md:px-3 md:py-2"
+                                      title="Modifica conto (sconti totale)"
+                                    >
+                                      <Edit2 className="w-5 h-5 md:w-6 md:h-6 -scale-y-100" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (entry.sessionId) handleDeleteSession(entry.sessionId);
+                                      }}
+                                      className="btn-ghost btn-sm px-2 py-1 md:px-3 md:py-2 text-red-400 hover:text-red-300"
+                                      title="Elimina conto"
+                                    >
+                                      <Trash2 className="w-5 h-5 md:w-6 md:h-6" />
+                                    </button>
                                 </div>
                               </td>
                             </tr>
@@ -2037,6 +2123,7 @@ export function Orders() {
         onOpenBillStatus={() => { handleOpenBillStatus(); }}
         onAddOrder={() => handleAddOrder()}
         onTransfer={() => handleTransfer()}
+        onCloseSession={() => handleOpenPaymentModal()}
       />
 
       {/* Edit Order Modal */}
@@ -2250,6 +2337,35 @@ export function Orders() {
             >
               <Trash2 className="w-5 h-5" />
             </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Session Total Modal */}
+      <Modal
+        isOpen={showEditSessionModal}
+        onClose={() => setShowEditSessionModal(false)}
+        title="Modifica Totale Conto"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="label">Totale Conto</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-400">€</span>
+              <input
+                type="text"
+                value={editSessionTotal}
+                onChange={(e) => setEditSessionTotal(e.target.value)}
+                className="input pl-8 text-lg font-semibold"
+              />
+            </div>
+            <p className="text-xs text-dark-500 mt-2">Inserisci il totale da impostare per questo conto.</p>
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <button onClick={handleSaveSessionTotal} className="btn-primary flex-1">Salva</button>
+            <button onClick={() => setShowEditSessionModal(false)} className="btn-secondary">Annulla</button>
           </div>
         </div>
       </Modal>
