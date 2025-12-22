@@ -1132,7 +1132,7 @@ export function Orders() {
 
       {activeTab === 'today' && (
         <>
-      {loading ? (
+      {loading && transitioningOrders.size === 0 ? (
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
         </div>
@@ -1787,26 +1787,26 @@ export function Orders() {
                                 </div>
                               </td>
                               <td>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 sm:gap-2">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       viewOrderDetails(entry.orders[0]);
                                     }}
-                                    className="btn-ghost btn-sm"
+                                    className="btn-ghost btn-sm px-2 py-1 md:px-3 md:py-2"
                                     title="Dettagli conto"
                                   >
-                                    <Eye className="w-4 h-4" />
+                                    <Eye className="w-4 h-4 md:w-5 md:h-5" />
                                   </button>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       openEditModal(entry.orders[0]);
                                     }}
-                                    className="btn-ghost btn-sm"
+                                    className="btn-ghost btn-sm px-2 py-1 md:px-3 md:py-2"
                                     title="Modifica conto (sconti totale)"
                                   >
-                                    <Edit2 className="w-4 h-4" />
+                                    <Edit2 className="w-4 h-4 md:w-5 md:h-5" />
                                   </button>
                                 </div>
                               </td>
@@ -1862,27 +1862,27 @@ export function Orders() {
                                   </span>
                                 </td>
                                 <td>
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1 sm:gap-2">
                                     <button
                                       onClick={() => viewOrderDetails(order)}
-                                      className="btn-ghost btn-sm"
+                                      className="btn-ghost btn-sm px-2 py-1 md:px-3 md:py-2"
                                       title="Visualizza comanda"
                                     >
-                                      <Eye className="w-4 h-4" />
+                                      <Eye className="w-4 h-4 md:w-5 md:h-5" />
                                     </button>
                                     <button
                                       onClick={() => openKanbanEditModal(order)}
-                                      className="btn-ghost btn-sm"
+                                      className="btn-ghost btn-sm px-2 py-1 md:px-3 md:py-2"
                                       title="Modifica comanda"
                                     >
-                                      <Edit2 className="w-4 h-4" />
+                                      <Edit2 className="w-4 h-4 md:w-5 md:h-5" />
                                     </button>
                                     <button
                                       onClick={() => handleDelete(order.id, order.session_id)}
-                                      className="btn-ghost btn-sm text-red-400 hover:text-red-300"
+                                      className="btn-ghost btn-sm px-2 py-1 md:px-3 md:py-2 text-red-400 hover:text-red-300"
                                       title="Elimina"
                                     >
-                                      <Trash2 className="w-4 h-4" />
+                                      <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                                     </button>
                                   </div>
                                 </td>
@@ -2040,24 +2040,24 @@ export function Orders() {
                     <div className="flex items-center justify-end gap-2 mt-3 pt-2 border-t border-dark-700">
                       <button
                         onClick={() => viewOrderDetails(order)}
-                        className="btn-ghost btn-sm"
+                        className="btn-ghost btn-sm px-2 py-1 md:px-3 md:py-2"
                         title="Visualizza comanda"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-4 h-4 md:w-5 md:h-5" />
                       </button>
                       <button
                         onClick={() => openKanbanEditModal(order)}
-                        className="btn-ghost btn-sm"
+                        className="btn-ghost btn-sm px-2 py-1 md:px-3 md:py-2"
                         title="Modifica comanda"
                       >
-                        <Edit2 className="w-4 h-4" />
+                        <Edit2 className="w-4 h-4 md:w-5 md:h-5" />
                       </button>
                       <button
                         onClick={() => handleDelete(order.id, order.session_id)}
-                        className="btn-ghost btn-sm text-red-400 hover:text-red-300"
+                        className="btn-ghost btn-sm px-2 py-1 md:px-3 md:py-2 text-red-400 hover:text-red-300"
                         title="Elimina"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                       </button>
                     </div>
                     {order.notes && (

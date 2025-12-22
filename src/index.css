@@ -505,6 +505,15 @@
   background-color: #f3f4f6;
 }
 
+.light-theme .btn-ghost.text-red-400 {
+  color: #dc2626;
+}
+
+.light-theme .btn-ghost.text-red-400:hover {
+  color: #b91c1c;
+  background-color: #fef2f2;
+}
+
 .light-theme .btn-icon {
   background-color: #e5e7eb;
 }
