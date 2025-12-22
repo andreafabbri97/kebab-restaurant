@@ -1993,9 +1993,9 @@ export function Orders() {
                     </p>
                   </div>
                   {smacEnabled && (
-                    <div>
+                    <div className="flex items-center gap-2">
                       <p className="text-sm text-dark-400">SMAC</p>
-                      <p className="font-medium text-white">
+                      <p className="font-medium text-white text-sm px-2 py-1 rounded bg-dark-800">
                         {selectedOrder.smac_passed ? 'Sì' : 'No'}
                       </p>
                     </div>
@@ -2004,9 +2004,9 @@ export function Orders() {
               )}
               {/* SMAC per sessioni con pagamenti */}
               {selectedOrder.session_id && smacEnabled && (
-                <div>
+                <div className="flex items-center gap-2">
                   <p className="text-sm text-dark-400">SMAC</p>
-                  <p className="font-medium text-white">
+                  <p className="font-medium text-white text-sm px-2 py-1 rounded bg-dark-800">
                     {(() => {
                       const smacPayments = sessionPayments.filter(p => p.smac_passed);
                       if (smacPayments.length === 0) return 'No';
