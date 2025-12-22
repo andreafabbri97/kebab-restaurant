@@ -1635,27 +1635,27 @@ export function Orders() {
                                 </span>
                               </td>
                               <td>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-2">
                                   <button
                                     onClick={() => viewOrderDetails(order)}
-                                    className="btn-ghost btn-sm"
+                                    className="btn-ghost btn-sm md:px-3 md:py-2"
                                     title="Dettagli"
                                   >
-                                    <Eye className="w-4 h-4" />
+                                    <Eye className="w-4 h-4 md:w-5 md:h-5" />
                                   </button>
                                   <button
                                     onClick={() => openEditModal(order)}
-                                    className="btn-ghost btn-sm"
-                                    title="Modifica"
+                                    className="btn-ghost btn-sm md:px-3 md:py-2"
+                                    title="Modifica ordine"
                                   >
-                                    <Edit2 className="w-4 h-4" />
+                                    <Edit2 className="w-4 h-4 md:w-5 md:h-5" />
                                   </button>
                                   <button
                                     onClick={() => handleDelete(order.id, order.session_id)}
-                                    className="btn-ghost btn-sm text-red-400 hover:text-red-300"
+                                    className="btn-ghost btn-sm md:px-3 md:py-2 text-red-400 hover:text-red-300"
                                     title="Elimina"
                                   >
-                                    <Trash2 className="w-4 h-4" />
+                                    <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                                   </button>
                                 </div>
                               </td>
