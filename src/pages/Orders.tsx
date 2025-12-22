@@ -206,36 +206,12 @@ export function Orders() {
     setLoading(true);
     try {
       const data = await getOrders(selectedDate);
-      <SplitModal
-        isOpen={showSplitModal}
-        onClose={() => setShowSplitModal(false)}
-        session={sessionToClose ? { id: sessionToClose.id, total: sessionToClose.total } : null}
-        sessionPayments={sessionPayments}
-        remainingAmount={remainingAmount}
-        remainingSessionItems={remainingSessionItems}
-        sessionCovers={sessionCovers}
-        sessionCoverUnitPrice={sessionCoverUnitPrice}
-        sessionIncludesCover={sessionIncludesCover}
-        onToggleSessionCover={handleToggleSessionCover}
-        splitMode={splitMode}
-        setSplitMode={(m) => setSplitMode(m)}
-        selectedItems={selectedItems}
-        onIncrementItem={incrementItemSelection}
-        onDecrementItem={decrementItemSelection}
-        onToggleAllItemQuantity={toggleAllItemQuantity}
-        onApplyItemsSelection={applyItemsSelection}
-        splitPaymentForm={splitPaymentForm}
-        onChangeSplitPaymentForm={(patch) => setSplitPaymentForm(prev => ({ ...prev, ...patch }))}
-        changeCalculator={changeCalculator}
-        onChangeChangeCalculator={(patch) => setChangeCalculator(prev => ({ ...prev, ...patch }))}
-        onAddSplitPayment={addSplitPaymentFromOrders}
-        calculateSelectedItemsTotal={calculateSelectedItemsTotal}
-        calculateSplitChange={calculateSplitChange}
-        smacEnabled={smacEnabled}
-        onPrintPaymentReceipt={handlePrintPaymentReceipt}
-        formatPrice={formatPrice}
-      />
-      showToast('Errore nell\'apertura modifica conto', 'error');
+      setOrders(data || []);
+    } catch (err) {
+      console.error('Error loading orders:', err);
+      showToast('Errore nel caricamento ordini', 'error');
+    } finally {
+      setLoading(false);
     }
   }
 
