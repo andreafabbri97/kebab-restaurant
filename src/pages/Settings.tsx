@@ -406,7 +406,7 @@ export function Settings() {
                 onChange={(e) => {
                   const val = e.target.value;
                   setCoverChargeInput(val);
-                  if (/^\d*,?\d*$/.test(val) || val === '') {
+                  if (/^\d*[.,]?\d*$/.test(val) || val === '') {
                     const numericVal = val === '' ? 0 : parseFloat(val.replace(',', '.')) || 0;
                     setSettings(s => s ? { ...s, cover_charge: numericVal } : null);
                   }
