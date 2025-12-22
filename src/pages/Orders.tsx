@@ -1061,12 +1061,13 @@ export function Orders() {
           {(['pending', 'preparing', 'ready', 'delivered'] as const).map((status) => {
             const config = statusConfig[status];
             const statusOrders = ordersByStatus[status];
+            const Icon = config.icon;
 
             return (
               <div key={status} className="card self-start">
                 <div className="card-header flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <config.icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span className="font-semibold text-sm sm:text-base">{t(config.labelKey)}</span>
                   </div>
                   <span className={config.color}>{statusOrders.length}</span>
