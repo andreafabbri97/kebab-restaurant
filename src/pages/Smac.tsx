@@ -77,10 +77,13 @@ export function Smac() {
         const days = 7;
         const results: { date: string; non_smac_total: number }[] = [];
         const promises = [] as Promise<any>[];
+        const todayStr = new Date().toISOString().slice(0,10);
         for (let i = 0; i < days; i++) {
           const d = new Date();
           d.setDate(d.getDate() - i);
           const dateStr = d.toISOString().slice(0, 10);
+          // skip today: alerts are for past days only
+          if (dateStr === todayStr) continue;
           promises.push(getDailyCashSummary(dateStr).then(res => ({ date: dateStr, non_smac_total: res.non_smac_total })));
         }
         const settled = await Promise.all(promises);
@@ -378,7 +381,7 @@ export function Smac() {
               </div>
             </div>
             <div>
-              <button onClick={() => { navigate('/orders'); }} className="btn-secondary">Controlla</button>
+              <button onClick={() => { if (smacAlerts && smacAlerts.length) { setSelectedDate(smacAlerts[0].date); loadOrders(); } }} className="btn-secondary">Controlla</button>
             </div>
           </div>
         </div>
