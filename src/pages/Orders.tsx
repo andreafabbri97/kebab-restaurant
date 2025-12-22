@@ -191,6 +191,10 @@ export function Orders() {
     smac: false,
   });
   const [pendingPaidItems, setPendingPaidItems] = useState<SessionPaymentItem[]>([]);
+  // Session cover state (per-bill apply)
+  const [sessionCovers, setSessionCovers] = useState<number>(0);
+  const [sessionIncludesCover, setSessionIncludesCover] = useState<boolean>(false);
+  const [sessionCoverUnitPrice, setSessionCoverUnitPrice] = useState<number>(0);
 
   const loadOrdersCallback = useCallback(async () => {
     setLoading(true);
@@ -361,6 +365,22 @@ export function Orders() {
         // Carica i pagamenti della sessione (per mostrare info SMAC)
         const payments = await getSessionPayments(order.session_id);
         setSessionPayments(payments);
+        // Carica info sessione e calcola se il coperto è già applicato
+        try {
+          const session = await getTableSession(order.session_id);
+          const settings = await getSettings();
+          const covers = session?.covers || 0;
+          const coverUnit = settings.cover_charge || 0;
+          // Calcola somma ordini (senza coperto)
+          const ordersTotal = allSessionOrders.reduce((sum, o) => sum + o.total, 0);
+          const expectedWithCover = ordersTotal + coverUnit * covers;
+          const applied = Math.abs((session?.total || 0) - expectedWithCover) < 0.01 || (session?.total || 0) >= expectedWithCover - 0.01;
+          setSessionCovers(covers);
+          setSessionCoverUnitPrice(coverUnit);
+          setSessionIncludesCover(applied && coverUnit > 0 && covers > 0);
+        } catch (err) {
+          console.error('Error loading session info:', err);
+        }
       } else {
         setSessionOrders([]);
         setSessionOrdersItems({});
@@ -522,25 +542,21 @@ export function Orders() {
 
       setSessionToClose({ id: selectedOrder.session_id, total: sessionTotal });
 
-      // Controlla se c'è un coperto configurato
+      // Controlla se c'è un coperto configurato e imposta lo stato della sessione
       const settings = await getSettings();
       const session = await getTableSession(selectedOrder.session_id);
       const coverCharge = settings.cover_charge || 0;
       const covers = session?.covers || 0;
+      setSessionCovers(covers);
+      setSessionCoverUnitPrice(coverCharge);
 
-      if (coverCharge > 0 && covers > 0) {
-        // Calcola il totale coperto
-        const totalCoverCharge = coverCharge * covers;
-        setCoverChargeAmount(totalCoverCharge);
-        setCoverChargeCovers(covers);
-        setCoverChargeUnitPrice(coverCharge);
-        setPendingIncludeCoverCharge(true);
-        setShowEditModal(false);
-        setShowCoverChargeModal(true);
-      } else {
-        // Nessun coperto, procedi direttamente al pagamento
-        proceedToPayment(false);
-      }
+      // Determina se il coperto è già applicato (confrontando il totale della sessione)
+      const expectedWithCover = sessionTotal + coverCharge * covers;
+      const applied = Math.abs((session?.total || 0) - expectedWithCover) < 0.01 || (session?.total || 0) >= expectedWithCover - 0.01;
+      setSessionIncludesCover(applied && coverCharge > 0 && covers > 0);
+
+      // Procedi al pagamento usando lo stato corrente della checkbox (non aprire più il modal separato)
+      proceedToPayment(applied && coverCharge > 0 && covers > 0);
     } catch (error) {
       console.error('Error loading session orders:', error);
       showToast('Errore nel caricamento del conto', 'error');
@@ -555,6 +571,24 @@ export function Orders() {
     setChangeCalculator({ customerGives: '' });
     setShowEditModal(false);
     setShowPaymentModal(true);
+  }
+
+  // Toggle applicazione coperto per la sessione e aggiorna il totale
+  async function handleToggleSessionCover(sessionId: number, include: boolean) {
+    try {
+      await updateSessionTotal(sessionId, include);
+      // Aggiorna i valori locali
+      const session = await getTableSession(sessionId);
+      setSessionToClose(prev => prev ? { ...prev, total: session.total } : prev);
+      const remaining = await getSessionRemainingAmount(sessionId);
+      setRemainingAmount(remaining);
+      setSessionIncludesCover(include);
+      setPendingIncludeCoverCharge(include);
+      showToast('Totale aggiornato', 'success');
+    } catch (err) {
+      console.error('Error updating session total with cover:', err);
+      showToast('Errore nell\'applicazione del coperto', 'error');
+    }
   }
 
   // Conferma la chiusura del conto con il metodo di pagamento selezionato
@@ -617,6 +651,21 @@ export function Orders() {
         remainingQty: item.quantity - (paidQtys[item.id] || 0)
       })).filter(item => item.remainingQty > 0);
       setRemainingSessionItems(remainingItems);
+      // Imposta stato coperto per il modal di split
+      try {
+        const session = await getTableSession(selectedOrder.session_id);
+        const settings = await getSettings();
+        const covers = session?.covers || 0;
+        const coverUnit = settings.cover_charge || 0;
+        const ordersTotal = allSessionOrders.reduce((sum, o) => sum + o.total, 0);
+        const expectedWithCover = ordersTotal + coverUnit * covers;
+        const applied = Math.abs((session?.total || 0) - expectedWithCover) < 0.01 || (session?.total || 0) >= expectedWithCover - 0.01;
+        setSessionCovers(covers);
+        setSessionCoverUnitPrice(coverUnit);
+        setSessionIncludesCover(applied && coverUnit > 0 && covers > 0);
+      } catch (err) {
+        console.error('Error loading session info for split modal:', err);
+      }
 
       setSessionToClose({ id: selectedOrder.session_id, total: sessionTotal });
       setSplitPaymentForm({ amount: '', method: 'cash', notes: '', smac: false });
@@ -646,6 +695,21 @@ export function Orders() {
 
       const allSessionOrders = await getSessionOrders(selectedOrder.session_id);
       const sessionTotal = allSessionOrders.reduce((sum, o) => sum + o.total, 0);
+
+      // Carica info sessione e imposta stato coperto
+      try {
+        const session = await getTableSession(selectedOrder.session_id);
+        const settings = await getSettings();
+        const covers = session?.covers || 0;
+        const coverUnit = settings.cover_charge || 0;
+        const expectedWithCover = sessionTotal + coverUnit * covers;
+        const applied = Math.abs((session?.total || 0) - expectedWithCover) < 0.01 || (session?.total || 0) >= expectedWithCover - 0.01;
+        setSessionCovers(covers);
+        setSessionCoverUnitPrice(coverUnit);
+        setSessionIncludesCover(applied && coverUnit > 0 && covers > 0);
+      } catch (err) {
+        console.error('Error loading session info for bill status modal:', err);
+      }
 
       // Carica tutti gli items per mostrare i rimanenti
       const allItems: (OrderItem & { order_number?: number })[] = [];
@@ -2817,6 +2881,21 @@ export function Orders() {
 
               {/* Colonna destra: Opzioni pagamento */}
               <div className="mt-4 md:mt-0">
+                {/* Coperto: spunta per applicare al conto (aggiorna totale) */}
+                {sessionCovers > 0 && sessionCoverUnitPrice > 0 && sessionToClose && (
+                  <div className="p-3 mb-3 bg-dark-900 rounded-xl flex items-center gap-3">
+                    <input
+                      id="apply_cover_split"
+                      type="checkbox"
+                      checked={sessionIncludesCover}
+                      onChange={(e) => handleToggleSessionCover(sessionToClose.id, e.target.checked)}
+                      className="w-5 h-5"
+                    />
+                    <label htmlFor="apply_cover_split" className="text-white">
+                      Applica coperto ({formatPrice(sessionCoverUnitPrice)} / ospite)
+                    </label>
+                  </div>
+                )}
                 {/* Split Mode Selector */}
                 {remainingAmount > 0 && (
                   <>
@@ -3089,6 +3168,22 @@ export function Orders() {
                 <p className="text-base lg:text-lg font-bold text-primary-400">{formatPrice(remainingAmount)}</p>
               </div>
             </div>
+
+            {/* Coperto: spunta per applicare al conto (aggiorna totale) */}
+            {sessionCovers > 0 && sessionCoverUnitPrice > 0 && sessionToClose && (
+              <div className="p-3 mt-3 bg-dark-900 rounded-xl flex items-center gap-3">
+                <input
+                  id="apply_cover_bill"
+                  type="checkbox"
+                  checked={sessionIncludesCover}
+                  onChange={(e) => handleToggleSessionCover(sessionToClose.id, e.target.checked)}
+                  className="w-5 h-5"
+                />
+                <label htmlFor="apply_cover_bill" className="text-white">
+                  Applica coperto ({formatPrice(sessionCoverUnitPrice)} / ospite)
+                </label>
+              </div>
+            )}
 
             {/* Desktop: 2 colonne */}
             <div className="md:grid md:grid-cols-2 md:gap-4">
