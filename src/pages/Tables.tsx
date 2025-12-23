@@ -1,7 +1,39 @@
-// @ts-nocheck
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Clock, Eye, Trash2, Edit2, CheckSquare, Square, Link2, Calendar, Users, Phone, MessageSquare, X } from 'lucide-react';
+import {
+  Plus,
+  Minus,
+  Clock,
+  ChefHat,
+  CheckCircle,
+  Package,
+  Search,
+  Eye,
+  Trash2,
+  RefreshCw,
+  Wifi,
+  WifiOff,
+  Edit2,
+  History,
+  CheckSquare,
+  Square,
+  Filter,
+  ChevronDown,
+  ChevronRight,
+  Receipt,
+  Banknote,
+  CreditCard,
+  Globe,
+  Calculator,
+  ListChecks,
+  Printer,
+  FileText,
+  Calendar,
+  Users,
+  Phone,
+  MessageSquare,
+  Link2,
+} from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCurrency } from '../hooks/useCurrency';
 import {
@@ -23,9 +55,15 @@ import {
   getSessionRemainingAmount,
   getSessionPaidQuantities,
   generatePartialReceipt,
+  updateOrderItem,
+  deleteOrderItem,
   recalculateOrderTotal,
+  deleteTableSession,
+  setSessionTotal,
   createTableSession,
   getActiveSessions,
+  getTableReservation,
+  getTableStatus,
   getTables,
   getReservations,
   createTable,
@@ -34,11 +72,13 @@ import {
   createReservation,
   updateReservation,
   deleteReservation,
+  getSelectedTablesCapacity,
 } from '../lib/database';
 import { showToast } from '../components/ui/Toast';
 import { Modal } from '../components/ui/Modal';
 import SessionDetailsModal from '../components/session/SessionDetailsModal';
 import SplitModal from '../components/session/SplitModal';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useSmac } from '../context/SmacContext';
 import { useDemoGuard } from '../hooks/useDemoGuard';
 import { useAuth } from '../context/AuthContext';
@@ -46,11 +86,11 @@ import type { Order, OrderItem, Table, SessionPayment, SessionPaymentItem, Recei
 
 export function Tables() {
   const { t } = useLanguage();
-  const { formatPrice } = useCurrency();
+  const { formatCurrency } = useCurrency();
   const navigate = useNavigate();
   const { isDemo } = useDemoGuard();
   const { user } = useAuth();
-  const { smacEnabled } = useSmac();
+  const { isSmac } = useSmac();
 
   const [tables, setTables] = useState<Table[]>([]);
   const [reservations, setReservations] = useState<any[]>([]);
@@ -66,27 +106,27 @@ export function Tables() {
   const [sessionOrders, setSessionOrders] = useState<Order[]>([]);
   const [sessionPayments, setSessionPayments] = useState<SessionPayment[]>([]);
   const [remainingAmount, setRemainingAmount] = useState(0);
-  const [remainingSessionItems, setRemainingSessionItems] = useState<any[]>([]);
+  const [remainingSessionItems, setRemainingSessionItems] = useState<SessionPaymentItem[]>([]);
   const [sessionCovers, setSessionCovers] = useState(0);
   const [sessionCoverUnitPrice, setSessionCoverUnitPrice] = useState(0);
   const [sessionIncludesCover, setSessionIncludesCover] = useState(false);
   const [splitMode, setSplitMode] = useState<'manual' | 'items' | 'romana'>('manual');
   const [splitPaymentForm, setSplitPaymentForm] = useState({
-    method: 'cash' as 'cash' | 'card' | 'online',
+    paymentMethod: 'cash' as 'cash' | 'card',
     amount: '',
-    notes: '',
-    smac: false,
+    change: 0,
   });
   const [changeCalculator, setChangeCalculator] = useState({
-    customerGives: '',
-    showChange: false,
+    paymentMethod: 'cash' as 'cash' | 'card',
+    amount: '',
+    change: 0,
   });
   const [coverChargeAmount, setCoverChargeAmount] = useState(0);
   const [pendingIncludeCoverCharge, setPendingIncludeCoverCharge] = useState(false);
-  const [pendingPaidItems, setPendingPaidItems] = useState<any[]>([]);
+  const [pendingPaidItems, setPendingPaidItems] = useState<SessionPaymentItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus] = useState<'all' | 'free' | 'occupied' | 'reserved'>('all');
-  const [showTableActions] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'free' | 'occupied' | 'reserved'>('all');
+  const [showTableActions, setShowTableActions] = useState(false);
   const [tableForm, setTableForm] = useState({
     name: '',
     capacity: 1,
@@ -99,13 +139,13 @@ export function Tables() {
     guests: 1,
     notes: '',
   });
-  const [editingTable] = useState<Table | null>(null);
+  const [editingTable, setEditingTable] = useState<Table | null>(null);
   const [editingReservation, setEditingReservation] = useState<any | null>(null);
 
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   const [sessionForm, setSessionForm] = useState({ covers: '2', customer_name: '', customer_phone: '' });
   const [paymentForm, setPaymentForm] = useState({ method: 'cash' as 'cash' | 'card' | 'online', smac: false });
-  const [settings] = useState<any>(null);
+  const [settings, setSettings] = useState<any>(null);
   const [openSessionApplyCover, setOpenSessionApplyCover] = useState(false);
   const [showCoverChargeModal, setShowCoverChargeModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -116,11 +156,12 @@ export function Tables() {
   const [allSessionItems, setAllSessionItems] = useState<(OrderItem & { order_number?: number })[]>([]);
   const [selectedItems, setSelectedItems] = useState<{ [key: number]: number }>({});
   const [romanaForm, setRomanaForm] = useState({ totalPeople: '', payingPeople: '' });
-  
+  const [smacEnabled, setSmacEnabled] = useState(false);
+  const [formatPrice, setFormatPrice] = useState<((price: number) => string) | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showTableModal, setShowTableModal] = useState(false);
   const [showReservationDetailsModal, setShowReservationDetailsModal] = useState(false);
-  const [selectedReservation] = useState<any | null>(null);
+  const [selectedReservation, setSelectedReservation] = useState<any | null>(null);
 
   useEffect(() => {
     loadData();
@@ -204,9 +245,9 @@ export function Tables() {
       {/* Tables Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2 sm:gap-4">
         {tables.map((table) => {
-          const reservation = reservations.find(r => (r.table_ids && Array.isArray(r.table_ids) && r.table_ids.includes(table.id)) || r.table_id === table.id);
-          const status = reservation ? 'reserved' : 'available';
-          const session = null;
+          const status = getTableStatus(table.id);
+          const session = getTableSession(table.id);
+          const reservation = getTableReservation(table.id);
 
           return (
             <div
