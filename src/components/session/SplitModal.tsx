@@ -1,7 +1,6 @@
-import React from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Banknote, CreditCard, ListChecks, Calculator, Receipt, Printer } from 'lucide-react';
-import type { OrderItem, SessionPayment, SessionPaymentItem } from '../../types';
+import type { OrderItem, SessionPayment } from '../../types';
 
 type SplitPaymentForm = {
   amount: string;
@@ -16,7 +15,7 @@ type Props = {
   session: { id: number; total: number } | null;
   sessionPayments: SessionPayment[];
   remainingAmount: number;
-  remainingSessionItems: (OrderItem & { order_number?: number })[];
+  remainingSessionItems: (OrderItem & { order_number?: number; remainingQty?: number })[];
   sessionCovers: number;
   sessionCoverUnitPrice: number;
   sessionIncludesCover: boolean;
@@ -26,12 +25,12 @@ type Props = {
   selectedItems: Record<number, number>;
   onIncrementItem: (id: number) => void;
   onDecrementItem: (id: number) => void;
-  onToggleAllItemQuantity: (id: number) => void;
   onApplyItemsSelection: () => void;
+  onToggleAllItemQuantity?: (itemId: number) => void;
   splitPaymentForm: SplitPaymentForm;
   onChangeSplitPaymentForm: (patch: Partial<SplitPaymentForm>) => void;
   changeCalculator: { customerGives?: string; showChange?: boolean };
-  onChangeChangeCalculator: (patch: Partial<typeof changeCalculator>) => void;
+  onChangeChangeCalculator: (patch: Partial<{ customerGives?: string; showChange?: boolean }>) => void;
   onAddSplitPayment: () => Promise<void>;
   calculateSelectedItemsTotal: () => number;
   calculateSplitChange: () => number;
@@ -57,7 +56,6 @@ export default function SplitModal(props: Props) {
     selectedItems,
     onIncrementItem,
     onDecrementItem,
-    onToggleAllItemQuantity,
     onApplyItemsSelection,
     splitPaymentForm,
     onChangeSplitPaymentForm,
@@ -174,17 +172,17 @@ export default function SplitModal(props: Props) {
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex-1 min-w-0">
                                     <p className="text-white font-medium truncate">{item.menu_item_name}</p>
-                                    <p className="text-xs text-dark-400">{formatPrice(item.price)} • {item.remainingQty} rimasti</p>
+                                      <p className="text-xs text-dark-400">{formatPrice(item.price)} • {item.remainingQty ?? 0} rimasti</p>
                                   </div>
                                   <div className="flex items-center gap-1 bg-dark-800 rounded-lg p-1">
                                     <button onClick={() => onDecrementItem(item.id)} disabled={selectedQty === 0} className="w-8 h-8 rounded bg-dark-700 disabled:opacity-30">-</button>
                                     <span className="w-8 text-center font-bold">{selectedQty}</span>
-                                    <button onClick={() => onIncrementItem(item.id)} disabled={selectedQty >= item.remainingQty} className="w-8 h-8 rounded bg-dark-700 disabled:opacity-30">+</button>
+                                      <button onClick={() => onIncrementItem(item.id)} disabled={selectedQty >= (item.remainingQty ?? 0)} className="w-8 h-8 rounded bg-dark-700 disabled:opacity-30">+</button>
                                   </div>
                                 </div>
                                 {isSelected && (
                                   <div className="mt-2 pt-2 border-t border-dark-600 flex justify-between items-center">
-                                    <span className="text-xs text-dark-400">{selectedQty}/{item.remainingQty} selezionati</span>
+                                      <span className="text-xs text-dark-400">{selectedQty}/{item.remainingQty ?? 0} selezionati</span>
                                     <span className="text-sm font-semibold text-blue-400">{formatPrice(item.price * selectedQty)}</span>
                                   </div>
                                 )}
