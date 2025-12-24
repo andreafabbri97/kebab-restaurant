@@ -34,7 +34,6 @@ import {
   addSessionPayment,
   getSessionRemainingAmount,
   getActiveSessions,
-  setSessionTotal,
   createOrder,
   createTable,
   updateTable,
@@ -784,20 +783,6 @@ export function Tables() {
     }
 
     try {
-      // If pending paid items include Coperto, increase session total by that amount first so totals display correctly
-      const coverAmount = (pendingPaidItems || []).filter(pi => pi.menu_item_name === 'Coperto').reduce((s, it) => s + (it.price * it.quantity), 0);
-      if (coverAmount > 0 && selectedSession) {
-        try {
-          const current = await getTableSession(selectedSession.id);
-          if (current) {
-            await setSessionTotal(selectedSession.id, (current.total || 0) + coverAmount);
-            setSelectedSession(prev => prev ? { ...prev, total: (current.total || 0) + coverAmount } : prev);
-          }
-        } catch (err) {
-          console.error('Error updating session total with cover before payment (tables):', err);
-        }
-      }
-
       // Passa gli items pagati (se presenti dal pagamento per consumazione)
       await addSessionPayment(
         selectedSession.id,
