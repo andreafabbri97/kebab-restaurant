@@ -1024,7 +1024,7 @@ export function Tables() {
                 ${status === 'available' ? 'table-available cursor-pointer hover:scale-105' : ''}
                 ${status === 'occupied' ? 'table-occupied cursor-pointer hover:scale-105' : ''}
                 ${status === 'reserved' ? 'table-reserved cursor-pointer hover:scale-105' : ''}
-                  transform scale-90 p-2 sm:p-3 transition-transform flex flex-col justify-between min-h-[110px]
+                  transform scale-90 pt-6 sm:pt-8 p-2 sm:p-3 transition-transform flex flex-col justify-between min-h-[110px]
               `}
             >
               <h3 className="text-base sm:text-lg font-bold">{table.name}</h3>
