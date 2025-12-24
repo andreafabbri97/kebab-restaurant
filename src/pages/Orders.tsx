@@ -1276,7 +1276,21 @@ export function Orders() {
                         const key = String(order.id);
                         if (willExpand && !(allOrderItems[key] && allOrderItems[key].length > 0)) {
                           try {
-                            const items = await getOrderItems(order.id);
+                            console.debug('Orders: expanding', order.id, 'status', status, 'session_id', order.session_id);
+                            let items = await getOrderItems(order.id);
+
+                            // If no items found and this is a session parent, aggregate items from child orders
+                            if ((items || []).length === 0 && order.session_id) {
+                              try {
+                                const childOrders = await getSessionOrders(order.session_id);
+                                const childItemsArr = await Promise.all((childOrders || []).map((o: any) => getOrderItems(o.id)));
+                                items = childItemsArr.flat();
+                                console.debug('Aggregated items from session', order.session_id, 'count', items.length);
+                              } catch (e) {
+                                console.error('Error aggregating session child items:', e);
+                              }
+                            }
+
                             setAllOrderItems(prev => ({ ...prev, [key]: items || [] }));
                           } catch (err) {
                             console.error('Error loading order items for expand:', err);
