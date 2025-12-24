@@ -92,7 +92,7 @@ export default function SplitModal(props: Props) {
             <div className="grid grid-cols-3 gap-4 mb-3">
               <div className="text-center">
                 <p className="text-xs text-dark-400">Totale</p>
-                <p className="text-base lg:text-lg font-bold text-white">{fmt(session.total)}</p>
+                <p className="text-base lg:text-lg font-bold text-white">{fmt(session.total + (coverSelectedCount > 0 ? coverSelectedCount * sessionCoverUnitPrice : 0))}</p>
               </div>
               <div className="text-center">
                 <p className="text-xs text-dark-400">Pagato</p>
@@ -100,7 +100,7 @@ export default function SplitModal(props: Props) {
               </div>
               <div className="text-center">
                 <p className="text-xs text-dark-400">Rimanente</p>
-                <p className="text-base lg:text-lg font-bold text-primary-400">{fmt(remainingAmount)}</p>
+                <p className="text-base lg:text-lg font-bold text-primary-400">{fmt(remainingAmount + (coverSelectedCount > 0 ? coverSelectedCount * sessionCoverUnitPrice : 0))}</p>
               </div>
             </div>
             {session.total > 0 && (

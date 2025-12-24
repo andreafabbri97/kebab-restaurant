@@ -876,6 +876,21 @@ export function Orders() {
     }
 
     try {
+      // If pending paid items include Coperto, increase session total by that amount first so totals display correctly
+      const coverAmount = (pendingPaidItems || []).filter(pi => pi.menu_item_name === 'Coperto').reduce((s, it) => s + (it.price * it.quantity), 0);
+      if (coverAmount > 0) {
+        try {
+          const current = await getTableSession(sessionToClose.id);
+          if (current) {
+            await setSessionTotal(sessionToClose.id, (current.total || 0) + coverAmount);
+            // refresh local session total for UI
+            setSessionToClose(prev => prev ? { ...prev, total: (current.total || 0) + coverAmount } : prev);
+          }
+        } catch (err) {
+          console.error('Error updating session total with cover before payment (orders):', err);
+        }
+      }
+
       // Aggiungi il pagamento
       await addSessionPayment(
         sessionToClose.id,
