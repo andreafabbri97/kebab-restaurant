@@ -426,6 +426,15 @@ export async function deleteOrdersBulk(orderIds: number[], deletedBy?: string): 
   const orderItems = getLocalData<OrderItem[]>('order_items', []);
   setLocalData('orders', orders.filter(o => !orderIds.includes(o.id)));
   setLocalData('order_items', orderItems.filter(i => !orderIds.includes(i.order_id)));
+  // Notify UI listeners (local mode)
+  try {
+    if (typeof window !== 'undefined' && window?.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('orders-updated'));
+      window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+    }
+  } catch (e) {
+    // ignore
+  }
 }
 
 export async function createOrder(order: Omit<Order, 'id' | 'created_at'>, items: Omit<OrderItem, 'id' | 'order_id'>[]): Promise<Order> {
@@ -447,6 +456,16 @@ export async function createOrder(order: Omit<Order, 'id' | 'created_at'>, items
       }
     } catch (err) {
       console.error('Error removing placeholder orders (supabase):', err);
+    }
+
+    // Notify UI listeners
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('orders-updated'));
+        window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+      }
+    } catch (e) {
+      // ignore
     }
 
     return orderData;
@@ -477,6 +496,16 @@ export async function createOrder(order: Omit<Order, 'id' | 'created_at'>, items
 
   // Scala automaticamente l'inventario
   await consumeIngredientsForOrderInternal(items, newOrder.id);
+
+  // Notify UI listeners (local mode)
+  try {
+    if (typeof window !== 'undefined' && window?.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('orders-updated'));
+      window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+    }
+  } catch (e) {
+    // ignore
+  }
 
   return newOrder;
 }
@@ -535,6 +564,15 @@ export async function updateOrderStatus(id: number, status: Order['status'], upd
     if (updatedBy) updateData.updated_by = updatedBy;
     const { data, error } = await supabase.from('orders').update(updateData).eq('id', id).select().single();
     if (error) throw error;
+    // Notify UI listeners
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('orders-updated'));
+        window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return data;
   }
   const orders = getLocalData<Order[]>('orders', []);
@@ -542,6 +580,15 @@ export async function updateOrderStatus(id: number, status: Order['status'], upd
   if (index !== -1) {
     orders[index] = { ...orders[index], status, updated_by: updatedBy };
     setLocalData('orders', orders);
+  }
+  // Notify UI listeners (local mode)
+  try {
+    if (typeof window !== 'undefined' && window?.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('orders-updated'));
+      window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+    }
+  } catch (e) {
+    // ignore
   }
   return orders[index];
 }
@@ -589,6 +636,15 @@ export async function updateOrder(
       );
     }
 
+    // Notify UI listeners
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('orders-updated'));
+        window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return orderData;
   }
 
@@ -629,6 +685,15 @@ export async function updateOrder(
       );
     }
 
+    // Notify UI listeners (local mode)
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('orders-updated'));
+        window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return orders[index];
   }
 
@@ -672,6 +737,16 @@ export async function deleteOrder(id: number, deletedBy?: string): Promise<void>
       }
     }
 
+    // Notify UI listeners (supabase)
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('orders-updated'));
+        window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
+
     return;
   }
 
@@ -707,6 +782,15 @@ export async function deleteOrder(id: number, deletedBy?: string): Promise<void>
     } else {
       await updateSessionTotal(sessionId, true);
     }
+  }
+  // Notify UI listeners (local mode)
+  try {
+    if (typeof window !== 'undefined' && window?.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('orders-updated'));
+      window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+    }
+  } catch (e) {
+    // ignore
   }
 }
 
@@ -949,11 +1033,25 @@ export async function createTable(table: Omit<Table, 'id'>): Promise<Table> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.from('tables').insert(table).select().single();
     if (error) throw error;
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('tables-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return data;
   }
   const tables = getLocalData<Table[]>('tables', []);
   const newTable = { ...table, id: Date.now() };
   setLocalData('tables', [...tables, newTable]);
+  try {
+    if (typeof window !== 'undefined' && window?.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('tables-updated'));
+    }
+  } catch (e) {
+    // ignore
+  }
   return newTable;
 }
 
@@ -961,6 +1059,13 @@ export async function updateTable(id: number, table: Partial<Table>): Promise<Ta
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.from('tables').update(table).eq('id', id).select().single();
     if (error) throw error;
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('tables-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return data;
   }
   const tables = getLocalData<Table[]>('tables', []);
@@ -969,6 +1074,13 @@ export async function updateTable(id: number, table: Partial<Table>): Promise<Ta
     tables[index] = { ...tables[index], ...table };
     setLocalData('tables', tables);
   }
+  try {
+    if (typeof window !== 'undefined' && window?.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('tables-updated'));
+    }
+  } catch (e) {
+    // ignore
+  }
   return tables[index];
 }
 
@@ -976,10 +1088,24 @@ export async function deleteTable(id: number): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     const { error } = await supabase.from('tables').delete().eq('id', id);
     if (error) throw error;
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('tables-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return;
   }
   const tables = getLocalData<Table[]>('tables', []);
   setLocalData('tables', tables.filter(t => t.id !== id));
+  try {
+    if (typeof window !== 'undefined' && window?.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('tables-updated'));
+    }
+  } catch (e) {
+    // ignore
+  }
 }
 
 // ============== INVENTORY & INGREDIENTS ==============
@@ -1315,11 +1441,27 @@ export async function createReservation(reservation: Omit<Reservation, 'id'>, op
       table_ids: reservation.table_ids || [reservation.table_id],
     }).select().single();
     if (error) throw error;
+    // Notify UI listeners
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('reservations-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return data;
   }
   const reservations = getLocalData<Reservation[]>('reservations', []);
   const newReservation = { ...reservation, id: Date.now() };
   setLocalData('reservations', [...reservations, newReservation]);
+  // Notify UI listeners (local)
+  try {
+    if (typeof window !== 'undefined' && window?.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('reservations-updated'));
+    }
+  } catch (e) {
+    // ignore
+  }
   return newReservation;
 }
 
@@ -1373,6 +1515,14 @@ export async function updateReservation(id: number, updates: Partial<Omit<Reserv
       .select()
       .single();
     if (error) throw error;
+    // Notify UI listeners
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('reservations-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return data;
   }
   const reservations = getLocalData<Reservation[]>('reservations', []);
@@ -1380,6 +1530,14 @@ export async function updateReservation(id: number, updates: Partial<Omit<Reserv
   if (index !== -1) {
     reservations[index] = { ...reservations[index], ...updates };
     setLocalData('reservations', reservations);
+    // Notify UI listeners (local)
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('reservations-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return reservations[index];
   }
   throw new Error('Prenotazione non trovata');
@@ -1389,10 +1547,24 @@ export async function deleteReservation(id: number): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     const { error } = await supabase.from('reservations').delete().eq('id', id);
     if (error) throw error;
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('reservations-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return;
   }
   const reservations = getLocalData<Reservation[]>('reservations', []);
   setLocalData('reservations', reservations.filter(r => r.id !== id));
+  try {
+    if (typeof window !== 'undefined' && window?.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('reservations-updated'));
+    }
+  } catch (e) {
+    // ignore
+  }
 }
 
 // ============== EXPENSES ==============
@@ -2982,6 +3154,16 @@ export async function createTableSession(
       console.error('Error creating placeholder order for session:', err);
     }
 
+    // Notify browser UI listeners that sessions/orders changed
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('orders-updated'));
+        window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
+
     return createdSession;
   }
 
@@ -3010,6 +3192,15 @@ export async function createTableSession(
     setLocalData('orders', [...orders, placeholderOrder]);
   } catch (err) {
     console.error('Error creating local placeholder order for session:', err);
+  }
+  // Notify browser UI listeners that sessions/orders changed (local mode)
+  try {
+    if (typeof window !== 'undefined' && window?.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('orders-updated'));
+      window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+    }
+  } catch (e) {
+    // ignore
   }
   return newSession;
 }
@@ -3217,6 +3408,15 @@ export async function closeTableSession(
         .select()
         .single();
       if (error) throw error;
+      // Notify UI listeners
+      try {
+        if (typeof window !== 'undefined' && window?.dispatchEvent) {
+          window.dispatchEvent(new CustomEvent('orders-updated'));
+          window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+        }
+      } catch (e) {
+        // ignore
+      }
       return data;
     } catch (err: any) {
       if (err && err.code === 'PGRST204') {
@@ -3232,6 +3432,14 @@ export async function closeTableSession(
           .select()
           .single();
         if (error) throw error;
+        try {
+          if (typeof window !== 'undefined' && window?.dispatchEvent) {
+            window.dispatchEvent(new CustomEvent('orders-updated'));
+            window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+          }
+        } catch (e) {
+          // ignore
+        }
         return data;
       }
       throw err;
@@ -3250,6 +3458,15 @@ export async function closeTableSession(
       closed_at: new Date().toISOString(),
     };
     setLocalData('table_sessions', sessions);
+    // Notify UI listeners (local)
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('orders-updated'));
+        window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return sessions[index];
   }
   throw new Error('Sessione non trovata');
@@ -3267,6 +3484,15 @@ export async function transferTableSession(sessionId: number, newTableId: number
       .select()
       .single();
     if (error) throw error;
+    // Notify UI listeners
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+        window.dispatchEvent(new CustomEvent('tables-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return { ...data, table_name: newTable?.name };
   }
 
@@ -3276,6 +3502,14 @@ export async function transferTableSession(sessionId: number, newTableId: number
     sessions[index].table_id = newTableId;
     sessions[index].table_name = newTable?.name;
     setLocalData('table_sessions', sessions);
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+        window.dispatchEvent(new CustomEvent('tables-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return sessions[index];
   }
   throw new Error('Sessione non trovata');
@@ -3420,12 +3654,30 @@ export async function addSessionPayment(
       .single();
 
     if (error) throw error;
+    // Notify UI listeners
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('orders-updated'));
+        window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return data;
   }
 
   const payments = getLocalData<SessionPayment[]>('session_payments', []);
   payments.push(newPayment);
   setLocalData('session_payments', payments);
+  // Notify UI listeners (local)
+  try {
+    if (typeof window !== 'undefined' && window?.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('orders-updated'));
+      window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+    }
+  } catch (e) {
+    // ignore
+  }
   return newPayment;
 }
 
@@ -3485,10 +3737,27 @@ export async function deleteSessionPayment(paymentId: number): Promise<void> {
       .delete()
       .eq('id', paymentId);
     if (error) throw error;
+    // Notify UI listeners
+    try {
+      if (typeof window !== 'undefined' && window?.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('orders-updated'));
+        window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+      }
+    } catch (e) {
+      // ignore
+    }
     return;
   }
   const payments = getLocalData<SessionPayment[]>('session_payments', []);
   setLocalData('session_payments', payments.filter(p => p.id !== paymentId));
+  try {
+    if (typeof window !== 'undefined' && window?.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('orders-updated'));
+      window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+    }
+  } catch (e) {
+    // ignore
+  }
 }
 
 // Aggiorna lo stato SMAC di un singolo pagamento
