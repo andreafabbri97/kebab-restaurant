@@ -689,11 +689,13 @@ export function Orders() {
         setSessionCovers(covers);
         setSessionCoverUnitPrice(coverUnit);
         setSessionIncludesCover(applied && coverUnit > 0 && covers > 0);
+
+        // Set the session total preview to include coperto configured at session open
+        const baseTotal = (applied && (session?.total || 0) > 0) ? (session?.total || sessionTotal) : (sessionTotal + coverUnit * covers);
+        setSessionToClose({ id: selectedOrder.session_id, total: baseTotal });
       } catch (err) {
         console.error('Error loading session info for split modal:', err);
       }
-
-      setSessionToClose({ id: selectedOrder.session_id, total: sessionTotal });
       setSplitPaymentForm({ amount: '', method: 'cash', notes: '', smac: false });
       setSplitMode('manual');
       setSelectedItems({});
@@ -2779,9 +2781,8 @@ export function Orders() {
             {/* Summary + Progress - Compatto */}
             <div className="p-3 bg-dark-900 rounded-xl">
               {(() => {
-                const coverTotal = (coverSelectedCount || 0) * (sessionCoverUnitPrice || 0);
                 const paidSum = (sessionPayments || []).reduce((s, p) => s + (p.amount || 0), 0);
-                const totalPreview = (sessionToClose.total || 0) + coverTotal;
+                const totalPreview = (sessionToClose.total || 0);
                 const remainingPreview = Math.max(0, totalPreview - paidSum);
                 const progressPct = totalPreview > 0 ? Math.min(100, (paidSum / totalPreview) * 100) : 0;
                 return (
