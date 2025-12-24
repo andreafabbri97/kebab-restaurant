@@ -3211,8 +3211,31 @@ export async function deleteTableSession(sessionId: number): Promise<void> {
       // delete session payments
       await supabase.from('session_payments').delete().eq('session_id', sessionId);
 
+      // get session to access table_id before deleting
+      const { data: sessionData } = await supabase.from('table_sessions').select('id, table_id').eq('id', sessionId).single();
+
       // delete the session
       await supabase.from('table_sessions').delete().eq('id', sessionId);
+
+      // if we have a table_id, free the table (set status available and clear current_order_id)
+      const tableId = sessionData?.table_id;
+      if (tableId) {
+        try {
+          await supabase.from('tables').update({ status: 'available', current_order_id: null }).eq('id', tableId);
+        } catch (e) {
+          // ignore table update errors, session deletion succeeded
+          console.error('Warning: failed to update table status after deleting session', e);
+        }
+      }
+      // notify UI listeners
+      try {
+        if (typeof window !== 'undefined' && window?.dispatchEvent) {
+          window.dispatchEvent(new CustomEvent('orders-updated'));
+          window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+        }
+      } catch (e) {
+        // ignore in non-browser environments
+      }
       return;
     } catch (err) {
       throw err;
@@ -3235,6 +3258,34 @@ export async function deleteTableSession(sessionId: number): Promise<void> {
   setLocalData('order_items', remainingOrderItems);
   setLocalData('table_sessions', remainingSessions);
   setLocalData('kebab_session_payments', remainingPayments as any);
+  // Also free the related table in local storage (if present)
+  try {
+    const tables = getLocalData<Table[]>('tables', []);
+    const session = sessions.find(s => s.id === sessionId);
+    if (session && session.table_id) {
+      const tIndex = tables.findIndex(t => t.id === session.table_id);
+      if (tIndex !== -1) {
+        tables[tIndex].status = 'available';
+        if ('current_order_id' in tables[tIndex]) {
+          // @ts-ignore
+          tables[tIndex].current_order_id = null;
+        }
+        setLocalData('tables', tables);
+      }
+    }
+  } catch (e) {
+    // ignore local update errors
+  }
+
+  // Notify UI listeners in browser
+  try {
+    if (typeof window !== 'undefined' && window?.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('orders-updated'));
+      window.dispatchEvent(new CustomEvent('table-sessions-updated'));
+    }
+  } catch (e) {
+    // ignore
+  }
 }
 
 // Calcola il prossimo numero di comanda per una sessione

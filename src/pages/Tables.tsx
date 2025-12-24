@@ -157,6 +157,33 @@ export function Tables() {
     loadData();
   }, [selectedDate]);
 
+  // Listen to orders/table session changes to refresh the UI in real time
+  useEffect(() => {
+    const handler = () => {
+      (async () => {
+        try {
+          const [tablesData, reservationsData] = await Promise.all([
+            getTables(),
+            getReservations(selectedDate),
+          ]);
+          setTables(tablesData);
+          setReservations(reservationsData);
+          const sessions = await getActiveSessions();
+          setActiveSessions(sessions || []);
+        } catch (err) {
+          console.error('Error refreshing tables on update event', err);
+        }
+      })();
+    };
+
+    window.addEventListener('orders-updated', handler);
+    window.addEventListener('table-sessions-updated', handler);
+    return () => {
+      window.removeEventListener('orders-updated', handler);
+      window.removeEventListener('table-sessions-updated', handler);
+    };
+  }, [selectedDate]);
+
   const checkCanWrite = () => !isDemo || (user && user.role === 'admin');
 
   const loadData = async () => {
