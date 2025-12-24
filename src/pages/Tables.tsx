@@ -147,7 +147,7 @@ export function Tables() {
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptType | null>(null);
   const [allSessionItems, setAllSessionItems] = useState<(OrderItem & { order_number?: number })[]>([]);
   const [selectedItems, setSelectedItems] = useState<{ [key: number]: number }>({});
-  const [romanaForm, setRomanaForm] = useState({ totalPeople: '', payingPeople: '' });
+  
   
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showTableModal, setShowTableModal] = useState(false);
