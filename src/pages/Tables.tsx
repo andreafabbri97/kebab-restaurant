@@ -84,7 +84,7 @@ export function Tables() {
   const [remainingSessionItems, setRemainingSessionItems] = useState<RemainingSessionItem[]>([]);
   const [sessionCovers, setSessionCovers] = useState(0);
   const [sessionCoverUnitPrice, setSessionCoverUnitPrice] = useState(0);
-  const [sessionIncludesCover, setSessionIncludesCover] = useState(false);
+  const [_sessionIncludesCover, setSessionIncludesCover] = useState(false);
   const [splitMode, setSplitMode] = useState<'manual' | 'items'>('manual');
   interface SplitPaymentForm {
     paymentMethod: 'cash' | 'card' | 'online';
@@ -538,8 +538,8 @@ export function Tables() {
       const totalCoverCharge = coverCharge * (selectedSession?.covers ?? 0);
       setCoverChargeAmount(totalCoverCharge);
       // Non aprire più il modal di conferma coperto dal tavolo: usa lo stato corrente
-      // `sessionIncludesCover` per decidere se applicare il coperto, poi procedi al pagamento.
-      const include = !!sessionIncludesCover;
+      // Use current cover include setting stored in state (no checkbox in modal)
+      const include = !!_sessionIncludesCover;
       setPendingIncludeCoverCharge(include);
       proceedToPayment(include);
     } else {
@@ -628,26 +628,10 @@ export function Tables() {
       console.error('Error loading items:', error);
     }
 
+    setCoverSelectedCount(0);
     setShowSplitModal(true);
   }
 
-  // Toggle applicazione coperto per la sessione e aggiorna il totale (allineato a Orders.tsx)
-  async function handleToggleSessionCover(sessionId: number, include: boolean) {
-    try {
-      await updateSessionTotal(sessionId, include);
-      // Aggiorna i valori locali
-      const session = await getTableSession(sessionId);
-      setSelectedSession(prev => prev ? { ...prev, total: session?.total ?? prev.total } : prev);
-      const remaining = await getSessionRemainingAmount(sessionId);
-      setRemainingAmount(remaining);
-      setSessionIncludesCover(include);
-      setPendingIncludeCoverCharge(include);
-      showToast('Totale aggiornato', 'success');
-    } catch (err) {
-      console.error('Error updating session total with cover (tables):', err);
-      showToast("Errore nell'applicazione del coperto", 'error');
-    }
-  }
 
   
 
@@ -1979,19 +1963,7 @@ export function Tables() {
 
             {/* Colonna destra: Opzioni pagamento */}
             <div className="md:col-span-3 mt-6 md:mt-0">
-              {/* Coperto: checkbox (allineata a Orders) */}
-              {sessionCovers > 0 && sessionCoverUnitPrice > 0 && selectedSession && (
-                <div className="p-3 mb-3 bg-dark-900 rounded-xl flex items-center gap-3">
-                  <input
-                    id="apply_cover_split_tables"
-                    type="checkbox"
-                    checked={sessionIncludesCover}
-                    onChange={(e) => handleToggleSessionCover(selectedSession.id, e.target.checked)}
-                    className="w-5 h-5"
-                  />
-                  <label htmlFor="apply_cover_split_tables" className="text-white">Applica coperto ({currencyFormat(sessionCoverUnitPrice)})</label>
-                </div>
-              )}
+
             {/* Split Mode Selector */}
             {remainingAmount > 0 && (
               <>
@@ -2357,37 +2329,7 @@ export function Tables() {
               </div>
             </div>
 
-            {/* Coperto: spunta per applicare al conto (aggiorna totale) */}
-            {sessionCovers > 0 && sessionCoverUnitPrice > 0 && selectedSession && (
-              <div className="p-3 mt-3 bg-dark-900 rounded-xl flex items-center gap-3">
-                <input
-                  id="apply_cover_bill_tables"
-                  type="checkbox"
-                  checked={sessionIncludesCover}
-                  onChange={async (e) => {
-                    const include = e.target.checked;
-                    if (!selectedSession) return;
-                    const sessionId = selectedSession.id;
-                    try {
-                      await updateSessionTotal(sessionId, include);
-                      const s = await getTableSession(sessionId);
-                      setSelectedSession(s || selectedSession);
-                      const rem = await getSessionRemainingAmount(sessionId);
-                      setRemainingAmount(rem);
-                      setSessionIncludesCover(include);
-                      showToast('Totale aggiornato', 'success');
-                    } catch (err) {
-                      console.error('Error toggling cover (tables):', err);
-                      showToast('Errore nell\'applicazione del coperto', 'error');
-                    }
-                  }}
-                  className="w-5 h-5"
-                />
-                <label htmlFor="apply_cover_bill_tables" className="text-white">
-                  Applica coperto ({currencyFormat(sessionCoverUnitPrice)} / ospite)
-                </label>
-              </div>
-            )}
+
 
             {/* Desktop: 2 colonne - Pagamenti a sinistra, Items rimanenti a destra */}
             <div className="md:grid md:grid-cols-2 md:gap-6">

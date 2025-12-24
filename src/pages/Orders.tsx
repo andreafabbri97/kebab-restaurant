@@ -44,7 +44,6 @@ import {
   deleteOrdersBulk,
   closeTableSession,
   getSessionOrders,
-  updateSessionTotal,
   getSettings,
   getTableSession,
   getSessionPayments,
@@ -231,7 +230,7 @@ export function Orders() {
   const [pendingPaidItems, setPendingPaidItems] = useState<SessionPaymentItem[]>([]);
   // Session cover state (per-bill apply)
   const [sessionCovers, setSessionCovers] = useState<number>(0);
-  const [sessionIncludesCover, setSessionIncludesCover] = useState<boolean>(false);
+  const [_sessionIncludesCover, setSessionIncludesCover] = useState<boolean>(false);
   const [sessionCoverUnitPrice, setSessionCoverUnitPrice] = useState<number>(0);
   // Numero di quote di coperto selezionate nella sezione "Per Prodotto" per il split
   const [coverSelectedCount, setCoverSelectedCount] = useState<number>(0);
@@ -617,23 +616,6 @@ export function Orders() {
     setShowPaymentModal(true);
   }
 
-  // Toggle applicazione coperto per la sessione e aggiorna il totale
-  async function handleToggleSessionCover(sessionId: number, include: boolean) {
-    try {
-      await updateSessionTotal(sessionId, include);
-      // Aggiorna i valori locali
-      const session = await getTableSession(sessionId);
-      setSessionToClose(prev => prev ? { ...prev, total: session?.total ?? prev.total } : prev);
-      const remaining = await getSessionRemainingAmount(sessionId);
-      setRemainingAmount(remaining);
-      setSessionIncludesCover(include);
-      setPendingIncludeCoverCharge(include);
-      showToast('Totale aggiornato', 'success');
-    } catch (err) {
-      console.error('Error updating session total with cover:', err);
-      showToast('Errore nell\'applicazione del coperto', 'error');
-    }
-  }
 
   // Conferma la chiusura del conto con il metodo di pagamento selezionato
   async function confirmCloseSession() {
@@ -2850,21 +2832,6 @@ export function Orders() {
 
               {/* Colonna destra: Opzioni pagamento */}
               <div className="mt-4 md:mt-0">
-                {/* Coperto: spunta per applicare al conto (aggiorna totale) */}
-                {sessionCovers > 0 && sessionCoverUnitPrice > 0 && sessionToClose && (
-                  <div className="p-3 mb-3 bg-dark-900 rounded-xl flex items-center gap-3">
-                    <input
-                      id="apply_cover_split"
-                      type="checkbox"
-                      checked={sessionIncludesCover}
-                      onChange={(e) => handleToggleSessionCover(sessionToClose.id, e.target.checked)}
-                      className="w-5 h-5"
-                    />
-                    <label htmlFor="apply_cover_split" className="text-white">
-                      Applica coperto ({formatPrice(sessionCoverUnitPrice)} / ospite)
-                    </label>
-                  </div>
-                )}
                 {/* Split Mode Selector */}
                 {remainingAmount > 0 && (
                   <>
@@ -2939,44 +2906,36 @@ export function Orders() {
                         })
                       )}
                     </div>
-                    {Object.keys(selectedItems).length > 0 && (
-                      <div className="space-y-3">
-                        {sessionCovers > 0 && sessionCoverUnitPrice > 0 && (
-                          <div className="flex items-center gap-3">
-                            <label className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={coverSelectedCount > 0}
-                                onChange={(e) => setCoverSelectedCount(e.target.checked ? 1 : 0)}
-                                className="w-5 h-5"
-                              />
-                              <span className="text-white">Includi coperto</span>
-                            </label>
-                            {coverSelectedCount > 0 && (
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  min={1}
-                                  max={sessionCovers}
-                                  value={coverSelectedCount}
-                                  onChange={(e) => setCoverSelectedCount(Math.max(0, Math.min(sessionCovers, Number(e.target.value) || 0)))}
-                                  className="input w-20"
-                                />
-                                <span className="text-sm text-dark-400">/{sessionCovers} pers.</span>
-                                <span className="text-sm text-primary-400 font-semibold">{formatPrice(coverSelectedCount * sessionCoverUnitPrice)}</span>
-                              </div>
-                            )}
+                    <div className="space-y-3">
+                      {sessionCovers > 0 && sessionCoverUnitPrice > 0 && (
+                        <div key="coperto" className={`p-3 rounded-lg border-2 ${coverSelectedCount > 0 ? 'border-blue-500 bg-blue-500/10' : 'border-dark-700'}`}>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white font-medium">Coperto</p>
+                              <p className="text-xs text-dark-400">{formatPrice(sessionCoverUnitPrice)} • {sessionCovers} pers.</p>
+                            </div>
+                            <div className="flex items-center gap-1 bg-dark-800 rounded-lg p-1">
+                              <button onClick={() => setCoverSelectedCount(Math.max(0, coverSelectedCount - 1))} disabled={coverSelectedCount === 0} className="w-8 h-8 rounded bg-dark-700 disabled:opacity-30">-</button>
+                              <span className="w-8 text-center font-bold">{coverSelectedCount}</span>
+                              <button onClick={() => setCoverSelectedCount(Math.min(sessionCovers, coverSelectedCount + 1))} disabled={coverSelectedCount >= sessionCovers} className="w-8 h-8 rounded bg-dark-700 disabled:opacity-30">+</button>
+                            </div>
+                          </div>
+                          {coverSelectedCount > 0 && (
+                            <div className="mt-2 pt-2 border-t border-dark-600 flex justify-between items-center">
+                              <span className="text-xs text-dark-400">{coverSelectedCount}/{sessionCovers} selezionati</span>
+                              <span className="text-sm font-semibold text-blue-400">{formatPrice(sessionCoverUnitPrice * coverSelectedCount)}</span>
+                            </div>
+                          )}
                         </div>
-                        )}
-                        <div className="p-3 bg-dark-900 rounded-lg flex justify-between">
-                          <span>Totale:</span>
-                          <span className="text-blue-400 font-bold">{formatPrice(calculateSelectedItemsTotal() + (coverSelectedCount > 0 ? coverSelectedCount * sessionCoverUnitPrice : 0))}</span>
-                        </div>
+                      )}
+                      <div className="p-3 bg-dark-900 rounded-lg flex justify-between">
+                        <span>Totale:</span>
+                        <span className="text-blue-400 font-bold">{formatPrice(calculateSelectedItemsTotal() + (coverSelectedCount > 0 ? coverSelectedCount * sessionCoverUnitPrice : 0))}</span>
                       </div>
-                    )}
+                    </div>
                     <button
                       onClick={applyItemsSelection}
-                      disabled={Object.keys(selectedItems).length === 0}
+                      disabled={Object.keys(selectedItems).length === 0 && coverSelectedCount === 0}
                       className="btn-primary w-full bg-blue-600 hover:bg-blue-700"
                     >
                       Applica Selezione
@@ -3115,21 +3074,6 @@ export function Orders() {
               </div>
             </div>
 
-            {/* Coperto: spunta per applicare al conto (aggiorna totale) */}
-            {sessionCovers > 0 && sessionCoverUnitPrice > 0 && sessionToClose && (
-              <div className="p-3 mt-3 bg-dark-900 rounded-xl flex items-center gap-3">
-                <input
-                  id="apply_cover_bill"
-                  type="checkbox"
-                  checked={sessionIncludesCover}
-                  onChange={(e) => handleToggleSessionCover(sessionToClose.id, e.target.checked)}
-                  className="w-5 h-5"
-                />
-                <label htmlFor="apply_cover_bill" className="text-white">
-                  Applica coperto ({formatPrice(sessionCoverUnitPrice)} / ospite)
-                </label>
-              </div>
-            )}
 
             {/* Desktop: 2 colonne */}
             <div className="md:grid md:grid-cols-2 md:gap-4">
