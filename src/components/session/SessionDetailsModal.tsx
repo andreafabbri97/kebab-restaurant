@@ -47,6 +47,16 @@ export default function SessionDetailsModal({
   const { formatPrice } = useCurrency();
   const { t } = useLanguage();
   const { smacEnabled } = useSmac();
+
+  const translateOrFallback = (key: string, fallback: string) => {
+    try {
+      const v = t(key);
+      if (!v || v === key) return fallback;
+      return v;
+    } catch (e) {
+      return fallback;
+    }
+  };
   
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -173,9 +183,9 @@ export default function SessionDetailsModal({
                 {(() => {
                   const s = session?.status;
                   const map: Record<string, { label: string; color: string }> = {
-                    open: { label: t('sessions.open') || 'Aperto', color: 'badge-primary' },
-                    closed: { label: t('sessions.closed') || 'Chiuso', color: 'badge-success' },
-                    paid: { label: t('sessions.paid') || 'Pagato', color: 'badge-success' },
+                    open: { label: translateOrFallback('sessions.open', 'Aperto'), color: 'badge-primary' },
+                    closed: { label: translateOrFallback('sessions.closed', 'Chiuso'), color: 'badge-success' },
+                    paid: { label: translateOrFallback('sessions.paid', 'Pagato'), color: 'badge-success' },
                   };
                   const info = map[s] || { label: s || '', color: 'badge-secondary' };
                   return <span className={`${info.color}`}>{info.label}</span>;
