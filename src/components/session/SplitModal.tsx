@@ -48,6 +48,8 @@ type Props = {
   smacEnabled: boolean;
   onPrintPaymentReceipt: (p: SessionPayment) => void;
   formatPrice?: (n: number) => string | null;
+  includeCoverCount: number;
+  onChangeIncludeCoverCount: (n: number) => void;
 };
 
 export default function SplitModal(props: Props) {
@@ -64,6 +66,8 @@ export default function SplitModal(props: Props) {
     onToggleSessionCover,
     splitMode,
     setSplitMode,
+    includeCoverCount,
+    onChangeIncludeCoverCount,
     selectedItems,
     onIncrementItem,
     onDecrementItem,
@@ -206,9 +210,38 @@ export default function SplitModal(props: Props) {
                         )}
                       </div>
                       {Object.keys(selectedItems).length > 0 && (
-                        <div className="p-3 bg-dark-900 rounded-lg flex justify-between">
-                          <span>Totale:</span>
-                          <span className="text-blue-400 font-bold">{fmt(calculateSelectedItemsTotal())}</span>
+                        <div className="space-y-3">
+                          {sessionCovers > 0 && sessionCoverUnitPrice > 0 && (
+                            <div className="flex items-center gap-3">
+                              <label className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={includeCoverCount > 0}
+                                  onChange={(e) => onChangeIncludeCoverCount(e.target.checked ? 1 : 0)}
+                                  className="w-5 h-5"
+                                />
+                                <span className="text-white">Includi coperto</span>
+                              </label>
+                              {includeCoverCount > 0 && (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={sessionCovers}
+                                    value={includeCoverCount}
+                                    onChange={(e) => onChangeIncludeCoverCount(Math.max(0, Math.min(sessionCovers, Number(e.target.value) || 0)))}
+                                    className="input w-20"
+                                  />
+                                  <span className="text-sm text-dark-400">/{sessionCovers} pers.</span>
+                                  <span className="text-sm text-primary-400 font-semibold">€{fmt(includeCoverCount * sessionCoverUnitPrice)}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <div className="p-3 bg-dark-900 rounded-lg flex justify-between">
+                            <span>Totale:</span>
+                            <span className="text-blue-400 font-bold">{fmt(calculateSelectedItemsTotal() + (includeCoverCount > 0 ? includeCoverCount * sessionCoverUnitPrice : 0))}</span>
+                          </div>
                         </div>
                       )}
                       <button onClick={onApplyItemsSelection} disabled={Object.keys(selectedItems).length === 0} className="btn-primary w-full bg-blue-600 hover:bg-blue-700">Applica Selezione</button>

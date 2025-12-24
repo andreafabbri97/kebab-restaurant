@@ -233,6 +233,8 @@ export function Orders() {
   const [sessionCovers, setSessionCovers] = useState<number>(0);
   const [sessionIncludesCover, setSessionIncludesCover] = useState<boolean>(false);
   const [sessionCoverUnitPrice, setSessionCoverUnitPrice] = useState<number>(0);
+  // Numero di quote di coperto selezionate nella sezione "Per Prodotto" per il split
+  const [coverSelectedCount, setCoverSelectedCount] = useState<number>(0);
 
   const loadOrdersCallback = useCallback(async () => {
     setLoading(true);
@@ -713,6 +715,7 @@ export function Orders() {
       setSplitPaymentForm({ amount: '', method: 'cash', notes: '', smac: false });
       setSplitMode('manual');
       setSelectedItems({});
+      setCoverSelectedCount(0);
       setChangeCalculator({ customerGives: '' });
       setPendingPaidItems([]);
 
@@ -822,7 +825,9 @@ export function Orders() {
   
 
   function applyItemsSelection() {
-    const amount = calculateSelectedItemsTotal();
+    const itemsTotal = calculateSelectedItemsTotal();
+    const coverTotal = (coverSelectedCount || 0) * (sessionCoverUnitPrice || 0);
+    const amount = itemsTotal + coverTotal;
     if (amount > 0 && amount <= remainingAmount) {
       const itemDescriptions = Object.entries(selectedItems)
         .map(([itemId, qty]) => {
@@ -845,6 +850,16 @@ export function Orders() {
         })
         .filter((item): item is SessionPaymentItem => item !== null);
 
+      if (coverSelectedCount && coverSelectedCount > 0) {
+        paidItems.push({
+          // Coperto is a session-level item, not tied to a specific order_item
+          order_item_id: undefined as any,
+          quantity: coverSelectedCount,
+          menu_item_name: 'Coperto',
+          price: sessionCoverUnitPrice,
+        } as SessionPaymentItem);
+      }
+
       setPendingPaidItems(paidItems);
       setSplitPaymentForm(prev => ({
         ...prev,
@@ -853,6 +868,7 @@ export function Orders() {
       }));
       setSplitMode('manual');
       setSelectedItems({});
+      setCoverSelectedCount(0);
     }
   }
 
@@ -2924,9 +2940,38 @@ export function Orders() {
                       )}
                     </div>
                     {Object.keys(selectedItems).length > 0 && (
-                      <div className="p-3 bg-dark-900 rounded-lg flex justify-between">
-                        <span>Totale:</span>
-                        <span className="text-blue-400 font-bold">{formatPrice(calculateSelectedItemsTotal())}</span>
+                      <div className="space-y-3">
+                        {sessionCovers > 0 && sessionCoverUnitPrice > 0 && (
+                          <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={coverSelectedCount > 0}
+                                onChange={(e) => setCoverSelectedCount(e.target.checked ? 1 : 0)}
+                                className="w-5 h-5"
+                              />
+                              <span className="text-white">Includi coperto</span>
+                            </label>
+                            {coverSelectedCount > 0 && (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={sessionCovers}
+                                  value={coverSelectedCount}
+                                  onChange={(e) => setCoverSelectedCount(Math.max(0, Math.min(sessionCovers, Number(e.target.value) || 0)))}
+                                  className="input w-20"
+                                />
+                                <span className="text-sm text-dark-400">/{sessionCovers} pers.</span>
+                                <span className="text-sm text-primary-400 font-semibold">{formatPrice(coverSelectedCount * sessionCoverUnitPrice)}</span>
+                              </div>
+                            )}
+                        </div>
+                        )}
+                        <div className="p-3 bg-dark-900 rounded-lg flex justify-between">
+                          <span>Totale:</span>
+                          <span className="text-blue-400 font-bold">{formatPrice(calculateSelectedItemsTotal() + (coverSelectedCount > 0 ? coverSelectedCount * sessionCoverUnitPrice : 0))}</span>
+                        </div>
                       </div>
                     )}
                     <button
