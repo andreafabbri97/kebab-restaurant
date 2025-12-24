@@ -657,14 +657,7 @@ export function Tables() {
     return Math.max(0, customerGives - paymentAmount);
   }
 
-  // Calcola importo alla romana
-  function calculateRomanaAmount(): number {
-    if (!selectedSession) return 0;
-    const totalPeople = parseInt(romanaForm.totalPeople) || 1;
-    const payingPeople = parseInt(romanaForm.payingPeople) || 1;
-    const perPersonAmount = remainingAmount / totalPeople;
-    return Math.min(perPersonAmount * payingPeople, remainingAmount);
-  }
+  // Nota: il calcolo "alla romana" è effettuato inline dove necessario.
 
   // Calcola totale items selezionati (con quantità parziali)
   function calculateSelectedItemsTotal(): number {
