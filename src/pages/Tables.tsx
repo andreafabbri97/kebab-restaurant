@@ -1009,7 +1009,7 @@ export function Tables() {
       </div>
 
       {/* Tables Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-1 sm:gap-3">
         {tables.map((table) => {
           const status = getTableStatus(table.id);
           const session = activeSessions.find((s) => s.table_id === table.id);
@@ -1024,7 +1024,7 @@ export function Tables() {
                 ${status === 'available' ? 'table-available cursor-pointer hover:scale-105' : ''}
                 ${status === 'occupied' ? 'table-occupied cursor-pointer hover:scale-105' : ''}
                 ${status === 'reserved' ? 'table-reserved cursor-pointer hover:scale-105' : ''}
-                transform scale-90 p-3 sm:p-3 transition-transform
+                  transform scale-90 p-2 sm:p-3 transition-transform flex flex-col justify-between min-h-[110px]
               `}
             >
               <h3 className="text-base sm:text-lg font-bold">{table.name}</h3>
@@ -1047,9 +1047,18 @@ export function Tables() {
               )}
 
               {reservation && !session && (
-                // Mostra solo indicatore prenotato (nome tavolo rimane visibile). Dettagli disponibili dal pulsante "Visualizza prenotazioni".
-                <div className="mt-2 text-[10px] sm:text-xs">
-                  <p className="truncate text-dark-300">Prenotazione</p>
+                // Mostra informazioni di prenotazione in forma compatta e con la stessa struttura delle card occupate
+                <div className="mt-2 text-[10px] sm:text-xs space-y-1">
+                  <p className="flex items-center gap-1">
+                    <Users className="w-3 h-3" />
+                    {reservation.guests} coperti
+                  </p>
+                  <p className="font-semibold text-base sm:text-lg">{reservation.time || 'Prenotato'}</p>
+                  {reservation.customer_name ? (
+                    <p className="truncate">{reservation.customer_name}</p>
+                  ) : (
+                    <p className="truncate text-dark-300">Prenotazione</p>
+                  )}
                 </div>
               )}
 
