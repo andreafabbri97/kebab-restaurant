@@ -437,6 +437,118 @@ export async function deleteOrdersBulk(orderIds: number[], deletedBy?: string): 
   }
 }
 
+// ============== STAMPA AUTOMATICA COMANDE ==============
+async function autoPrintOrder(order: Order, items: Omit<OrderItem, 'id' | 'order_id'>[]): Promise<void> {
+  try {
+    const settings = await getSettings();
+    
+    // Controlla se la stampa automatica è abilitata
+    if (!settings.auto_print_enabled) {
+      return;
+    }
+
+    // Carica i menu items per ottenere i nomi
+    const menuItems = await getMenuItems();
+    
+    // Prepara il contenuto della comanda
+    let printContent = `
+      <html>
+        <head>
+          <title>Comanda #${order.id}</title>
+          <style>
+            body {
+              font-family: 'Courier New', monospace;
+              padding: ${settings.printer_type === 'thermal' ? '10px' : '20px'};
+              max-width: ${settings.printer_type === 'thermal' ? '300px' : '100%'};
+              margin: 0 auto;
+              font-size: ${settings.printer_type === 'thermal' ? '12px' : '14px'};
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 15px;
+              font-weight: bold;
+              font-size: ${settings.printer_type === 'thermal' ? '16px' : '18px'};
+            }
+            .divider {
+              border-top: 1px dashed #000;
+              margin: 10px 0;
+            }
+            .item {
+              display: flex;
+              justify-content: space-between;
+              margin: 5px 0;
+            }
+            .item-name {
+              flex: 1;
+            }
+            .item-qty {
+              font-weight: bold;
+              margin-right: 5px;
+            }
+            .notes {
+              font-size: ${settings.printer_type === 'thermal' ? '10px' : '12px'};
+              font-style: italic;
+              margin-left: 20px;
+              color: #333;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 15px;
+              font-size: ${settings.printer_type === 'thermal' ? '10px' : '12px'};
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            ${settings.shop_name || 'COMANDA'}
+          </div>
+          <div class="divider"></div>
+          <div><strong>Comanda #${order.order_number || order.id}</strong></div>
+          ${order.table_name ? `<div>Tavolo: ${order.table_name}</div>` : ''}
+          ${order.customer_name ? `<div>Cliente: ${order.customer_name}</div>` : ''}
+          <div>Data: ${new Date().toLocaleDateString('it-IT')} ${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</div>
+          <div class="divider"></div>
+    `;
+
+    // Aggiungi items
+    items.forEach(item => {
+      const menuItem = menuItems.find(m => m.id === item.menu_item_id);
+      const itemName = menuItem?.name || 'Prodotto';
+      printContent += `
+          <div class="item">
+            <span class="item-qty">${item.quantity}x</span>
+            <span class="item-name">${itemName}</span>
+          </div>
+      `;
+      if (item.notes) {
+        printContent += `<div class="notes">Note: ${item.notes}</div>`;
+      }
+    });
+
+    printContent += `
+          <div class="divider"></div>
+          <div class="footer">
+            ${settings.printer_model || 'Stampa automatica'}
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Apri finestra di stampa
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+      // Chiudi la finestra dopo la stampa (opzionale)
+      setTimeout(() => printWindow.close(), 100);
+    }
+  } catch (error) {
+    console.error('Errore stampa automatica:', error);
+    // Non bloccare la creazione ordine se la stampa fallisce
+  }
+}
+
 export async function createOrder(order: Omit<Order, 'id' | 'created_at'>, items: Omit<OrderItem, 'id' | 'order_id'>[]): Promise<Order> {
   if (isSupabaseConfigured && supabase) {
     const { data: orderData, error: orderError } = await supabase.from('orders').insert(order).select().single();
@@ -467,6 +579,9 @@ export async function createOrder(order: Omit<Order, 'id' | 'created_at'>, items
     } catch (e) {
       // ignore
     }
+
+    // Stampa automatica se abilitata
+    await autoPrintOrder(orderData, items);
 
     return orderData;
   }
@@ -506,6 +621,9 @@ export async function createOrder(order: Omit<Order, 'id' | 'created_at'>, items
   } catch (e) {
     // ignore
   }
+
+  // Stampa automatica se abilitata
+  await autoPrintOrder(newOrder, items);
 
   return newOrder;
 }
@@ -1645,6 +1763,9 @@ export async function getSettings(): Promise<Settings> {
         language: 'it',
         smac_enabled: true, // Default: SMAC abilitato
         cover_charge: 0, // Default: nessun coperto
+        auto_print_enabled: false, // Default: stampa automatica disabilitata
+        printer_type: 'thermal',
+        printer_model: '',
       };
     }
     return {
@@ -1660,6 +1781,9 @@ export async function getSettings(): Promise<Settings> {
       email: data?.email,
       smac_enabled: data?.smac_enabled ?? true, // Default: SMAC abilitato
       cover_charge: data?.cover_charge ?? 0, // Default: nessun coperto
+      auto_print_enabled: data?.auto_print_enabled ?? false, // Default: stampa automatica disabilitata
+      printer_type: data?.printer_type || 'thermal',
+      printer_model: data?.printer_model || '',
     };
   }
   // Carica settings da localStorage e unisce con i default per garantire che tutti i campi esistano
@@ -1673,6 +1797,9 @@ export async function getSettings(): Promise<Settings> {
     language: 'it',
     smac_enabled: true, // Default: SMAC abilitato
     cover_charge: 0, // Default: nessun coperto
+    auto_print_enabled: false, // Default: stampa automatica disabilitata
+    printer_type: 'thermal',
+    printer_model: '',
   };
   const saved = getLocalData<Partial<Settings>>('settings', {});
   return { ...defaults, ...saved };

@@ -427,6 +427,101 @@ export function Settings() {
               }
             </p>
           </div>
+
+          {/* Stampa Automatica Comande */}
+          <div className="pt-3 border-t border-dark-700">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <label className="label text-xs sm:text-sm mb-1">Stampa Automatica Comande</label>
+                <p className="text-xs text-dark-500">
+                  Stampa automaticamente le comande quando vengono create
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings?.auto_print_enabled || false}
+                  onChange={(e) => setSettings(s => s ? { ...s, auto_print_enabled: e.target.checked } : null)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-dark-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+              </label>
+            </div>
+
+            {settings?.auto_print_enabled && (
+              <div className="space-y-4 mt-4 p-3 bg-dark-900/50 rounded-lg">
+                {/* Tipo Stampante */}
+                <div>
+                  <label className="label text-xs sm:text-sm mb-2">Tipo Stampante</label>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setSettings(s => s ? { ...s, printer_type: 'thermal' } : null)}
+                      className={`w-full p-3 rounded-lg border-2 transition-colors text-left ${
+                        settings?.printer_type === 'thermal'
+                          ? 'border-primary-500 bg-primary-500/10'
+                          : 'border-dark-700 bg-dark-800 hover:border-dark-600'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          settings?.printer_type === 'thermal' ? 'border-primary-500' : 'border-dark-600'
+                        }`}>
+                          {settings?.printer_type === 'thermal' && <div className="w-2 h-2 rounded-full bg-primary-500" />}
+                        </div>
+                        <div>
+                          <p className="font-medium text-white text-sm">Stampante Termica</p>
+                          <p className="text-xs text-dark-400">Per scontrini e comande (es. Epson TM-T20, Star TSP143)</p>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSettings(s => s ? { ...s, printer_type: 'standard' } : null)}
+                      className={`w-full p-3 rounded-lg border-2 transition-colors text-left ${
+                        settings?.printer_type === 'standard'
+                          ? 'border-primary-500 bg-primary-500/10'
+                          : 'border-dark-700 bg-dark-800 hover:border-dark-600'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          settings?.printer_type === 'standard' ? 'border-primary-500' : 'border-dark-600'
+                        }`}>
+                          {settings?.printer_type === 'standard' && <div className="w-2 h-2 rounded-full bg-primary-500" />}
+                        </div>
+                        <div>
+                          <p className="font-medium text-white text-sm">Stampante Tradizionale</p>
+                          <p className="text-xs text-dark-400">Stampante normale (inkjet, laser)</p>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Modello Stampante */}
+                <div>
+                  <label className="label text-xs sm:text-sm mb-2">Modello Stampante</label>
+                  <input
+                    type="text"
+                    value={settings?.printer_model || ''}
+                    onChange={(e) => setSettings(s => s ? { ...s, printer_model: e.target.value } : null)}
+                    className="input text-sm sm:text-base w-full"
+                    placeholder="es. Epson TM-T20III, HP LaserJet Pro..."
+                  />
+                  <p className="text-xs text-dark-500 mt-1">
+                    Inserisci il modello della tua stampante per una configurazione ottimale
+                  </p>
+                </div>
+
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <p className="text-xs text-amber-400">
+                    ℹ️ La stampa automatica verrà attivata quando crei una nuova comanda. Assicurati che la stampante sia collegata e configurata nel sistema.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
