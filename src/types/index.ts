@@ -239,6 +239,8 @@ export interface Settings {
   auto_print_enabled: boolean; // true = stampa automatica quando si crea nuova comanda
   printer_type?: 'thermal' | 'standard'; // Tipo stampante: termica o tradizionale
   printer_model?: string; // Modello della stampante
+  print_agent_url?: string; // URL del Print Agent locale (es. http://192.168.1.100:3000)
+  printer_ip?: string; // IP della stampante (per connessione diretta)
 }
 
 // UI Types

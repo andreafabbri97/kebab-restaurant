@@ -450,7 +450,52 @@ async function autoPrintOrder(order: Order, items: Omit<OrderItem, 'id' | 'order
     // Carica i menu items per ottenere i nomi
     const menuItems = await getMenuItems();
     
-    // Prepara il contenuto della comanda
+    // Prepara il contenuto testuale della comanda
+    let textContent = `${settings.shop_name || 'COMANDA'}\n`;
+    textContent += `${'='.repeat(32)}\n`;
+    textContent += `Comanda #${order.order_number || order.id}\n`;
+    if (order.table_name) textContent += `Tavolo: ${order.table_name}\n`;
+    if (order.customer_name) textContent += `Cliente: ${order.customer_name}\n`;
+    textContent += `Data: ${new Date().toLocaleDateString('it-IT')} ${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}\n`;
+    textContent += `${'-'.repeat(32)}\n`;
+    
+    items.forEach(item => {
+      const menuItem = menuItems.find(m => m.id === item.menu_item_id);
+      const itemName = menuItem?.name || 'Prodotto';
+      textContent += `${item.quantity}x ${itemName}\n`;
+      if (item.notes) {
+        textContent += `   Note: ${item.notes}\n`;
+      }
+    });
+    
+    textContent += `${'='.repeat(32)}\n`;
+    textContent += `${settings.printer_model || 'Stampa automatica'}\n`;
+
+    // METODO 1: Prova a usare Print Agent se configurato
+    if (settings.print_agent_url) {
+      try {
+        const response = await fetch(`${settings.print_agent_url}/print`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            printerIp: settings.printer_ip,
+            content: textContent,
+            type: settings.printer_type || 'thermal'
+          })
+        });
+        
+        if (response.ok) {
+          console.log('Stampa inviata al Print Agent con successo');
+          return; // Stampa riuscita tramite Print Agent
+        } else {
+          console.warn('Print Agent non disponibile, fallback a window.print()');
+        }
+      } catch (error) {
+        console.warn('Errore Print Agent, fallback a window.print():', error);
+      }
+    }
+
+    // METODO 2: Fallback a window.print() del browser (richiede stampante configurata nell'OS)
     let printContent = `
       <html>
         <head>
@@ -510,7 +555,6 @@ async function autoPrintOrder(order: Order, items: Omit<OrderItem, 'id' | 'order
           <div class="divider"></div>
     `;
 
-    // Aggiungi items
     items.forEach(item => {
       const menuItem = menuItems.find(m => m.id === item.menu_item_id);
       const itemName = menuItem?.name || 'Prodotto';
@@ -1766,6 +1810,8 @@ export async function getSettings(): Promise<Settings> {
         auto_print_enabled: false, // Default: stampa automatica disabilitata
         printer_type: 'thermal',
         printer_model: '',
+        print_agent_url: '',
+        printer_ip: '',
       };
     }
     return {
@@ -1784,6 +1830,8 @@ export async function getSettings(): Promise<Settings> {
       auto_print_enabled: data?.auto_print_enabled ?? false, // Default: stampa automatica disabilitata
       printer_type: data?.printer_type || 'thermal',
       printer_model: data?.printer_model || '',
+      print_agent_url: data?.print_agent_url || '',
+      printer_ip: data?.printer_ip || '',
     };
   }
   // Carica settings da localStorage e unisce con i default per garantire che tutti i campi esistano
@@ -1800,6 +1848,8 @@ export async function getSettings(): Promise<Settings> {
     auto_print_enabled: false, // Default: stampa automatica disabilitata
     printer_type: 'thermal',
     printer_model: '',
+    print_agent_url: '',
+    printer_ip: '',
   };
   const saved = getLocalData<Partial<Settings>>('settings', {});
   return { ...defaults, ...saved };

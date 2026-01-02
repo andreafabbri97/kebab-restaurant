@@ -111,6 +111,25 @@ export function Settings() {
     }
   }
 
+  // Salvataggio automatico per toggle stampa (non aspetta il pulsante Salva)
+  async function handleAutoPrintToggle(enabled: boolean) {
+    if (!checkCanWrite()) return;
+    if (!settings) return;
+
+    const updatedSettings = { ...settings, auto_print_enabled: enabled };
+    setSettings(updatedSettings);
+
+    try {
+      await updateSettings(updatedSettings);
+      showToast(enabled ? 'Stampa automatica abilitata' : 'Stampa automatica disabilitata', 'success');
+    } catch (error) {
+      console.error('Error saving auto print setting:', error);
+      showToast('Errore nel salvataggio', 'error');
+      // Ripristina lo stato precedente in caso di errore
+      setSettings(settings);
+    }
+  }
+
   function exportData() {
     try {
       const data: Record<string, unknown> = {};
@@ -441,7 +460,7 @@ export function Settings() {
                 <input
                   type="checkbox"
                   checked={settings?.auto_print_enabled || false}
-                  onChange={(e) => setSettings(s => s ? { ...s, auto_print_enabled: e.target.checked } : null)}
+                  onChange={(e) => handleAutoPrintToggle(e.target.checked)}
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-dark-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
@@ -514,10 +533,49 @@ export function Settings() {
                   </p>
                 </div>
 
-                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                  <p className="text-xs text-amber-400">
-                    ℹ️ La stampa automatica verrà attivata quando crei una nuova comanda. Assicurati che la stampante sia collegata e configurata nel sistema.
+                {/* Print Agent URL */}
+                <div>
+                  <label className="label text-xs sm:text-sm mb-2">
+                    Print Agent URL (opzionale)
+                  </label>
+                  <input
+                    type="text"
+                    value={settings?.print_agent_url || ''}
+                    onChange={(e) => setSettings(s => s ? { ...s, print_agent_url: e.target.value } : null)}
+                    className="input text-sm sm:text-base w-full"
+                    placeholder="es. http://192.168.1.100:3000"
+                  />
+                  <p className="text-xs text-dark-500 mt-1">
+                    Se hai installato un Print Agent locale, inserisci l'URL (es. http://192.168.1.100:3000)
                   </p>
+                </div>
+
+                {/* IP Stampante Diretta */}
+                <div>
+                  <label className="label text-xs sm:text-sm mb-2">
+                    IP Stampante (opzionale)
+                  </label>
+                  <input
+                    type="text"
+                    value={settings?.printer_ip || ''}
+                    onChange={(e) => setSettings(s => s ? { ...s, printer_ip: e.target.value } : null)}
+                    className="input text-sm sm:text-base w-full"
+                    placeholder="es. 192.168.1.50"
+                  />
+                  <p className="text-xs text-dark-500 mt-1">
+                    Inserisci l'IP della stampante per connessione diretta (stampanti con porta di rete 9100)
+                  </p>
+                </div>
+
+                <div className="p-3 bg-primary-500/10 border border-primary-500/30 rounded-lg">
+                  <p className="text-sm text-primary-400 font-medium mb-2">
+                    📡 Come Funziona la Stampa Automatica
+                  </p>
+                  <ul className="text-xs text-primary-300 space-y-1 list-disc list-inside">
+                    <li><strong>Con Print Agent</strong>: Installa un Print Agent locale (Raspberry Pi/PC) che cerca automaticamente le stampanti nella rete. L'app si connette all'Agent e stampa senza configurare ogni dispositivo.</li>
+                    <li><strong>Senza Print Agent</strong>: La stampa usa window.print() del browser - ogni dispositivo deve avere la stampante configurata nel sistema operativo.</li>
+                    <li><strong>IP Diretto</strong>: Se la stampante ha IP di rete, puoi stampare direttamente (richiede Print Agent).</li>
+                  </ul>
                 </div>
               </div>
             )}
