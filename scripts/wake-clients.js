@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const fetch = require('node-fetch');
+// Use the global fetch available in Node 18+ (no node-fetch required)
 const ADMIN_SUPABASE_URL = process.env.ADMIN_SUPABASE_URL;
 const ADMIN_SUPABASE_ANON_KEY = process.env.ADMIN_SUPABASE_ANON_KEY;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
