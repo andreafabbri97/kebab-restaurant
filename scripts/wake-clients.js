@@ -11,14 +11,18 @@ if (!ADMIN_SUPABASE_URL || !ADMIN_SUPABASE_ANON_KEY) {
 }
 
 async function fetchLicenses() {
-  const url = `${ADMIN_SUPABASE_URL.replace(/\/$/, '')}/rest/v1/licenses?status=active`;
+  // Use PostgREST filter syntax and select fields
+  const url = `${ADMIN_SUPABASE_URL.replace(/\/$/, '')}/rest/v1/licenses?select=*&status=eq.active`;
   const res = await fetch(url, {
     headers: {
       apikey: ADMIN_SUPABASE_ANON_KEY,
       Authorization: `Bearer ${ADMIN_SUPABASE_ANON_KEY}`
     }
   });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`${res.status} ${res.statusText} - ${body}`);
+  }
   return res.json();
 }
 
